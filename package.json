@@ -1,0 +1,17 @@
+{
+  "name": "com.hudmarc.fishnet-floating-origin",
+  "version": "0.0.5",
+  "displayName": "FishNet Floating Origin",
+  "unity": "2020.3",
+  "keywords": [
+    "tools",
+	"floating origin"
+  ],
+  "author": {
+    "name": "hudmarc",
+    "email": "",
+    "url": "https://github.com/hudmarc"
+  },
+  "description": "A floating origin solution for Unity that is compatible with the FishNet networking solution.",
+  "type": "library"
+}
