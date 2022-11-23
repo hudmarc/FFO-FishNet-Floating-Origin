@@ -13,8 +13,8 @@ namespace FishNet.FloatingOrigin
 
         public FOGroup group;
         public int groupHandle;//Used for adjacency checks
-        public bool busy = false;//If true we are waiting for the scene we are going to be moved into to load so don't try rebuilding us
-        public Vector3Int lastGrid;
+        internal bool busy = false;//If true we are waiting for the scene we are going to be moved into to load so don't try rebuilding us
+        internal Vector3Int lastGrid;
         [SerializeField] private bool autoRegister = true;
         private FOManager manager;
         void Awake() => manager = FOManager.instance;
