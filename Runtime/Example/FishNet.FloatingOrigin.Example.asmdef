@@ -3,7 +3,7 @@
     "rootNamespace": "FishNet.FloatingOrigin.Example",
     "references": [
         "GUID:7c88a4a7926ee5145ad2dfa06f454c67",
-        "GUID:a3b3c730a3fb5ba45be472c2b047565c"
+        "GUID:76e6323f644e6164591e7b26dbd00722"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
