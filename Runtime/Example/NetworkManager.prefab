@@ -7,14 +7,6 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 934570884, guid: 0b650fca685f2eb41a86538aa883e4c1, type: 3}
-      propertyPath: _defaultConditions.Array.size
-      value: 2
-      objectReference: {fileID: 0}
-    - target: {fileID: 934570884, guid: 0b650fca685f2eb41a86538aa883e4c1, type: 3}
-      propertyPath: _defaultConditions.Array.data[1]
-      value: 
-      objectReference: {fileID: 11400000, guid: 1fd1f4f555a407546ba88ef87422af66, type: 2}
     - target: {fileID: 7443408887813606049, guid: 0b650fca685f2eb41a86538aa883e4c1, type: 3}
       propertyPath: m_RootOrder
       value: 0
@@ -144,35 +136,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _startInOffline: 0
-  _offlineScene: Assets/MenuScene.unity
-  _onlineScene: Assets/GameScene.unity
+  _offlineScene: 
+  _onlineScene: 
   _replaceScenes: 1
---- !u!114 &1869834914093308692
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5098940906207584365}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fe151181dd5b0d34b97dc68d01603b28, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  localObserver: {fileID: 0}
-  offsetter: {fileID: 1869834914093308694}
---- !u!114 &1869834914093308694
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5098940906207584365}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8112e777cab6dc04c90fd8f94526c447, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  UpdateParticles: 1
-  UpdateTrailRenderers: 1
-  UpdateLineRenderers: 1
