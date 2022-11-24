@@ -8,7 +8,7 @@ See the provided example NetworkManager to see what you should set up. Aside fro
 ### Usage Notes
 If you're making a server authoritative game you must change all calls to raycast/spherecast etc from Physics.Raycast to physicsScene.Raycast where physicsScene is the physics scene of the stacked scene you want to work in. If you are making a client authoritarive game you can just use the normal Physics.Raycast method and since clients only simulate their local scenes it should 'just work'.
 
-If you have subscribed to the Time Manager's Physics ticks this will break it, so use the ticks provided by the FOManager's TimeManager mode.
+If you have subscribed to the Time Manager's Physics tick events this will cause them not to fire, so use the physics tick events provided by the FOManager's built-in TimeManager mode.
 
 When setting the Physics Mode of the FOManager keep in mind this will overwrite Physics.AutoSimulation and the TimeManager's setting.
 
