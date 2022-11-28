@@ -1,5 +1,5 @@
 # FishNet Floating Origin
- Floating Origin for FishNet
+ Floating Origin for FishNet. Tested with 2.5.4, 2.5.10 and 2.6.3. Should work with everything inbetween as well.
 # Installation
 Click "Add package from git URL..." in the UPM and paste in https://github.com/hudmarc/FFO-FishNet-Floating-Origin.git
 # How to Use
@@ -27,5 +27,9 @@ If you go very far (like Saturn's distance from the Sun far) from the origin thi
 ### Network Manager
 
 ![image](https://user-images.githubusercontent.com/44267994/204174657-ce4066c8-3957-4813-a338-186a08349857.png)
+
+### Scene Hierarchy
+
+![image](https://user-images.githubusercontent.com/44267994/204174853-57ff0c56-18ec-4f54-b128-4e7fe91fc74f.png)
 
 Best practice is to separate your game and manager scenes so that you aren't spawning a bunch of useless extra managers each time FNFO creates a new scene when rebasing. However it should work fine with just one scene as long as your NetworkManager is set to "Destoy Newest".
