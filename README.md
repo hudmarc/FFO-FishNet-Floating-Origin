@@ -14,7 +14,7 @@ If you have subscribed to the Time Manager's Physics tick events this will cause
 
 When setting the Physics Mode of the FOManager keep in mind this will overwrite Physics.AutoSimulation and the TimeManager's setting.
 
-Currently when rebasing remote clients will not resync correctly so you must set your network transforms to Teleport. See https://github.com/FirstGearGames/FishNet/issues/164 for a potential fix.
+Currently when rebasing remote clients will not resync correctly so you must set your network transforms to Teleport. The fix will soon be implemented into FN https://github.com/FirstGearGames/FishNet/issues/164 so I will then re-enable the code.
 
 If you go very far (like Saturn's distance from the Sun far) from the origin this could potentially cause objects near the original origin position to lose accuracy in their positioning. I would recommend having scene objects as children of an Empty at 0,0,0 in order to mitigate this effect (since they will use local position relative to their parent when offset, and the accuracy of this is not affected by floating origin rebases since they only affect scene root objects)
 
