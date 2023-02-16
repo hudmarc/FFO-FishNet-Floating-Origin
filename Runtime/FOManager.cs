@@ -9,7 +9,7 @@ namespace FishNet.FloatingOrigin
 {
     public partial class FOManager : MonoBehaviour
     {
-        public const double chunkSize = 1024;
+        public const double chunkSize = 8192;
         public const double inverseChunkSize = 1d / chunkSize;
         public static FOManager instance;
         public FOObserver localObserver;
