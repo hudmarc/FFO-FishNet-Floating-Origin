@@ -9,7 +9,8 @@ namespace FishNet.FloatingOrigin
 {
     public partial class FOManager : MonoBehaviour
     {
-        public const double chunkSize = 8192;
+        //Modify this constant in order to change how big the virtual chunks should be (around 15k is the maximum while staying within accurate floats)
+        public const double chunkSize = 4096;
         public const double inverseChunkSize = 1d / chunkSize;
         public static FOManager instance;
         public FOObserver localObserver;
@@ -171,7 +172,7 @@ namespace FishNet.FloatingOrigin
                     {
                         if (ob != observer && ob.group != observer.group && !ob.busy)
                         {
-                            FindAdjacent(ob, members, groupHandle, ++recursionDepth);//yum! recursion!
+                            FindAdjacent(ob, members, groupHandle, recursionDepth + 1);
                         }
                     }
                 }
