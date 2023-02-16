@@ -134,6 +134,7 @@ namespace FishNet.FloatingOrigin
             else
             {
                 InstanceFinder.TimeManager.OnTick -= Simulate;
+                subscribedToTick = false;
             }
             _physicsMode = mode;
         }
