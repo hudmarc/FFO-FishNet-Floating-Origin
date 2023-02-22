@@ -29,6 +29,7 @@ namespace FishNet.FloatingOrigin
                 // Debug.Log($"Sending offset sync broadcast {new OffsetSyncBroadcast(offset).ToString()}");
                 // NetworkTransform.ForceResyncAll();
                 InstanceFinder.ServerManager.Broadcast(observer.Owner, new OffsetSyncBroadcast(offset));
+                Rebased?.Invoke(offset);
             }
         }
     }

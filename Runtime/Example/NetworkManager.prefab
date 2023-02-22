@@ -54,7 +54,7 @@ MonoBehaviour:
   _objectPool: {fileID: 0}
   _persistence: 0
   _logging: {fileID: 0}
-  _spawnablePrefabs: {fileID: 11400000, guid: ec64eb18c93ab344892891f33edbf82a, type: 2}
+  _spawnablePrefabs: {fileID: 11400000, guid: 0c75790f237c142f5bdd7e2cc1faf980, type: 2}
 --- !u!114 &3366438636462468685
 MonoBehaviour:
   m_ObjectHideFlags: 0

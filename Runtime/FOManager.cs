@@ -17,7 +17,7 @@ namespace FishNet.FloatingOrigin
         /// <summary>
         /// Called whenever this client has been rebased. Returns new offset.
         /// </summary>
-        public Action<Vector3d> Rebased;
+        public event Action<Vector3d> Rebased;
         internal List<FOObserver> observers = new List<FOObserver>();
         private bool initial = true;
         private Dictionary<Vector3Int, List<FOObserver>> observerGridPositions = new Dictionary<Vector3Int, List<FOObserver>>();
@@ -33,6 +33,20 @@ namespace FishNet.FloatingOrigin
                 throw new System.Exception("Provided Offsetter does not implement interface IOffsetter!");
             ioffsetter = (IOffsetter)offsetter;
         }
+        #if UNITY_EDITOR
+        public void DrawDebug()
+        {
+            foreach (var val in scenes)
+            {
+                GUILayout.Button($" Scene {val.Key.handle.ToString()}: {val.Value}");
+            }
+            foreach (var ob in observers)
+            {
+                if (ob != null)
+                    GUILayout.Button($"Owner: {ob.OwnerId} Unity Position: {(int)ob.unityPosition.x} {(int)ob.unityPosition.y} {(int)ob.unityPosition.z} Real Position: {(int)ob.realPosition.x} {(int)ob.realPosition.y} {(int)ob.realPosition.z} Group Offset: {(int)ob.group.offset.x} {(int)ob.group.offset.y} {(int)ob.group.offset.z} Group Members: {ob.group.members}");
+            }
+        }
+        #endif
         void Start()
         {
             InstanceFinder.ClientManager.RegisterBroadcast<OffsetSyncBroadcast>(OnOffsetSyncBroadcast);
@@ -49,15 +63,34 @@ namespace FishNet.FloatingOrigin
         internal void RegisterObserver(FOObserver observer)
         {
             Debug.Log($"Registered Observer {observer.OwnerId}");
+
             observers.Add(observer);
 
             if (InstanceFinder.IsServer)
             {
                 var offset = Mathd.toVector3d(observer.unityPosition);
+
+                FOGroup group = null;
+
+                var observerGridPosition = RealToGridPosition(observer.initialRealPosition);
+
+                if (observerGridPositions.ContainsKey(observerGridPosition))
+                {
+                    observerGridPositions[observerGridPosition].Add(observer);
+                    group = observerGridPositions[observerGridPosition][0].group;
+                    offset = group.offset;
+                }
+                else
+                {
+                    observerGridPositions.Add(observerGridPosition, new List<FOObserver>() { observer });
+                    group = new FOGroup(offset, 1);
+                }
+
+
                 if (initial && InstanceFinder.IsServer)
                 {
                     OffsetScene(observer.gameObject.scene, Vector3d.zero, offset);
-                    MoveToScene(observer, new FOGroup(offset, 1), observer.gameObject.scene);
+                    MoveToScene(observer, group, observer.gameObject.scene);
                     SetSceneObservers(observer.gameObject.scene, 1);
                     initial = false;
                 }
@@ -66,7 +99,7 @@ namespace FishNet.FloatingOrigin
                     if (InstanceFinder.IsServer)
                     {
                         scenes[observer.gameObject.scene]++;
-                        MoveToNewGroup(observer, Vector3d.zero, new FOGroup(offset, 1));
+                        MoveToNewGroup(observer, Vector3d.zero, group);
                         SyncOffset(observer, offset);
                     }
                 }
@@ -99,12 +132,12 @@ namespace FishNet.FloatingOrigin
                         foreach (var ob in observers)
                             if (ob != null && !ob.busy)
                             {
-                                var gp = ObserverGridPosition(ob);
-                                if (observerGridPositions.ContainsKey(gp))
-                                    observerGridPositions[gp].Add(ob);
+                                var observerGridPosition = ObserverGridPosition(ob);
+                                if (observerGridPositions.ContainsKey(observerGridPosition))
+                                    observerGridPositions[observerGridPosition].Add(ob);
                                 else
-                                    observerGridPositions.Add(gp, new List<FOObserver>() { ob });
-                                ob.lastGrid = gp;
+                                    observerGridPositions.Add(observerGridPosition, new List<FOObserver>() { ob });
+                                ob.lastGrid = observerGridPosition;
                             }
 
                     if (!observer.busy)

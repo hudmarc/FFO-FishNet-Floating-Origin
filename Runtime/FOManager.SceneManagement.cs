@@ -19,7 +19,6 @@ namespace FishNet.FloatingOrigin
         private IOffsetter ioffsetter;
         private LoadSceneParameters parameters = new LoadSceneParameters(LoadSceneMode.Additive, LocalPhysicsMode.Physics3D);
         private bool subscribedToTick = false;
-
         private void OffsetScene(Scene scene, Vector3d oldOffset, Vector3d newOffset)
         {
             (Vector3 offset, Vector3 preciseOffset) difference = DifferenceBetween(newOffset, oldOffset);
@@ -107,20 +106,6 @@ namespace FishNet.FloatingOrigin
             yield return null;
             SceneManager.UnloadSceneAsync(scene);
         }
-#if UNITY_EDITOR
-        void OnGUI()
-        {
-            foreach (var val in scenes)
-            {
-                GUILayout.Button($" Scene {val.Key.handle.ToString()}: {val.Value}");
-            }
-            foreach (var ob in observers)
-            {
-                if (ob != null)
-                    GUILayout.Button($"Owner: {ob.OwnerId} Unity Position: {(int)ob.unityPosition.x} {(int)ob.unityPosition.y} {(int)ob.unityPosition.z} Real Position: {(int)ob.realPosition.x} {(int)ob.realPosition.y} {(int)ob.realPosition.z} Group Offset: {(int)ob.group.offset.x} {(int)ob.group.offset.y} {(int)ob.group.offset.z} Group Members: {ob.group.members}");
-            }
-        }
-#endif
         public void SetPhysicsMode(PhysicsMode mode)
         {
             if (mode == PhysicsMode.TimeManager)

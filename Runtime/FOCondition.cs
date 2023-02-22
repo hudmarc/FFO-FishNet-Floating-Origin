@@ -40,6 +40,12 @@ namespace FishNet.FloatingOrigin.Observing
         /// <param name="notProcessed">True if the condition was not processed. This can be used to skip processing for performance. While output as true this condition result assumes the previous ConditionMet value.</param>
         public override bool ConditionMet(NetworkConnection connection, bool currentlyAdded, out bool notProcessed)
         {
+            if (FOManager.instance.localObserver == null)
+            {
+                notProcessed = true;
+                return false;
+            }
+
             if (_updateFrequency > 0f)
             {
                 float nextAllowedUpdate;

@@ -1,23 +1,25 @@
 using FishNet.Object;
-using System.Threading.Tasks;
 using FishNet.Connection;
 using FishNet.FloatingOrigin.Types;
 using UnityEngine;
-// using FishNet.Component.Transforming;
 
 namespace FishNet.FloatingOrigin
 {
-
     public class FOObserver : NetworkBehaviour
     {
-
         public FOGroup group;
         internal int groupHandle;//Used for adjacency checks
         internal bool busy = false;//If true we are waiting for the scene we are going to be moved into to load so don't try rebuilding us
         internal Vector3Int lastGrid;
         [SerializeField] private bool autoRegister = true;
         private FOManager manager;
-        void Awake() => manager = FOManager.instance;
+        void Awake()
+        {
+            manager = FOManager.instance;
+            _initialRealPosition = new Vector3d(transform.position);
+        }
+        private Vector3d _initialRealPosition;
+        public Vector3d initialRealPosition => _initialRealPosition;
 
         public override void OnOwnershipClient(NetworkConnection prevOwner)
         {
