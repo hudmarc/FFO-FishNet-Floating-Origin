@@ -26,9 +26,9 @@ If you're making a server authoritative game you must change all calls to raycas
 
 If you have subscribed to the Time Manager's Physics tick events this will cause them not to fire, so use the physics tick events provided by the FOManager's built-in TimeManager mode.
 
-When setting the Physics Mode of the FOManager keep in mind this will overwrite Physics.AutoSimulation and the TimeManager's setting.
+When setting the Physics Mode of the FOManager keep in mind this will overwrite Physics.AutoSimulation and the TimeManager's setting. It should still be doing stuff exclusively in OnTick as it would with the TimeManager enabled though.
 
-Currently when rebasing remote clients will not resync correctly so you must set your network transforms to Teleport. The fix will soon be implemented into FN https://github.com/FirstGearGames/FishNet/issues/164 so I will then re-enable the code.
+Currently when rebasing remote clients will not resync correctly so you must set your network transforms to Teleport. The fix will hopefully soon be implemented in FN https://github.com/FirstGearGames/FishNet/discussions/265 so I will then re-enable the code. In the meantime, just set your NT's to "teleport" to avoid rubberbanding.
 
 If you go very far (like Saturn's distance from the Sun far) from the origin this could potentially cause objects near the original origin position to lose accuracy in their positioning. I would recommend having scene objects as children of an FOAnchor in order to mitigate this effect.
 
