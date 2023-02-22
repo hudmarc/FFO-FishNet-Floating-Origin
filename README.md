@@ -24,7 +24,7 @@ If you go very far (like Saturn's distance from the Sun far) from the origin thi
 
 ![image](https://user-images.githubusercontent.com/44267994/204174643-73a6e8f3-87bf-44bf-aec3-24efed2978e2.png)
 
-You can also add an FODebugger component to your Observer in order to debug where the floating origin is relative to the observer.
+You can also add an FODebugger component to your Observer prefab in order to debug where the floating origin is relative to the observer, to see the Observer Group the observer is in and the relative offset of that group.
 
 ### Network Manager
 
