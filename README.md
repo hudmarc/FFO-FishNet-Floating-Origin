@@ -1,14 +1,28 @@
 # FishNet Floating Origin
-Floating Origin for FishNet. Allows for universes (at 1m precision) up to 9 * 10 ^ 15 meters. Comfortably fits the Solar System [~6*10^8 meters] at-scale (ignoring the rendering and physics complexities of huge stellar objects, since this package currently only deals with massive positions, not scales or velocities) Tested with FN versions 2.5.4, 2.5.10, 2.6.3 and 3.x Should work with everything in between as well.
+Floating Origin for FishNet. Tested with FN versions `2.5.4`, `2.5.10`, `2.6.3` and `3.x` Should work with everything in between as well.
 # Installation
 Click "Add package from git URL..." in the UPM and paste in https://github.com/hudmarc/FFO-FishNet-Floating-Origin.git
+
+# Will my game world fit?
+Yes, as long as your game is smaller than the Milky Way. `[52,850 LY/5\*10^20m]`
+
+This package allows for 1 meter worst-case absolute resolution at `[9 * 10 ^ 15]` meters.
+
+Regardless of how imprecise the absolute position of something is it can be interpolated or interacted with in Unity space with no precision loss, since the local positions of objects are always a Vector3 relative to the nearby origin of the space. (hence the "floating origin")
+
+This scale comfortably fits the real life Solar System `[~6*10^8 meters]` with planets within 1m of their intended positions. (ignoring the rendering and physics complexities of huge stellar objects, since this package currently only deals with massive positions, not scales or velocities). It should also be able to hold the Milky Way galaxy with a worst-case absolute resolution of 65 meters.
+
+At massive scales >1cm resolution means a planet orbiting could "jump" many meters into a spaceship landed on its surface (if this planet was a few times farther out than Pluto). to combat this I plan on adding a "reference frame" component so that the relative motion of these massive interstellar bodies would carry over to any observers on their surface. In the meantime you could either not simulate the motion of planets, or create a script which offsets all observers near the planet along with the planet itself every few timesteps in order to match what the "real" position of the planet should be.
+
+If you're writing a proper interstellar-scale game, do write your own Offsetter. You could probably get away with one that only offsets observers and then use FOAnchors for everything else, since they handle their own offsetting.
+
 # How to Use
 See the provided example NetworkManager to see what you should set up.
 Your manager scene should be separate from your game scene. An easy way to do this is to use the DefaultScene component built into FN and add the manager scene as the offline scene and the game scene as the online scene.
 Aside from that make sure your player prefab (or whatever acts as the 'observer' on clients) has an FOObserver component. The FOmanager will then try to keep this object as close as possible to 0,0,0 in its simulation space, reducing and in most cases completely eliminating inaccuracies caused by floating point errors.
 
 ### Usage Notes
-If you're making a server authoritative game you must change all calls to raycast/spherecast etc from Physics.Raycast to physicsScene.Raycast where physicsScene is the physics scene of the stacked scene you want to work in. If you are making a client authoritarive game you can just use the normal Physics.Raycast method and since clients only simulate their local scenes it should 'just work'. (A caveat is that you'd still need to use the scene-specific raycasts for the host client, since all stacked scenes are simulated on the server/host)
+If you're making a server authoritative game you must change all calls to raycast/spherecast etc on the server from Physics.Raycast to physicsScene.Raycast where physicsScene is the physics scene of the stacked scene you want to work in. If you are making a client authoritarive game you can just use the normal Physics.Raycast method since clients only simulate their local scenes, so it should 'just work'. (A caveat is that you'd still need to use the scene-specific raycasts for the host client, since all stacked scenes are simulated on the server/host)
 
 If you have subscribed to the Time Manager's Physics tick events this will cause them not to fire, so use the physics tick events provided by the FOManager's built-in TimeManager mode.
 
@@ -16,7 +30,7 @@ When setting the Physics Mode of the FOManager keep in mind this will overwrite 
 
 Currently when rebasing remote clients will not resync correctly so you must set your network transforms to Teleport. The fix will soon be implemented into FN https://github.com/FirstGearGames/FishNet/issues/164 so I will then re-enable the code.
 
-If you go very far (like Saturn's distance from the Sun far) from the origin this could potentially cause objects near the original origin position to lose accuracy in their positioning. I would recommend having scene objects as children of an Empty at 0,0,0 in order to mitigate this effect (since they will use local position relative to their parent when offset, and the accuracy of this is not affected by floating origin rebases since they only affect scene root objects)
+If you go very far (like Saturn's distance from the Sun far) from the origin this could potentially cause objects near the original origin position to lose accuracy in their positioning. I would recommend having scene objects as children of an FOAnchor in order to mitigate this effect.
 
 ## Example Setup
 
@@ -25,6 +39,10 @@ If you go very far (like Saturn's distance from the Sun far) from the origin thi
 ![image](https://user-images.githubusercontent.com/44267994/204174643-73a6e8f3-87bf-44bf-aec3-24efed2978e2.png)
 
 You can also add an FODebugger component to your Observer prefab in order to debug where the floating origin is relative to the observer, to see the Observer Group the observer is in and the relative offset of that group.
+
+### AI/NPC's
+
+It should be possible to just add an FOObserver component to whatever AI you have that needs to travel far enough distances for floating origins to matter. Otherwise you can just have your AI's stay near their house/home base and despawn once the player is far away enough.
 
 ### Network Manager
 
