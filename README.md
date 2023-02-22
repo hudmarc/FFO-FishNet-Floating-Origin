@@ -1,5 +1,5 @@
 # FishNet Floating Origin
- Floating Origin for FishNet. Tested with FN versions 2.5.4, 2.5.10 and 2.6.3. Should work with everything in between as well.
+Floating Origin for FishNet. Allows for universes (at 1m precision) up to 9 * 10 ^ 15 meters. Comfortably fits the Solar System [~6*10^8 meters] at-scale (ignoring the rendering and physics complexities of huge stellar objects, since this package currently only deals with massive positions, not scales or velocities) Tested with FN versions 2.5.4, 2.5.10, 2.6.3 and 3.x Should work with everything in between as well.
 # Installation
 Click "Add package from git URL..." in the UPM and paste in https://github.com/hudmarc/FFO-FishNet-Floating-Origin.git
 # How to Use
