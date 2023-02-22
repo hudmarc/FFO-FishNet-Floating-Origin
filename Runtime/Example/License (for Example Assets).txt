@@ -1,0 +1,5 @@
+Don't use the example Space Station 3D model in any game as it is licensed for Personal Use Only. (The exact terms of the Free3D personal use license are not available online, so to be on the safe side just don't ship the model with your game) The original source for the model is:
+
+https://free3d.com/3d-model/international-space-station-v1--269647.html
+
+It is included in the Example package for testing purposes only.
