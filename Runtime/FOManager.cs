@@ -20,6 +20,7 @@ namespace FishNet.FloatingOrigin
         public event Action<Vector3d> Rebased;
         internal List<FOObserver> observers = new List<FOObserver>();
         private bool initial = true;
+        private FOObserver previous = null;
         private Dictionary<Vector3Int, List<FOObserver>> observerGridPositions = new Dictionary<Vector3Int, List<FOObserver>>();
         private HashSet<FOObserver> tempMembers = new HashSet<FOObserver>();
         private Vector3Int gridPos;
@@ -33,7 +34,7 @@ namespace FishNet.FloatingOrigin
                 throw new System.Exception("Provided Offsetter does not implement interface IOffsetter!");
             ioffsetter = (IOffsetter)offsetter;
         }
-        #if UNITY_EDITOR
+#if UNITY_EDITOR
         public void DrawDebug()
         {
             foreach (var val in scenes)
@@ -46,7 +47,7 @@ namespace FishNet.FloatingOrigin
                     GUILayout.Button($"Owner: {ob.OwnerId} Unity Position: {(int)ob.unityPosition.x} {(int)ob.unityPosition.y} {(int)ob.unityPosition.z} Real Position: {(int)ob.realPosition.x} {(int)ob.realPosition.y} {(int)ob.realPosition.z} Group Offset: {(int)ob.group.offset.x} {(int)ob.group.offset.y} {(int)ob.group.offset.z} Group Members: {ob.group.members}");
             }
         }
-        #endif
+#endif
         void Start()
         {
             InstanceFinder.ClientManager.RegisterBroadcast<OffsetSyncBroadcast>(OnOffsetSyncBroadcast);
@@ -63,34 +64,15 @@ namespace FishNet.FloatingOrigin
         internal void RegisterObserver(FOObserver observer)
         {
             Debug.Log($"Registered Observer {observer.OwnerId}");
-
             observers.Add(observer);
 
             if (InstanceFinder.IsServer)
             {
                 var offset = Mathd.toVector3d(observer.unityPosition);
-
-                FOGroup group = null;
-
-                var observerGridPosition = RealToGridPosition(observer.initialRealPosition);
-
-                if (observerGridPositions.ContainsKey(observerGridPosition))
-                {
-                    observerGridPositions[observerGridPosition].Add(observer);
-                    group = observerGridPositions[observerGridPosition][0].group;
-                    offset = group.offset;
-                }
-                else
-                {
-                    observerGridPositions.Add(observerGridPosition, new List<FOObserver>() { observer });
-                    group = new FOGroup(offset, 1);
-                }
-
-
                 if (initial && InstanceFinder.IsServer)
                 {
                     OffsetScene(observer.gameObject.scene, Vector3d.zero, offset);
-                    MoveToScene(observer, group, observer.gameObject.scene);
+                    MoveToScene(observer, new FOGroup(offset, 1), observer.gameObject.scene);
                     SetSceneObservers(observer.gameObject.scene, 1);
                     initial = false;
                 }
@@ -99,10 +81,11 @@ namespace FishNet.FloatingOrigin
                     if (InstanceFinder.IsServer)
                     {
                         scenes[observer.gameObject.scene]++;
-                        MoveToNewGroup(observer, Vector3d.zero, group);
+                        MoveToNewGroup(observer, Vector3d.zero, previous.group);
                         SyncOffset(observer, offset);
                     }
                 }
+                previous = observer;
             }
             else
                 MoveToScene(observer, new FOGroup(Vector3d.zero, 1), observer.gameObject.scene);
@@ -142,21 +125,23 @@ namespace FishNet.FloatingOrigin
 
                     if (!observer.busy)
                     {
-                        RebuildOffsetGroup(observer, gridPos, ref tempMembers, out FOObserver other);//runs synchronously
+                        RebuildOffsetGroup(observer, gridPos, tempMembers);
                         hasRebuilt = true;
-
-                        if (tempMembers.Count > 1)
-                            AssignGroup(other, tempMembers.ToArray());//first other observer's group (it will probably be bigger than yours)
-                        else
-                            AssignGroup(observer, tempMembers.ToArray());
                     }
-
-
                 }
             }
         }
-
-        private void RebuildOffsetGroup(FOObserver observer, Vector3Int gridPos, ref HashSet<FOObserver> tempMembers, out FOObserver other)
+        /// <summary>
+        /// Rebuilds the Offset Group for an observer. This will affect other observers around the initial observer, since they may also be rebased. After this operation completes,
+        /// all affected observers will have a new Unity position, the same Real position, and will have their new Offset Group assigned.
+        /// </summary>
+        /// <param name="observer"></param>
+        public void RebuildOffsetGroup(FOObserver observer)
+        {
+            gridPos = ObserverGridPosition(observer);
+            RebuildOffsetGroup(observer, gridPos, tempMembers);
+        }
+        private void RebuildOffsetGroup(FOObserver observer, Vector3Int gridPos, HashSet<FOObserver> tempMembers)
         {
             tempMembers.Clear();
 
@@ -166,7 +151,7 @@ namespace FishNet.FloatingOrigin
             int groupHandle = Time.time.GetHashCode();
             observer.groupHandle = groupHandle;
             tempMembers.Add(observer);
-            other = null;
+            FOObserver other = null;
             foreach (Vector3Int cell in adjacencyGroup)
             {
                 if (observerGridPositions.ContainsKey(cell))
@@ -179,12 +164,15 @@ namespace FishNet.FloatingOrigin
                             // Debug.Log($"Found other: {ob.OwnerId}");
                             if (other == null)
                                 other = ob;
-                            FindAdjacent(ob, tempMembers, groupHandle, 0);//yum! recursion!
+                            FindAdjacent(ob, tempMembers, groupHandle, 0);
                         }
                     }
                 }
             }
-            // Debug.Log("---");
+            if (tempMembers.Count > 1)
+                AssignGroup(other, tempMembers);//first other observer's group (it will probably be bigger than yours)
+            else
+                AssignGroup(observer, tempMembers);
         }
         internal void FindAdjacent(FOObserver observer, HashSet<FOObserver> members, int groupHandle, int recursionDepth = 0)
         {
@@ -211,18 +199,21 @@ namespace FishNet.FloatingOrigin
                 }
             }
         }
-        private void AssignGroup(FOObserver head, FOObserver[] members, Vector3d newOffset = default)
+        private void AssignGroup(FOObserver head, HashSet<FOObserver> members, Vector3d newOffset = default)
         {
-            if (members.Length == 0)
-                members = new FOObserver[] { head };
+            if (members.Count == 0)
+            {
+                members = new HashSet<FOObserver>();
+                members.Add(head);
+            }
             Vector3d oldOffset = head.group.offset;
 
             if (newOffset.Equals(Vector3d.zero))
             {
-                newOffset = AverageOffset(members);
+                newOffset = AverageOffset(members.ToArray());
             }
 
-            if (members.Length > 1)
+            if (members.Count > 1)
             {
                 OffsetScene(head.gameObject.scene, oldOffset, newOffset);
                 head.group.offset = newOffset;
@@ -236,7 +227,7 @@ namespace FishNet.FloatingOrigin
             else
             {
                 if (head.group.members > 1)
-                    MoveToNewGroup(head, oldOffset, new FOGroup(newOffset, members.Length));
+                    MoveToNewGroup(head, oldOffset, new FOGroup(newOffset, members.Count));
                 else //We were the only member in our old scene, we are the only member in our new scene.
                 {
                     OffsetScene(head.gameObject.scene, oldOffset, newOffset);
@@ -245,7 +236,7 @@ namespace FishNet.FloatingOrigin
                 }
             }
 
-            head.group.members = members.Length;
+            head.group.members = members.Count;
 
             foreach (FOObserver observer in members)
                 SyncOffset(observer, newOffset);

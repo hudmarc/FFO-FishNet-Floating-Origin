@@ -118,23 +118,9 @@ namespace FishNet.FloatingOrigin
 
             HashSet<FOObserver> temp = new HashSet<FOObserver>();
 
-            RebuildOffsetGroup(observer, gridPos, ref temp, out FOObserver other);//runs synchronously
+            RebuildOffsetGroup(observer, gridPos, temp);//runs synchronously
             hasRebuilt = true;
-
-            foreach (var ob in temp)
-            {
-                Debug.Log($"{ob.OwnerId}");
-            }
-            if (temp.Count > 1)
-            {
-                AssignGroup(other, temp.ToArray(), other.group.offset);
-                observer.unityPosition = RealToUnity(realPosition, other.group.offset);
-            }
-            else
-            {
-                AssignGroup(observer, temp.ToArray(), realPosition);
-                observer.unityPosition = Vector3.zero;
-            }
+            observer.unityPosition = RealToUnity(realPosition, observer.group.offset);
         }
         /// <summary>
         /// Teleports an FOObserver to another FOObserver
