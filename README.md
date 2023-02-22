@@ -4,7 +4,7 @@ Floating Origin for FishNet. Tested with FN versions `2.5.4`, `2.5.10`, `2.6.3` 
 Click "Add package from git URL..." in the UPM and paste in https://github.com/hudmarc/FFO-FishNet-Floating-Origin.git
 
 # Will my game world fit?
-Yes, as long as your game is smaller than the Milky Way. `[52,850 LY/5\*10^20m]`
+Yes, as long as your game is smaller than the Milky Way. `[52,850 LY / 5*10^20m]`
 
 This package allows for 1 meter worst-case absolute resolution at `[9 * 10 ^ 15]` meters.
 
