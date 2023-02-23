@@ -34,6 +34,12 @@ If you go very far (like Saturn's distance from the Sun far) from the origin thi
 
 ## Example Setup
 
+A general rule of thumb: Any object that has a NetworkObject on it (ESPECIALLY if it is a moving/dynamic object with a NetworkTransform or CSP) should have an FOObserver component on it to ensure it always either stays loaded or moves with other FOObservers as needed.
+
+**AN OBJECT THAT DOESN'T HAVE AN FOOBSERVER ON IT IT CAN BE DESTROYED AT ANY TIME WITHOUT WARNING**
+
+Furthermore, objects without FOObservers that are in a scene will be duplicated each time the scene is newly loaded!
+
 ### Player
 
 ![image](https://user-images.githubusercontent.com/44267994/204174643-73a6e8f3-87bf-44bf-aec3-24efed2978e2.png)
@@ -43,6 +49,16 @@ You can also add an FODebugger component to your Observer prefab in order to deb
 ### AI/NPC's
 
 It should be possible to just add an FOObserver component to whatever AI you have that needs to travel far enough distances for floating origins to matter. Otherwise you can just have your AI's stay near their house/home base and despawn once the player is far away enough.
+
+### Map objects/other stuff
+
+If something isn't a static, unchanging part of the terrain you should add an FOObserver component to it. This will ensure that it is always in the correct scene and remains interactive.
+
+Anything smaller than 1024 * 1024 meters should work just fine with just one FOObserver component on it. Anything larger should probably be broken up into multiple sections with an FOObserver on each section.
+
+Things like small procedurally generated settlements should probably have an FOObserver placed on their root node so that the entire settlement syncs correctly and persists when players leave. (your mileage may vary though) Potentially you could have a settlement that generates dynamically, then despawns when the player goes out of range. Then when another player is in range, it could respawn procedurally (again)
+
+Essentially, if you want one instance and one instance only of a thing to exist at any particular time (like e.g. a persistent trading post/waypoint) you should have an FOObject component on it. I'm planning on adding something like a "do not destroy" component which would move objects with that component into stasis in a persistent scene instead of destroying them.
 
 ### Network Manager
 
