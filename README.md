@@ -54,7 +54,7 @@ It should be possible to just add an FOObserver component to whatever AI you hav
 
 If something isn't a static, unchanging part of the terrain you should add an FOObserver component to it. This will ensure that it is always in the correct scene and remains interactive.
 
-Anything smaller than 1024 * 1024 meters should work just fine with just one FOObserver component on it. Anything larger should probably be broken up into multiple sections with an FOObserver on each section.
+Anything smaller than 4096 * 4096 meters (or whatever the `chunkSize` constant in the FOManager is set to) should work just fine with just one FOObserver component on it. Anything larger should probably be broken up into multiple sections with an FOObserver on each section.
 
 Things like small procedurally generated settlements should probably have an FOObserver placed on their root node so that the entire settlement syncs correctly and persists when players leave. (your mileage may vary though) Potentially you could have a settlement that generates dynamically, then despawns when the player goes out of range. Then when another player is in range, it could respawn procedurally (again)
 
