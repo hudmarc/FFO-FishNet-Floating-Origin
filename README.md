@@ -1,8 +1,12 @@
-# NOTICE!
-Version 0.7 broke some things, and in the process of fixing it revealed some deep code issues with the package. I am currently in the process of rewriting the package core so that these issues are fixed. ETA is in a few days.
+# Important Usage Notes
+Because this package uses multi-scene stacking, you MUST remember to convert all calls to the Physics library to instead use the local physics scene. For example `Physics.Raycast` would be `gameObject.scene.GetPhysicsScene().Raycast`. Otherwise your physics will not work correctly!
+
+## Changes in 0.1.0
+Added FOObject base class, all objects with an FOObject component on them will respect the Floating Origin system. If you want something to persist between rebases, add an FOObject component to it. FOObjects are *NOT* recalculated after creating, if your object can move around (i.e. an AI) and isn't artificially limited to stay within a certain area you should add an FOObserver to it. All players should also have FOObservers added to them. There is also an FOAnchor component to "anchor" objects at a certain Vector3d. This should be useful for very faraway objects that could otherwise suffer from precision loss. Unfortunately the Unity editor cannot handle these scales, so you will have to type in the coordinates manually (a custom Editor for the FOAnchor is provided)
 
 # FishNet Floating Origin
-Floating Origin for FishNet. Tested with FN versions `2.5.4`, `2.5.10`, `2.6.3` and `3.x` Should work with everything in between as well.
+Floating Origin for FishNet. Tested with FN version `3.4` Should work with all `3.x` versions and also `2.x`
+
 # Installation
 Click "Add package from git URL..." in the UPM and paste in https://github.com/hudmarc/FFO-FishNet-Floating-Origin.git
 
@@ -39,7 +43,7 @@ If you go very far (like Saturn's distance from the Sun far) from the origin thi
 
 A general rule of thumb: Any object that has a NetworkObject on it (ESPECIALLY if it is a moving/dynamic object with a NetworkTransform or CSP) should have an FOObserver component on it to ensure it always either stays loaded or moves with other FOObservers as needed.
 
-**AN OBJECT THAT DOESN'T HAVE AN FOOBSERVER ON IT IT CAN BE DESTROYED AT ANY TIME WITHOUT WARNING**
+**AN OBJECT THAT DOESN'T HAVE AN FOOBSERVER OR FOOBJECT ON IT IT CAN BE DESTROYED AT ANY TIME WITHOUT WARNING**
 
 Furthermore, objects without FOObservers that are in a scene will be duplicated each time the scene is newly loaded!
 
