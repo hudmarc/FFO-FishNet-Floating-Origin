@@ -1,3 +1,6 @@
+# NOTICE!
+Version 0.7 broke some things, and in the process of fixing it revealed some deep code issues with the package. I am currently in the process of rewriting the package core so that these issues are fixed. ETA is in a few days.
+
 # FishNet Floating Origin
 Floating Origin for FishNet. Tested with FN versions `2.5.4`, `2.5.10`, `2.6.3` and `3.x` Should work with everything in between as well.
 # Installation
