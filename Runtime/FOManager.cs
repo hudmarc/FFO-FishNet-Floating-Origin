@@ -4,50 +4,24 @@ using System.Linq;
 using FishNet.FloatingOrigin.Types;
 using UnityEngine;
 using FishNet.Managing.Timing;
+using UnityEngine.SceneManagement;
 
 namespace FishNet.FloatingOrigin
 {
     public partial class FOManager : MonoBehaviour
     {
-        //Modify this constant in order to change how big the virtual chunks should be (around 15k is the maximum while staying within accurate floats)
-        public const double chunkSize = 4096;
+        public const double chunkSize = 1024;
         public const double inverseChunkSize = 1d / chunkSize;
         public static FOManager instance;
         public FOObserver localObserver;
-        /// <summary>
-        /// Called whenever this client has been rebased. Returns new offset.
-        /// </summary>
-        public event Action<Vector3d> Rebased;
-        internal List<FOObserver> observers = new List<FOObserver>();
-        private bool initial = true;
-        private FOObserver previous = null;
-        private Dictionary<Vector3Int, List<FOObserver>> observerGridPositions = new Dictionary<Vector3Int, List<FOObserver>>();
-        private HashSet<FOObserver> tempMembers = new HashSet<FOObserver>();
-        private Vector3Int gridPos;
-        void Awake()
-        {
-            if (instance != null)
-                throw new System.Exception("There is more than one FloatingOriginManager present! Please insure there is only ever one present per runtime!");
-            instance = this;
+        public event Action<Scene> RebasedScene;
+        private HashSet<FOObserver> observers = new HashSet<FOObserver>();
 
-            if (!(offsetter is IOffsetter))
-                throw new System.Exception("Provided Offsetter does not implement interface IOffsetter!");
-            ioffsetter = (IOffsetter)offsetter;
-        }
-#if UNITY_EDITOR
-        public void DrawDebug()
-        {
-            foreach (var val in scenes)
-            {
-                GUILayout.Button($" Scene {val.Key.handle.ToString()}: {val.Value}");
-            }
-            foreach (var ob in observers)
-            {
-                if (ob != null)
-                    GUILayout.Button($"Owner: {ob.OwnerId} Unity Position: {(int)ob.unityPosition.x} {(int)ob.unityPosition.y} {(int)ob.unityPosition.z} Real Position: {(int)ob.realPosition.x} {(int)ob.realPosition.y} {(int)ob.realPosition.z} Group Offset: {(int)ob.group.offset.x} {(int)ob.group.offset.y} {(int)ob.group.offset.z} Group Members: {ob.group.members}");
-            }
-        }
-#endif
+        #region hash grids
+        protected Dictionary<Scene, FOGroup> FOGroups = new Dictionary<Scene, FOGroup>();
+        protected Dictionary<Vector3Int, HashSet<FOObject>> FOHashGrid = new Dictionary<Vector3Int, HashSet<FOObject>>();
+
+        #endregion
         void Start()
         {
             InstanceFinder.ClientManager.RegisterBroadcast<OffsetSyncBroadcast>(OnOffsetSyncBroadcast);
@@ -55,191 +29,193 @@ namespace FishNet.FloatingOrigin
             GetComponent<TimeManager>().SetPhysicsMode(PhysicsMode.Disabled);
             Physics.autoSimulation = false;
             SetPhysicsMode(PhysicsMode);
+            nullScene = SceneManager.CreateScene("Floating Origin Null Scene");
+            ioffsetter = GetComponent<IOffsetter>();
         }
+
+        public Scene GetNullScene() => nullScene;
         void OnDisable()
         {
             InstanceFinder.ClientManager.UnregisterBroadcast<OffsetSyncBroadcast>(OnOffsetSyncBroadcast);
             InstanceFinder.TimeManager.OnTick -= OnTick;
         }
-        internal void RegisterObserver(FOObserver observer)
+        public void RegisterFOObject(FOObject foobject)
         {
-            Debug.Log($"Registered Observer {observer.OwnerId}");
-            observers.Add(observer);
+            if (!FOHashGrid.ContainsKey(foobject.gridPosition))
+                FOHashGrid.Add(foobject.gridPosition, new HashSet<FOObject>());
+            FOHashGrid[foobject.gridPosition].Add(foobject);
+            // if (!offsets.ContainsKey(foobject.gameObject.scene))
+            //     offsets.Add(foobject.gameObject.scene, Vector3d.zero);
+        }
+        public void UnregisterFOObject(FOObject foobject)
+        {
+            if (FOHashGrid.ContainsKey(foobject.gridPosition))
+                FOHashGrid[foobject.gridPosition].Add(foobject);
+            if(foobject is FOObserver)
+                observers.Remove((FOObserver)foobject);
+        }
+        public void RegisterFOObserver(FOObserver foobserver)
+        {
+            if (InstanceFinder.NetworkManager == null)
+                throw new System.Exception("Instance Finder is not yet initialized! Do not register FOObjects before the InstanceFinder is fully initialized!");
+
+            if (foobserver.IsOwner)
+            {
+                localObserver = foobserver;
+                observers.Add(foobserver);
+            }
+            //this seems kinda hacky ngl
+            if (!FOGroups.ContainsKey(foobserver.gameObject.scene))
+                FOGroups.Add(foobserver.gameObject.scene, new FOGroup());
+
+            if (InstanceFinder.IsClientOnly && !foobserver.IsOwner)
+                return;
+
+            observers.Add(foobserver);
 
             if (InstanceFinder.IsServer)
             {
-                var offset = Mathd.toVector3d(observer.unityPosition);
-                if (initial && InstanceFinder.IsServer)
+                RebuildOffsetGroup(foobserver, RealToGridPosition(Mathd.toVector3d(foobserver.unityPosition)), Mathd.toVector3d(foobserver.unityPosition));
+            }
+            if (FOGroups.ContainsKey(foobserver.gameObject.scene))
+                FOGroups[foobserver.gameObject.scene] = FOGroups[foobserver.gameObject.scene].AddMember();
+        }
+        internal void RebuildOffsetGroup(FOObserver first, Vector3Int gridPos, Vector3d newPosition)
+        {
+            //Remove from old hash grid cell
+            if (FOHashGrid.ContainsKey(first.gridPosition))
+            {
+                FOHashGrid[first.gridPosition].Remove(first);
+                //this means there are NO FOObservers or FOObjects in this cell. This cell is pretty damn empty.
+                if (FOHashGrid[first.gridPosition].Count < 1)
                 {
-                    OffsetScene(observer.gameObject.scene, Vector3d.zero, offset);
-                    MoveToScene(observer, new FOGroup(offset, 1), observer.gameObject.scene);
-                    SetSceneObservers(observer.gameObject.scene, 1);
-                    initial = false;
+                    FOHashGrid.Remove(first.gridPosition);
                 }
-                else
-                {
-                    if (InstanceFinder.IsServer)
-                    {
-                        scenes[observer.gameObject.scene]++;
-                        MoveToNewGroup(observer, Vector3d.zero, previous.group);
-                        SyncOffset(observer, offset);
-                    }
-                }
-                previous = observer;
+            }
+            //Add to new hash grid cell
+            if (!FOHashGrid.ContainsKey(gridPos))
+                FOHashGrid.Add(gridPos, new HashSet<FOObject>());
+
+            FOHashGrid[gridPos].Add(first);
+            // GridCellEnabled(gridPos, true, first.gameObject.scene);
+            List<FOObserver> observers = new List<FOObserver>();
+            observers.Add(first);
+            // create list of adjacent grid cells
+            // is anyone in the adjacent grid cells who isn't in my group?
+            // if yes, rebuild offset group for them and move to appropriate scene
+            FindAdjacentAndGroup(first, gridPos, true, observers);
+
+            //average out the offset
+            Vector3d averageOffset = AverageOffset(observers);
+            // Debug.Log(averageOffset.ToString());
+
+            //if none are found, we are the only person in the new scene so create a new scene, unless we were the only ones in our previous scene, so we just keep it.
+            if (observers.Count <= 1 && FOGroups[first.gameObject.scene].members > 1)
+            {
+                MoveToNewGroup(first, averageOffset);
             }
             else
-                MoveToScene(observer, new FOGroup(Vector3d.zero, 1), observer.gameObject.scene);
+            {
+                //difference between first.groupOffset and averageOffset is zero?? why??
+                OffsetScene(first.gameObject.scene, first.groupOffset, averageOffset);
+            }
+
+            foreach (FOObserver observer in observers)
+                SyncOffset(observer, averageOffset);
         }
-        private bool hasRebuilt = false;
+        /// <summary>
+        /// Automatic culling of FOObjects in unrendered scenes, also ensures no FOObjects will be destroyed when a scene is automatically unloaded.
+        /// </summary>
+        /// <param name="cell"></param>
+        /// <param name="enable"></param>
+        /// <param name="scene"></param>
+        protected void GridCellEnabled(Vector3Int cell, bool enable, Scene scene)
+        {
+            Debug.Log($"Grid cell {cell} enabled {enable} for scene {scene.handle} ");
+            if (enable)
+                foreach (var foobject in FOHashGrid[cell])
+                {
+                    if (foobject.enabled == false)
+                    {
+                        MoveToScene(foobject, scene, null);
+                        foobject.realPosition = foobject.overrideRealPosition;
+                        foobject.overrideRealPosition = Vector3d.zero;
+                        foobject.gameObject.SetActive(true);
+                    }
+
+                }
+            else
+            {
+                //this is called on the incorrect hash cell it seems
+                foreach (var foobject in FOHashGrid[cell])
+                {
+                    if (foobject.enabled == true)
+                    {
+                        MoveToNullScene(foobject);
+                        foobject.overrideRealPosition = foobject.realPosition;
+                        foobject.unityPosition = Vector3.zero;
+                        foobject.gameObject.SetActive(false);
+                    }
+                }
+                Debug.Break();
+            }
+                
+            
+        }
+        private void FindAdjacentAndGroup(FOObserver first, Vector3Int gridPos, bool initial, List<FOObserver> observers)
+        {
+            Vector3Int[] searchGrid = AdjacentCellGroup(gridPos);
+
+            foreach (Vector3Int gridPosition in searchGrid)
+            {
+                if (FOHashGrid.ContainsKey(gridPosition))
+                {
+                    foreach (var foobject in FOHashGrid[gridPos])
+                    {
+                        if (foobject.sceneHandle != first.sceneHandle && !foobject.busy)
+                        {
+                            if (!initial)
+                                MoveToOtherObserverSceneAndOffset(foobject, first);
+
+                            if (foobject is FOObserver)
+                            {
+                                //if we found another object, move the first to this other object's scene, since it is likely it contains more members than ours
+                                if (initial)
+                                    MoveToOtherObserverSceneAndOffset(first, (FOObserver)foobject);
+                                observers.Add((FOObserver)foobject);
+                                FindAdjacentAndGroup((FOObserver)foobject, gridPos, false, observers);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        private Vector3Int _grid_position;
         private void OnTick()
         {
             if (!InstanceFinder.IsServer)
                 return;
 
-            if (observerGridPositions.Count != 0)
-                observerGridPositions.Clear();
-
-            hasRebuilt = false;
-
             foreach (var observer in observers)
             {
-                if (observer == null || observer.group == null || hasRebuilt)
+                if (observer.gameObject == null)
                     continue;
 
-                gridPos = ObserverGridPosition(observer);
+                _grid_position = ObserverGridPosition(observer);
 
-                if (observer.lastGrid != gridPos)
+                if (_grid_position != observer.gridPosition && !observer.busy)
                 {
-                    if (observerGridPositions.Count == 0)
-
-                        foreach (var ob in observers)
-                            if (ob != null && !ob.busy)
-                            {
-                                var observerGridPosition = ObserverGridPosition(ob);
-                                if (observerGridPositions.ContainsKey(observerGridPosition))
-                                    observerGridPositions[observerGridPosition].Add(ob);
-                                else
-                                    observerGridPositions.Add(observerGridPosition, new List<FOObserver>() { ob });
-                                ob.lastGrid = observerGridPosition;
-                            }
-
-                    if (!observer.busy)
-                    {
-                        RebuildOffsetGroup(observer, gridPos, tempMembers);
-                        hasRebuilt = true;
-                    }
+                    // Debug.Log("Can Rebuild");
+                    RebuildOffsetGroup(observer, _grid_position, observer.realPosition);
+                    observer.gridPosition = _grid_position;
+                    return; //Only update one changed observer per tick!
                 }
             }
+
         }
-        /// <summary>
-        /// Rebuilds the Offset Group for an observer. This will affect other observers around the initial observer, since they may also be rebased. After this operation completes,
-        /// all affected observers will have a new Unity position, the same Real position, and will have their new Offset Group assigned.
-        /// </summary>
-        /// <param name="observer"></param>
-        public void RebuildOffsetGroup(FOObserver observer)
+        public void Awake()
         {
-            gridPos = ObserverGridPosition(observer);
-            RebuildOffsetGroup(observer, gridPos, tempMembers);
-        }
-        private void RebuildOffsetGroup(FOObserver observer, Vector3Int gridPos, HashSet<FOObserver> tempMembers)
-        {
-            tempMembers.Clear();
-
-            // Debug.Log($"Rebuilt Offset Group for {observer.OwnerId} at {gridPos.ToString()}");
-
-            Vector3Int[] adjacencyGroup = AdjacentCellGroup(gridPos);
-            int groupHandle = Time.time.GetHashCode();
-            observer.groupHandle = groupHandle;
-            tempMembers.Add(observer);
-            FOObserver other = null;
-            foreach (Vector3Int cell in adjacencyGroup)
-            {
-                if (observerGridPositions.ContainsKey(cell))
-                {
-                    foreach (FOObserver ob in observerGridPositions[cell])
-                    {
-                        // Debug.Log($"{ob.OwnerId} group handle {groupHandle} observer handle {ob.groupHandle} is busy? {ob.busy}");
-                        if (ob != observer && ob.groupHandle != groupHandle && !ob.busy)
-                        {
-                            // Debug.Log($"Found other: {ob.OwnerId}");
-                            if (other == null)
-                                other = ob;
-                            FindAdjacent(ob, tempMembers, groupHandle, 0);
-                        }
-                    }
-                }
-            }
-            if (tempMembers.Count > 1)
-                AssignGroup(other, tempMembers);//first other observer's group (it will probably be bigger than yours)
-            else
-                AssignGroup(observer, tempMembers);
-        }
-        internal void FindAdjacent(FOObserver observer, HashSet<FOObserver> members, int groupHandle, int recursionDepth = 0)
-        {
-            if (recursionDepth > 4096)//If this is a problem, remove it or increase it. If your game ends up with 4096 players in a grid square you'll probably have other problems first though.
-                throw new System.Exception("Max recursion depth exceeded!");
-
-            members.Add(observer);
-            observer.groupHandle = groupHandle;
-            observer.busy = true;
-
-            Vector3Int[] adjacencyGroup = AdjacentCellGroup(ObserverGridPosition(observer));
-
-            foreach (Vector3Int cell in adjacencyGroup)
-            {
-                if (observerGridPositions.ContainsKey(cell))
-                {
-                    foreach (FOObserver ob in observerGridPositions[cell])
-                    {
-                        if (ob != observer && ob.group != observer.group && !ob.busy)
-                        {
-                            FindAdjacent(ob, members, groupHandle, recursionDepth + 1);
-                        }
-                    }
-                }
-            }
-        }
-        private void AssignGroup(FOObserver head, HashSet<FOObserver> members, Vector3d newOffset = default)
-        {
-            if (members.Count == 0)
-            {
-                members = new HashSet<FOObserver>();
-                members.Add(head);
-            }
-            Vector3d oldOffset = head.group.offset;
-
-            if (newOffset.Equals(Vector3d.zero))
-            {
-                newOffset = AverageOffset(members.ToArray());
-            }
-
-            if (members.Count > 1)
-            {
-                OffsetScene(head.gameObject.scene, oldOffset, newOffset);
-                head.group.offset = newOffset;
-                foreach (FOObserver observer in members)
-                {
-                    if (observer != head)//Ignore the head since it was already offset by the global scene offset
-                        MoveToAndOffset(observer, head);
-                }
-                head.busy = false;
-            }
-            else
-            {
-                if (head.group.members > 1)
-                    MoveToNewGroup(head, oldOffset, new FOGroup(newOffset, members.Count));
-                else //We were the only member in our old scene, we are the only member in our new scene.
-                {
-                    OffsetScene(head.gameObject.scene, oldOffset, newOffset);
-                    head.group.offset = newOffset;
-                    head.busy = false;
-                }
-            }
-
-            head.group.members = members.Count;
-
-            foreach (FOObserver observer in members)
-                SyncOffset(observer, newOffset);
+            instance = this;
         }
     }
 }

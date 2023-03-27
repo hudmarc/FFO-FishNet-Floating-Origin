@@ -97,6 +97,7 @@ namespace FishNet.FloatingOrigin.Example
 
         void IOffsetter.Offset(Scene scene, Vector3 offset)
         {
+            // Debug.Log($"Offset {offset.ToString()}");
             MoveRootTransforms(scene, offset);
 
             if (UpdateParticles)
@@ -107,6 +108,7 @@ namespace FishNet.FloatingOrigin.Example
 
             if (UpdateLineRenderers)
                 MoveLineRenderers(scene, offset);
+            // Debug.Break();
         }
     }
 }

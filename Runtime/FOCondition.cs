@@ -43,7 +43,7 @@ namespace FishNet.FloatingOrigin.Observing
             if (FOManager.instance.localObserver == null)
             {
                 notProcessed = true;
-                return false;
+                return true;
             }
 
             if (_updateFrequency > 0f)
@@ -71,7 +71,7 @@ namespace FishNet.FloatingOrigin.Observing
                 }
             }
             notProcessed = false;
-            return FOManager.instance.localObserver.gameObject.scene == base.NetworkObject.gameObject.scene;
+            return FOManager.instance.GetNullScene() != base.NetworkObject.gameObject.scene;
         }
 
         /// <summary>

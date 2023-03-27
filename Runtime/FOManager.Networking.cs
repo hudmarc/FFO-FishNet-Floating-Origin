@@ -16,10 +16,10 @@ namespace FishNet.FloatingOrigin
             // Debug.Log($"Received offset sync broadcast {broadcast.ToString()}");
             // NetworkTransform.ForceResyncAll();
 
-            OffsetScene(localObserver.gameObject.scene, localObserver.group.offset, broadcast.offset);
-            localObserver.group.offset = broadcast.offset;
+            OffsetScene(localObserver.gameObject.scene, localObserver.groupOffset, broadcast.offset);
+            FOGroups[localObserver.gameObject.scene] = FOGroups[localObserver.gameObject.scene].ChangedOffset(broadcast.offset);
             
-            Rebased?.Invoke(broadcast.offset);
+            RebasedScene?.Invoke(localObserver.gameObject.scene);
         }
         [Server]
         internal void SyncOffset(FOObserver observer, Vector3d offset)
@@ -29,7 +29,6 @@ namespace FishNet.FloatingOrigin
                 // Debug.Log($"Sending offset sync broadcast {new OffsetSyncBroadcast(offset).ToString()}");
                 // NetworkTransform.ForceResyncAll();
                 InstanceFinder.ServerManager.Broadcast(observer.Owner, new OffsetSyncBroadcast(offset));
-                Rebased?.Invoke(offset);
             }
         }
     }

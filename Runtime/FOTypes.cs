@@ -6,17 +6,29 @@ namespace FishNet.FloatingOrigin
 {
     namespace Types
     {
-        /// <summary>
-        /// A Floating Origin Group keeps track of its offset and how many members it contains. When a group no longer contains members its scene is unloaded.
-        /// </summary>
-        public class FOGroup
+        public struct FOGroup
         {
             public Vector3d offset;
             public int members;
-            public FOGroup(Vector3d offset, int members)
+            public FOGroup ChangedOffset(Vector3d newOffset)
             {
-                this.offset = offset;
+                this.offset = newOffset;
+                return this;
+            }
+            public FOGroup ChangedMembers(int members)
+            {
                 this.members = members;
+                return this;
+            }
+            public FOGroup RemoveMember()
+            {
+                members = members-1;
+                return this;
+            }
+            public FOGroup AddMember()
+            {
+                members = members+1;
+                return this;
             }
         }
         /// <summary>

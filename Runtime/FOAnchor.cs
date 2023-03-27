@@ -1,14 +1,25 @@
 using FishNet.Object;
 using FishNet.Object.Synchronizing;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace FishNet.FloatingOrigin
 {
-    public class FOAnchor : NetworkBehaviour
+    public class FOAnchor : NetworkBehaviour, IRealTransform
     {
         [SyncVar]
         [SerializeField] private double x, y, z;
-        private Vector3d position => new Vector3d(x, y, z);
+        public Vector3d realPosition
+        {
+            get => new Vector3d(x, y, z);
+            set
+            {
+                x = value.x;
+                y = value.y;
+                z = value.z;
+            }
+        }
+
         private FOManager manager;
         private bool initialized = false;
         public override void OnStartClient()
@@ -17,7 +28,7 @@ namespace FishNet.FloatingOrigin
             if (initialized)
                 return;
             initialized = true;
-            initialize();
+            Initialize();
         }
         public override void OnStartServer()
         {
@@ -25,28 +36,22 @@ namespace FishNet.FloatingOrigin
             if (initialized)
                 return;
             initialized = true;
-            initialize();
+            Initialize();
         }
-        private void initialize()
+        private void Initialize()
         {
             manager = FOManager.instance;
-            manager.Rebased += OnRebase;
+            manager.RebasedScene += OnRebase;
         }
         private void OnDisable()
         {
             if (manager != null)
-                manager.Rebased -= OnRebase;
+                manager.RebasedScene -= OnRebase;
         }
-        [ServerRpc]
-        public void SetPosition(Vector3d newPosition)
+        void OnRebase(Scene scene)
         {
-            x = newPosition.x;
-            y = newPosition.y;
-            z = newPosition.z;
-        }
-        void OnRebase(Vector3d newOffset)
-        {
-            transform.position = manager.RealToUnity(position);
+            if (scene == gameObject.scene)
+                transform.position = manager.RealToUnity(realPosition, gameObject.scene);
         }
     }
 }

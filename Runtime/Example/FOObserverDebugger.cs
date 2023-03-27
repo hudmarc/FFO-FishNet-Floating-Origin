@@ -13,11 +13,11 @@ namespace FishNet.FloatingOrigin
         {
             if (!enabled)
                 return;
-            if (!Application.isPlaying || observer == null || observer.group == null || !ClientManager.Started || (!IsServer && !IsOwner) || FOManager.instance == null || FOManager.instance.localObserver == null)
+            if (!Application.isPlaying || observer == null || !ClientManager.Started || (!IsServer && !IsOwner) || FOManager.instance == null || FOManager.instance.localObserver == null)
                 return;
 
-            Debug.DrawLine(FOManager.instance.RemoteToLocal(Vector3.zero, observer.group.offset, FOManager.instance.localObserver.group.offset), FOManager.instance.RealToUnity(Vector3d.zero, observer.group.offset), Color.red);
-            Debug.DrawLine(FOManager.instance.RemoteToLocal(Vector3.zero, observer.group.offset, FOManager.instance.localObserver.group.offset), FOManager.instance.RemoteToLocal(transform.position, observer.group.offset, FOManager.instance.localObserver.group.offset), Color.blue);
+            Debug.DrawLine(FOManager.instance.RemoteToLocal(Vector3.zero, observer.groupOffset, FOManager.instance.localObserver.groupOffset), FOManager.instance.RealToUnity(Vector3d.zero, observer.groupOffset), Color.red);
+            Debug.DrawLine(FOManager.instance.RemoteToLocal(Vector3.zero, observer.groupOffset, FOManager.instance.localObserver.groupOffset), FOManager.instance.RemoteToLocal(transform.position, observer.groupOffset, FOManager.instance.localObserver.groupOffset), Color.blue);
 
         }
         private void OnGUI()

@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using FishNet.Object;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace FishNet.FloatingOrigin
 {
@@ -13,14 +14,14 @@ namespace FishNet.FloatingOrigin
         /// <param name="unityPosition"></param>
         /// <returns></returns>
         [Client]
-        public Vector3d UnityToReal(Vector3 unityPosition) => UnityToReal(unityPosition, localObserver.group.offset);
+        public Vector3d UnityToReal(Vector3 unityPosition) => UnityToReal(unityPosition, localObserver.groupOffset);
         /// <summary>
         /// Pass in a real coordinate, and return the Unity position relative to the local offset
         /// </summary>
         /// <param name="unityPosition"></param>
         /// <returns></returns>
         [Client]
-        public Vector3 RealToUnity(Vector3d realPosition) => RealToUnity(realPosition, localObserver.group.offset);
+        public Vector3 RealToUnity(Vector3d realPosition, Scene scene) => RealToUnity(realPosition, FOGroups[scene].offset);
 
         /// <summary>
         /// The grid position of an observer
@@ -55,7 +56,7 @@ namespace FishNet.FloatingOrigin
         /// <param name="offset"> Which offset to use for the calculation</param>
         /// <returns></returns>
         public Vector3d UnityToReal(Vector3 unityPosition, Vector3d offset) => Mathd.toVector3d(unityPosition) + offset;
-        public Vector3d UnityToReal(FOObserver observer) => UnityToReal(observer.unityPosition, observer.group.offset);
+        public Vector3d UnityToReal(FOObserver observer) => UnityToReal(observer.unityPosition, observer.groupOffset);
         /// <summary>
         /// The Unity position of a Real position relative to a offset
         /// </summary>
@@ -79,7 +80,7 @@ namespace FishNet.FloatingOrigin
         /// <param name="observer1"></param>
         /// <param name="observer2"></param>
         /// <returns></returns>
-        public float SqrDistanceLP(FOObserver observer1, FOObserver observer2) => Vector3.SqrMagnitude(observer1.unityPosition - (observer2.unityPosition + (Mathd.toVector3(observer2.group.offset) - Mathd.toVector3(observer2.group.offset))));
+        public float SqrDistanceLP(FOObserver observer1, FOObserver observer2) => Vector3.SqrMagnitude(observer1.unityPosition - (observer2.unityPosition + (Mathd.toVector3(observer2.groupOffset) - Mathd.toVector3(observer2.groupOffset))));
         /// <summary>
         /// Subtract vector1 from vector2
         /// </summary>
@@ -94,19 +95,19 @@ namespace FishNet.FloatingOrigin
         /// <summary>
         /// Find average offset of a group of Floating Origin Observers
         /// </summary>
-        /// <param name="groupedObservers"></param>
+        /// <param name="foobservers"></param>
         /// <returns></returns>
-        Vector3d AverageOffset(FOObserver[] groupedObservers)
+        public Vector3d AverageOffset(List<FOObserver> foobservers)
         {
-            if (groupedObservers.Length == 1)
-                return groupedObservers[0].realPosition;
+            if (foobservers.Count == 1)
+                return foobservers[0].realPosition;
 
             Vector3d offset = Vector3d.zero;
-            foreach (var observer in groupedObservers)
+            foreach (var observer in foobservers)
             {
                 offset += observer.realPosition;
             }
-            return offset / ((double)groupedObservers.Length);
+            return offset / ((double)foobservers.Count);
         }
         /// <summary>
         /// Teleports an FOObserver to a real position
@@ -116,11 +117,8 @@ namespace FishNet.FloatingOrigin
         {
             Vector3Int gridPos = RealToGridPosition(realPosition);
 
-            HashSet<FOObserver> temp = new HashSet<FOObserver>();
-
-            RebuildOffsetGroup(observer, gridPos, temp);//runs synchronously
-            hasRebuilt = true;
-            observer.unityPosition = RealToUnity(realPosition, observer.group.offset);
+            RebuildOffsetGroup(observer, gridPos, realPosition);//runs synchronously
+            observer.unityPosition = RealToUnity(realPosition, observer.groupOffset);
         }
         /// <summary>
         /// Teleports an FOObserver to another FOObserver
@@ -130,5 +128,41 @@ namespace FishNet.FloatingOrigin
         {
             TeleportTo(observer, target.realPosition);
         }
+        /// <summary>
+        /// EXPERIMENTAL!! Offsets an observer and its entire group, and an anchor simultaneously without actually moving anything in the Unity scene unless necessary.
+        /// </summary>
+        /// <param name="observer">
+        /// An arbitrary observer in the group you want to offset
+        /// </param>
+        /// <param name="anchor">
+        /// An anchor you want to use as a reference frame
+        /// </param>
+        /// <param name="offset">
+        /// The amount you want to offset the entire group and its anchor
+        /// </param>
+        // public void OffsetObserverGroupAndAnchor(FOObserver observer, FOAnchor anchor, Vector3d offset)
+        // {
+        //     observer.groupOffset += offset;
+        //     anchor.realPosition = (anchor.realPosition);
+        //     RebuildOffsetGroup(observer);
+        // }
+        /// <summary>
+        /// Rebuilds the Offset Group for an observer. This will affect other observers around the initial observer, since they may also be rebased. After this operation completes,
+        /// all affected observers will have a new Unity position, the same Real position, and will have their new Offset Group assigned.
+        /// </summary>
+        /// <param name="observer"></param>
+        // public void RebuildOffsetGroup(FOObserver observer)
+        // {
+        //     Vector3Int gridPos = ObserverGridPosition(observer);
+        //     RebuildOffsetGroup(observer, gridPos, observer.realPosition);
+        // }
+        // public FOObserver[] ObserversInGrid()
+        // {
+        //     throw new System.NotImplementedException();
+        // }
+        // public FOAnchor[] AnchorsInGrid()
+        // {
+        //     throw new System.NotImplementedException();
+        // }
     }
 }
