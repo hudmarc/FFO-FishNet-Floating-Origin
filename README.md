@@ -7,7 +7,7 @@ Added FOObject base class, all objects with an FOObject component on them will r
 ## Known issues
 The Floating Origin Observer Condition is currently broken and does not work as expected. A fix is forthcoming.
 
-The example assets are not super helpful at the moment. I'm in the process of setting up automated testing to speed up development, and as a result of this the quality of the example assets should improve.
+The example assets are outdated at the present time. I'm in the process of setting up automated testing to speed up development, and as a result of this the quality of the example assets should improve.
 
 # FishNet Floating Origin
 Floating Origin for FishNet. Tested with FN version `3.4` Should work with all `3.x` versions and also `2.x`
