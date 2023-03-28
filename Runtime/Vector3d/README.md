@@ -1,4 +1,4 @@
-*From https://github.com/sldsmkd/vector3d *
+*From https://github.com/sldsmkd/vector3d*
 
 vector3d
 ========
