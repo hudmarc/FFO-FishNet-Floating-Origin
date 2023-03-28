@@ -70,3 +70,16 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# MacOS System Files from https://github.com/github/gitignore/blob/main/Global/macOS.gitignore
+# General
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
