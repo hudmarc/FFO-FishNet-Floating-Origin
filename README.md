@@ -11,7 +11,9 @@ The Floating Origin Observer Condition is currently broken and does not work as 
 Floating Origin for FishNet. Tested with FN version `3.4` Should work with all `3.x` versions and also `2.x`
 
 # Installation
-Click "Add package from git URL..." in the UPM and paste in https://github.com/hudmarc/FFO-FishNet-Floating-Origin.git
+FishNet is a dependency for this package. Make sure you have the latest version installed first.
+Then click "Add package from git URL..." in the Unity Package Manager (UPM) and paste in [https://github.com/hudmarc/FFO-FishNet-Floating-Origin.git](https://github.com/hudmarc/FFO-FishNet-Floating-Origin.git)
+
 
 # Will my game world fit?
 Yes, as long as your game is smaller than the Milky Way. `[52,850 LY / 5*10^20m]`
