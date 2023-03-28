@@ -12,6 +12,7 @@ Floating Origin for FishNet. Tested with FN version `3.4` Should work with all `
 
 # Installation
 FishNet is a dependency for this package. Make sure you have the latest version installed first.
+
 Then click "Add package from git URL..." in the Unity Package Manager (UPM) and paste in [https://github.com/hudmarc/FFO-FishNet-Floating-Origin.git](https://github.com/hudmarc/FFO-FishNet-Floating-Origin.git)
 
 
