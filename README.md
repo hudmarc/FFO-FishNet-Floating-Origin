@@ -48,7 +48,7 @@ Aside from that make sure your player prefab (or whatever acts as the 'observer'
 
 
 ### Usage Notes
-If you're making a server authoritative game you must change all calls to raycast/spherecast etc on the server from Physics.Raycast to physicsScene.Raycast where physicsScene is the physics scene of the stacked scene you want to work in. If you are making a client authoritarive game you can just use the normal Physics.Raycast method since clients only simulate their local scenes, so it should 'just work'. (A caveat is that you'd still need to use the scene-specific raycasts for the host client, since all stacked scenes are simulated on the server/host)
+To reiterate: If you're making a server authoritative game you must change all calls to raycast/spherecast etc on the server from `Physics.Raycast` to `physicsScene.Raycast` where `physicsScene` is the physics scene of the stacked scene you want to work in. If you are making a client authoritarive game you can just use the normal `Physics.Raycast` method since clients only simulate their local scenes, so it should 'just work'. (A caveat is that you'd still need to use the scene-specific raycasts for the host client, since all stacked scenes are simulated on the server/host)
 
 If you have subscribed to the Time Manager's Physics tick events this will cause them not to fire, so use the physics tick events provided by the FOManager's built-in TimeManager mode.
 
@@ -74,7 +74,7 @@ You can also add an FODebugger component to your Observer prefab in order to deb
 
 ### AI/NPC's
 
-It should be possible to just add an FOObserver component to whatever AI you have that needs to travel far enough distances for floating origins to matter. Otherwise you can just have your AI's stay near their house/home base and despawn once the player is far away enough.
+It should be possible to just add an FOObserver component to whatever AI you have that needs to travel far enough distances for floating origins to matter. Otherwise you can just have your AI's stay near their house/home base and use an FOObject component so they persist between rebases.
 
 ### Map objects/other stuff
 
@@ -82,9 +82,9 @@ If something isn't a static, unchanging part of the terrain you should add an FO
 
 Anything smaller than 4096 * 4096 meters (or whatever the `chunkSize` constant in the FOManager is set to) should work just fine with just one FOObserver component on it. Anything larger should probably be broken up into multiple sections with an FOObserver on each section.
 
-Things like small procedurally generated settlements should probably have an FOObserver placed on their root node so that the entire settlement syncs correctly and persists when players leave. (your mileage may vary though) Potentially you could have a settlement that generates dynamically, then despawns when the player goes out of range. Then when another player is in range, it could respawn procedurally (again)
+Things like small procedurally generated settlements should probably have an FOObject placed on their root node so that the entire settlement syncs correctly and persists when players leave. Potentially you could have a settlement that generates dynamically, then despawns when the player goes out of range. Then when another player is in range, it could respawn procedurally (again)
 
-Essentially, if you want one instance and one instance only of a thing to exist at any particular time (like e.g. a persistent trading post/waypoint) you should have an FOObject component on it. I'm planning on adding something like a "do not destroy" component which would move objects with that component into stasis in a persistent scene instead of destroying them.
+Essentially, if you want one instance and one instance only of a thing to exist at any particular time (like e.g. a persistent trading post/waypoint) you should have an FOObject/FOObserver component on it.
 
 ### Network Manager
 
