@@ -15,6 +15,8 @@ FishNet is a dependency for this package. Make sure you have the latest version 
 
 Then click "Add package from git URL..." in the Unity Package Manager (UPM) and paste in [https://github.com/hudmarc/FFO-FishNet-Floating-Origin.git](https://github.com/hudmarc/FFO-FishNet-Floating-Origin.git)
 
+<img width="451" alt="image" src="https://user-images.githubusercontent.com/44267994/228247674-b075e104-a93a-4a9f-bdbe-5d0b2c8a49ba.png">
+
 
 # Will my game world fit?
 Yes, as long as your game is smaller than the Milky Way. `[52,850 LY / 5*10^20m]`
