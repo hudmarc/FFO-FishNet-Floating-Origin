@@ -1,3 +1,4 @@
+*a YouTube tutorial is coming soon*
 # Important Usage Notes
 Because this package uses multi-scene stacking, you MUST remember to convert all calls to the Physics library to instead use the local physics scene. For example `Physics.Raycast` would be `gameObject.scene.GetPhysicsScene().Raycast`. Otherwise your physics will not work correctly!
 
