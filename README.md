@@ -4,10 +4,9 @@ Because this package uses multi-scene stacking, you MUST remember to convert all
 ## Changes in 0.1.0
 Added FOObject base class, all objects with an FOObject component on them will respect the Floating Origin system. If you want something to persist between rebases, add an FOObject component to it. FOObjects are *NOT* recalculated after creating, if your object can move around (i.e. an AI) and isn't artificially limited to stay within a certain area you should add an FOObserver to it. All players should also have FOObservers added to them. There is also an FOAnchor component to "anchor" objects at a certain Vector3d. *The FOANCHOR does not move objects between Origin Groups, so it should only be used for static map objects.* This should be useful for very faraway static objects that could otherwise suffer from precision loss. Unfortunately the Unity editor cannot handle these scales, so you will have to type in the coordinates manually (a custom Editor for the FOAnchor is provided)
 
-## Known issues
-The Floating Origin Observer Condition is currently broken and does not work as expected. A fix is forthcoming.
+# Known issues
 
-The example assets are outdated at the present time. I'm in the process of setting up automated testing to speed up development, and as a result of this the quality of the example assets should improve.
+Spawning FOObjects as scene objects is currently broken because they will duplicate themselves eachtime a scene is reloaded. This can be fixed using a hashtable to keep track of FOObjects but in the meantime the best practice is to just spawn them once from some script on your Network Manager (which is guaranteed to be unique)
 
 # FishNet Floating Origin
 Floating Origin for FishNet. Tested with FN version `3.4` Should work with all `3.x` versions and also `2.x`
@@ -18,7 +17,6 @@ FishNet is a dependency for this package. Make sure you have the latest version 
 Then click "Add package from git URL..." in the Unity Package Manager (UPM) and paste in [https://github.com/hudmarc/FFO-FishNet-Floating-Origin.git](https://github.com/hudmarc/FFO-FishNet-Floating-Origin.git)
 
 <img width="451" alt="image" src="https://user-images.githubusercontent.com/44267994/228247674-b075e104-a93a-4a9f-bdbe-5d0b2c8a49ba.png">
-
 
 # Will my game world fit?
 Yes, as long as your game is smaller than the Milky Way. `[52,850 LY / 5*10^20m]`
@@ -46,7 +44,6 @@ Aside from that make sure your player prefab (or whatever acts as the 'observer'
 
 ![FNFO](https://user-images.githubusercontent.com/44267994/227974553-815db54e-71b8-42ff-8b07-9efb9a47b9af.png)
 
-
 ### Usage Notes
 To reiterate: If you're making a server authoritative game you must change all calls to raycast/spherecast etc on the server from `Physics.Raycast` to `physicsScene.Raycast` where `physicsScene` is the physics scene of the stacked scene you want to work in. If you are making a client authoritarive game you can just use the normal `Physics.Raycast` method since clients only simulate their local scenes, so it should 'just work'. (A caveat is that you'd still need to use the scene-specific raycasts for the host client, since all stacked scenes are simulated on the server/host)
 
@@ -61,6 +58,8 @@ If you go very far (like Saturn's distance from the Sun far) from the origin thi
 ## Example Setup
 
 A general rule of thumb: Any object that has a NetworkObject on it (ESPECIALLY if it is a moving/dynamic object with a NetworkTransform or CSP) should have an FOObserver component on it to ensure it always either stays loaded or moves with other FOObservers as needed.
+
+At the present time, always spawn FOOBjects at runtime! Don't have them in a scene, otherwise it will create duplicates!
 
 **AN OBJECT THAT DOESN'T HAVE AN FOOBSERVER OR FOOBJECT ON IT IT CAN BE DESTROYED AT ANY TIME WITHOUT WARNING**
 
