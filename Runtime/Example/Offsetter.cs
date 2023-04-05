@@ -108,7 +108,7 @@ namespace FishNet.FloatingOrigin.Example
 
             if (UpdateLineRenderers)
                 MoveLineRenderers(scene, offset);
-            // Debug.Break();
+            
         }
     }
 }

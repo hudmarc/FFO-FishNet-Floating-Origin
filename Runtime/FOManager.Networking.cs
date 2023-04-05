@@ -18,11 +18,9 @@ namespace FishNet.FloatingOrigin
 
             OffsetScene(localObserver.gameObject.scene, localObserver.groupOffset, broadcast.offset);
             FOGroups[localObserver.gameObject.scene] = FOGroups[localObserver.gameObject.scene].ChangedOffset(broadcast.offset);
-            
-            RebasedScene?.Invoke(localObserver.gameObject.scene);
         }
         [Server]
-        internal void SyncOffset(FOObserver observer, Vector3d offset)
+        internal void SyncOffset(FOObserver observer, Vector3 offset)
         {
             if (!observer.IsOwner)
             {
@@ -30,6 +28,7 @@ namespace FishNet.FloatingOrigin
                 // NetworkTransform.ForceResyncAll();
                 InstanceFinder.ServerManager.Broadcast(observer.Owner, new OffsetSyncBroadcast(offset));
             }
+            SceneChanged?.Invoke(observer.gameObject.scene);
         }
     }
 }

@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using FishNet.Object;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -55,7 +54,7 @@ namespace FishNet.FloatingOrigin
         /// <param name="unityPosition"> Unity position (relative to 0,0,0 in the Scene)</param>
         /// <param name="offset"> Which offset to use for the calculation</param>
         /// <returns></returns>
-        public Vector3d UnityToReal(Vector3 unityPosition, Vector3d offset) => Mathd.toVector3d(unityPosition) + offset;
+        public Vector3d UnityToReal(Vector3 unityPosition, Vector3 offset) => Mathd.toVector3d(unityPosition) + Mathd.toVector3d(offset);
         public Vector3d UnityToReal(FOObserver observer) => UnityToReal(observer.unityPosition, observer.groupOffset);
         /// <summary>
         /// The Unity position of a Real position relative to a offset
@@ -63,9 +62,9 @@ namespace FishNet.FloatingOrigin
         /// <param name="realPosition">Real position (relative to the Real origin)</param>
         /// <param name="offset">Which offset to use for the calculation</param>
         /// <returns></returns>
-        public Vector3 RealToUnity(Vector3d realPosition, Vector3d offset) => Mathd.toVector3(realPosition - offset);
+        public Vector3 RealToUnity(Vector3d realPosition, Vector3 offset) => Mathd.toVector3(realPosition - Mathd.toVector3d(offset));
 
-        public Vector3 RemoteToLocal(Vector3 remoteUnityPosition, Vector3d remoteOffset, Vector3d localOffset) => RealToUnity(UnityToReal(remoteUnityPosition, remoteOffset), localOffset);
+        public Vector3 RemoteToLocal(Vector3 remoteUnityPosition, Vector3 remoteOffset, Vector3 localOffset) => RealToUnity(UnityToReal(remoteUnityPosition, remoteOffset), localOffset);
 
         /// <summary>
         /// High precision Vector3d square of distance between two observers
@@ -73,14 +72,14 @@ namespace FishNet.FloatingOrigin
         /// <param name="observer1"></param>
         /// <param name="observer2"></param>
         /// <returns></returns>
-        public double SqrDistanceHP(FOObserver observer1, FOObserver observer2) => Vector3d.SqrMagnitude(UnityToReal(observer1) - UnityToReal(observer2));
+        public double SqrDistanceHP(FOObserver observer1, FOObserver observer2) => Vector3d.SqrMagnitude(observer1.realPosition - observer2.realPosition);
         /// <summary>
         /// Low precision Vector3 square of distance between two observers
         /// </summary>
         /// <param name="observer1"></param>
         /// <param name="observer2"></param>
         /// <returns></returns>
-        public float SqrDistanceLP(FOObserver observer1, FOObserver observer2) => Vector3.SqrMagnitude(observer1.unityPosition - (observer2.unityPosition + (Mathd.toVector3(observer2.groupOffset) - Mathd.toVector3(observer2.groupOffset))));
+        public float SqrDistanceLP(FOObserver observer1, FOObserver observer2) => Vector3.SqrMagnitude(observer1.unityPosition - (observer2.unityPosition + (observer2.groupOffset - observer2.groupOffset)));
         /// <summary>
         /// Subtract vector1 from vector2
         /// </summary>
@@ -97,17 +96,17 @@ namespace FishNet.FloatingOrigin
         /// </summary>
         /// <param name="foobservers"></param>
         /// <returns></returns>
-        public Vector3d AverageOffset(List<FOObserver> foobservers)
+        public Vector3 AverageOffset(List<FOObserver> foobservers)
         {
             if (foobservers.Count == 1)
-                return foobservers[0].realPosition;
+                return Mathd.toVector3(foobservers[0].realPosition);
 
-            Vector3d offset = Vector3d.zero;
+            Vector3 offset = Vector3.zero;
             foreach (var observer in foobservers)
             {
-                offset += observer.realPosition;
+                offset += Mathd.toVector3(observer.realPosition);
             }
-            return offset / ((double)foobservers.Count);
+            return offset / ((float)foobservers.Count);
         }
         /// <summary>
         /// Teleports an FOObserver to a real position

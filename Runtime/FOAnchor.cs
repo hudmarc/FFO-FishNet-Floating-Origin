@@ -19,7 +19,6 @@ namespace FishNet.FloatingOrigin
                 z = value.z;
             }
         }
-
         private FOManager manager;
         private bool initialized = false;
         public override void OnStartClient()
@@ -41,12 +40,12 @@ namespace FishNet.FloatingOrigin
         private void Initialize()
         {
             manager = FOManager.instance;
-            manager.RebasedScene += OnRebase;
+            manager.SceneChanged += OnRebase;
         }
         private void OnDisable()
         {
             if (manager != null)
-                manager.RebasedScene -= OnRebase;
+                manager.SceneChanged -= OnRebase;
         }
         void OnRebase(Scene scene)
         {

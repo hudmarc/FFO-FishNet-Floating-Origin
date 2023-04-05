@@ -8,9 +8,9 @@ namespace FishNet.FloatingOrigin
     {
         public struct FOGroup
         {
-            public Vector3d offset;
+            public Vector3 offset;
             public int members;
-            public FOGroup ChangedOffset(Vector3d newOffset)
+            public FOGroup ChangedOffset(Vector3 newOffset)
             {
                 this.offset = newOffset;
                 return this;
@@ -40,10 +40,10 @@ namespace FishNet.FloatingOrigin
         }
         public struct OffsetSyncBroadcast : IBroadcast
         {
-            public double offsetX, offsetY, offsetZ;
-            public Vector3d offset => new Vector3d(offsetX, offsetY, offsetZ);
+            public float offsetX, offsetY, offsetZ;
+            public Vector3 offset => new Vector3(offsetX, offsetY, offsetZ);
 
-            public OffsetSyncBroadcast(Vector3d offset)
+            public OffsetSyncBroadcast(Vector3 offset)
             {
                 this.offsetX = offset.x;
                 this.offsetY = offset.y;

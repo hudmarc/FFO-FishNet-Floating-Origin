@@ -1,3 +1,4 @@
+using FishNet.Connection;
 using FishNet.Object;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -6,7 +7,7 @@ namespace FishNet.FloatingOrigin
 {
     public class FOObject : NetworkBehaviour, IRealTransform
     {
-        internal bool busy = false; //If true we are waiting for the scene we are going to be moved into to load so don't try rebuilding us
+        private bool busy = false; //If true we are waiting for the scene we are going to be moved into to load so don't try rebuilding us
         internal Vector3Int gridPosition;
         internal int sceneHandle;
         [SerializeField] protected bool autoRegister = true;
@@ -16,15 +17,23 @@ namespace FishNet.FloatingOrigin
         {
             manager = FOManager.instance;
         }
+
+        public override void OnOwnershipClient(NetworkConnection prevOwner)
+        {
+            base.OnOwnershipClient(prevOwner);
+            if (InstanceFinder.NetworkManager != null)
+                RequestSync(InstanceFinder.ClientManager.Connection);
+        }
         void Start()
         {
             manager.RegisterFOObject(this);
-            manager.RebasedScene += OnRebase;
+            manager.SceneChanged += OnRebase;
             transform.position = manager.RealToUnity(Mathd.toVector3d(transform.position), gameObject.scene);
         }
         private void OnDestroy()
         {
-            manager.RebasedScene -= OnRebase;
+            manager.SceneChanged -= OnRebase;
+            manager.UnregisterFOObject(this);
         }
         public Vector3 unityPosition
         {
@@ -36,11 +45,34 @@ namespace FishNet.FloatingOrigin
             get => manager.UnityToReal(unityPosition, IsServer ? groupOffset : manager.localObserver.groupOffset);
             set => transform.position = manager.RealToUnity(value, IsServer ? groupOffset : manager.localObserver.groupOffset);
         }
-        public Vector3d groupOffset => FOManager.instance.GetOffset(gameObject.scene);
-        void OnRebase(Scene scene)
+        public Vector3 groupOffset => FOManager.instance.GetOffset(gameObject.scene);
+        public virtual void OnRebase(Scene scene)
         {
-            // if(scene == gameObject.scene)
-            //     transform.position = Vector3.zero;
+            // if (IsServer)
+            // {
+            //     SyncPosition(null, unityPosition);
+            // }
         }
+        [ServerRpc(RequireOwnership = false)]
+        public void RequestSync(NetworkConnection connection)
+        {
+            SyncPosition(connection, unityPosition);
+        }
+        [Server]
+        [TargetRpc]
+        public void SyncPosition(NetworkConnection connection, Vector3 position)
+        {
+            if (!IsOwner)
+                transform.position = position;
+        }
+        public virtual void OnMoveToNewScene(Scene scene)
+        {
+            // if(IsServer)
+            // {
+            //     SyncPosition(null,unityPosition);
+            // }
+        }
+        public bool setBusy(bool busy) => this.busy = busy;
+        public bool isBusy() => busy ? true : sceneHandle != gameObject.scene.handle;
     }
 }

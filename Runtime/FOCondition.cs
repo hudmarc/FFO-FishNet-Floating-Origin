@@ -1,8 +1,10 @@
 ﻿using System.Collections.Generic;
 using FishNet.Connection;
+using FishNet.Object;
 using FishNet.Observing;
 using FishNet.Utility.Extension;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace FishNet.FloatingOrigin.Observing
 {
@@ -12,25 +14,25 @@ namespace FishNet.FloatingOrigin.Observing
     [CreateAssetMenu(menuName = "FishNet/Observers/Floating Origin Condition", fileName = "New Floating Origin Condition")]
     public class FOCondition : ObserverCondition
     {
-        #region Serialized.
-        [Tooltip("How often this condition may change for a connection. This prevents objects from appearing and disappearing rapidly. A value of 0f will cause the object the update quickly as possible while any other value will be used as a delay.")]
-        [Range(0f, 60f)]
-        [SerializeField]
-        private float _updateFrequency;
+        private bool registered = false;
+        bool processed = false;
         /// <summary>
-        /// How often this condition may change for a connection. This prevents objects from appearing and disappearing rapidly. A value of 0f will cause the object the update quickly as possible while any other value will be used as a delay.
+        /// Initializes this script for use.
         /// </summary>
-        public float UpdateFrequency { get => _updateFrequency; set => _updateFrequency = value; }
-        #endregion
+        /// <param name="networkObject"></param>
+        public override void InitializeOnce(NetworkObject networkObject)
+        {
+            base.InitializeOnce(networkObject);
+            if(registered)
+                return;
+            FOManager.instance.SceneChanged += CheckConditionOnRebase;
+            registered = true;
+        }
 
-        #region Private.
-        /// <summary>
-        /// Tracks when connections may be updated for this object.
-        /// </summary>
-        private Dictionary<NetworkConnection, float> _timedUpdates = new Dictionary<NetworkConnection, float>();
-        #endregion
-
-        public void ConditionConstructor(float updateFrequency) => _updateFrequency = updateFrequency;
+        private void CheckConditionOnRebase(Scene scene)
+        {
+            processed = false;
+        }
 
         /// <summary>
         /// Returns if the object which this condition resides should be visible to connection.
@@ -40,38 +42,18 @@ namespace FishNet.FloatingOrigin.Observing
         /// <param name="notProcessed">True if the condition was not processed. This can be used to skip processing for performance. While output as true this condition result assumes the previous ConditionMet value.</param>
         public override bool ConditionMet(NetworkConnection connection, bool currentlyAdded, out bool notProcessed)
         {
-            if (FOManager.instance.localObserver == null)
+            if(processed)
             {
                 notProcessed = true;
-                return true;
-            }
-
-            if (_updateFrequency > 0f)
-            {
-                float nextAllowedUpdate;
-                float currentTime = Time.time;
-                if (!_timedUpdates.TryGetValueIL2CPP(connection, out nextAllowedUpdate))
-                {
-                    _timedUpdates[connection] = (currentTime + _updateFrequency);
-                }
-                else
-                {
-                    //Not enough time to process again.
-                    if (currentTime < nextAllowedUpdate)
-                    {
-                        notProcessed = true;
-                        //The return does not really matter since notProcessed is returned.
-                        return false;
-                    }
-                    //Can process again.
-                    else
-                    {
-                        _timedUpdates[connection] = (currentTime + _updateFrequency);
-                    }
-                }
+                processed = true;
+                return false;
             }
             notProcessed = false;
-            return FOManager.instance.GetNullScene() != base.NetworkObject.gameObject.scene;
+
+            if(connection == InstanceFinder.NetworkManager.ClientManager.Connection)
+                return true;
+
+            return FOManager.instance.GetSceneForConnection(connection).handle == NetworkObject.gameObject.scene.handle;
         }
 
         /// <summary>
@@ -86,10 +68,7 @@ namespace FishNet.FloatingOrigin.Observing
         /// <returns></returns>
         public override ObserverCondition Clone()
         {
-            FOCondition copy = ScriptableObject.CreateInstance<FOCondition>();
-            //copy.ConditionConstructor(_synchronizeScene);
-            copy.ConditionConstructor(_updateFrequency);
-            return copy;
+            return ScriptableObject.CreateInstance<FOCondition>();
         }
 
     }
