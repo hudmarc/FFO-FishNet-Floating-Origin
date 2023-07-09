@@ -1,4 +1,8 @@
-*a YouTube tutorial is coming soon*
+# Not in active development
+I won't update this project anymore as I have switched most of my projects to Godot (since now I can just use the built in double precision float setting)
+I might come back and do something with this in the future, but at the present moment this project will not be updated.
+
+
 # Important Usage Notes
 Because this package uses multi-scene stacking, you MUST remember to convert all calls to the Physics library to instead use the local physics scene. For example `Physics.Raycast` would be `gameObject.scene.GetPhysicsScene().Raycast`. Otherwise your physics will not work correctly!
 
