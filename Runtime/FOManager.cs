@@ -27,6 +27,7 @@ namespace FishNet.FloatingOrigin
         #endregion
         void Start()
         {
+            if (instance!=null){return;} //this should prevent the FOManager from attempting to initialize itself if it already exists
             InstanceFinder.ClientManager.RegisterBroadcast<OffsetSyncBroadcast>(OnOffsetSyncBroadcast);
             InstanceFinder.TimeManager.OnTick += OnTick;
             GetComponent<TimeManager>().SetPhysicsMode(PhysicsMode.Disabled);
@@ -252,6 +253,7 @@ namespace FishNet.FloatingOrigin
         }
         public void Awake()
         {
+            if (instance!=null){return;} //this should prevent the FOManager from attempting to initialize itself if it already exists
             instance = this;
         }
     }
