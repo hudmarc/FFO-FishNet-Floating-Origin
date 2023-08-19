@@ -1,3 +1,4 @@
+using FishNet.FloatingOrigin.Types;
 using FishNet.Object;
 using FishNet.Object.Synchronizing;
 using UnityEngine;
@@ -5,9 +6,8 @@ using UnityEngine.SceneManagement;
 
 namespace FishNet.FloatingOrigin
 {
-    public class FOAnchor : NetworkBehaviour, IRealTransform
+    public class FOAnchor : MonoBehaviour, IRealTransform
     {
-        [SyncVar]
         [SerializeField] private double x, y, z;
         public Vector3d realPosition
         {
@@ -21,35 +21,23 @@ namespace FishNet.FloatingOrigin
         }
         private FOManager manager;
         private bool initialized = false;
-        public override void OnStartClient()
+        void Start()
         {
-            base.OnStartClient();
-            if (initialized)
-                return;
-            initialized = true;
-            Initialize();
-        }
-        public override void OnStartServer()
-        {
-            base.OnStartServer();
-            if (initialized)
-                return;
-            initialized = true;
             Initialize();
         }
         private void Initialize()
         {
             manager = FOManager.instance;
-            manager.SceneChanged += OnRebase;
+            manager.GroupChanged += OnRebase;
         }
         private void OnDisable()
         {
             if (manager != null)
-                manager.SceneChanged -= OnRebase;
+                manager.GroupChanged -= OnRebase;
         }
-        void OnRebase(Scene scene)
+        void OnRebase(OffsetGroup group)
         {
-            if (scene == gameObject.scene)
+            if (group.scene.handle == gameObject.scene.handle)
                 transform.position = manager.RealToUnity(realPosition, gameObject.scene);
         }
     }

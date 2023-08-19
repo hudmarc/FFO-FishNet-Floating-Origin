@@ -5,256 +5,263 @@ using UnityEngine;
 using FishNet.Managing.Timing;
 using UnityEngine.SceneManagement;
 using FishNet.Connection;
+using System.Linq;
+using FishNet.Observing;
+using FishNet.Transporting;
+using System.Data;
+
 namespace FishNet.FloatingOrigin
 {
-    // TODO cleanup comments, and also register observer is broken!
     public partial class FOManager : MonoBehaviour
     {
-        public const double chunkSize = 1024;
-        public const double inverseChunkSize = 1d / chunkSize;
-        public static FOManager instance;
-        public FOObserver localObserver;
-        public event Action<Scene> SceneChanged;
-        private HashSet<FOObserver> observers = new HashSet<FOObserver>();
-        internal Dictionary<NetworkConnection, FOObserver> connectionObservers = new Dictionary<NetworkConnection, FOObserver>();
-
-        #region hash grids
-        protected Dictionary<Scene, FOGroup> FOGroups = new Dictionary<Scene, FOGroup>();
         /// <summary>
-        /// The current implementation will probably fill this up with garbage after a while, especially if many foobjects are destroyed.
+        /// Set to whatever value in meters your game starts to noticeably lose precision at.
         /// </summary>
-        protected Dictionary<Vector3Int, HashSet<FOObject>> FOHashGrid = new Dictionary<Vector3Int, HashSet<FOObject>>();
-        #endregion
-        void Start()
+        public const int REBASE_CRITERIA = 512;
+        public const int HYSTERESIS = 0;
+        public const int MERGE_CRITERIA = (REBASE_CRITERIA / 2) + HYSTERESIS;
+        public static FOManager instance;
+
+        public PhysicsMode PhysicsMode => _physicsMode;
+
+        public Action<OffsetGroup> GroupChanged { get; internal set; }
+
+        internal FOObserver first;
+
+        private readonly Dictionary<Scene, OffsetGroup> offsetGroups = new Dictionary<Scene, OffsetGroup>();
+        private readonly HashSet<FOObserver> observers = new HashSet<FOObserver>();
+        private readonly HashGrid<OffsetGroup> hashGrid = new HashGrid<OffsetGroup>(REBASE_CRITERIA / 2);
+
+        private bool subscribedToTick = false;
+
+        private void Awake()
         {
-            if (instance!=null){return;} //this should prevent the FOManager from attempting to initialize itself if it already exists
-            InstanceFinder.ClientManager.RegisterBroadcast<OffsetSyncBroadcast>(OnOffsetSyncBroadcast);
-            InstanceFinder.TimeManager.OnTick += OnTick;
-            GetComponent<TimeManager>().SetPhysicsMode(PhysicsMode.Disabled);
-            Physics.autoSimulation = false;
-            SetPhysicsMode(PhysicsMode);
-            ioffsetter = GetComponent<IOffsetter>();
-            nullScene = SceneManager.CreateScene("Null Scene");
+            if (instance != null)
+            {
+                gameObject.SetActive(false);
+                return;
+            }
+            instance = this;
         }
-        public Scene GetNullScene() => nullScene;
+
+        private void Start()
+        {
+            InstanceFinder.ServerManager.OnServerConnectionState += ServerFullStart;
+            InstanceFinder.ClientManager.OnClientConnectionState += ClientFullStart;
+            ioffsetter = GetComponent<IOffsetter>();
+
+        }
         void OnDisable()
         {
+            InstanceFinder.ServerManager.OnServerConnectionState -= ServerFullStart;
             InstanceFinder.ClientManager.UnregisterBroadcast<OffsetSyncBroadcast>(OnOffsetSyncBroadcast);
             InstanceFinder.TimeManager.OnTick -= OnTick;
         }
-        public void RegisterFOObject(FOObject foobject)
-        {
-            var gridPos = RealToGridPosition(Mathd.toVector3d(foobject.unityPosition));
-            if (!FOHashGrid.ContainsKey(gridPos))
-                FOHashGrid.Add(gridPos, new HashSet<FOObject>());
-            FOHashGrid[gridPos].Add(foobject);
-            foobject.gridPosition = gridPos;
 
-            if (foobject is FOObserver && localObserver != null)
-            {
-                connectionObservers.Add(foobject.Owner, (FOObserver)foobject);
-            }
-        }
-        public void UnregisterFOObject(FOObject foobject)
+        private void ServerFullStart(ServerConnectionStateArgs args)
         {
-            if (FOHashGrid.ContainsKey(foobject.gridPosition))
-                FOHashGrid[foobject.gridPosition].Remove(foobject);
-            if (foobject is FOObserver)
-                observers.Remove((FOObserver)foobject);
-            if (foobject is FOObserver && localObserver != null)
+            if (args.ConnectionState != LocalConnectionState.Started)
             {
-                connectionObservers.Remove(foobject.Owner);
-            }
-        }
-        public void RegisterFOObserver(FOObserver foobserver)
-        {
-            Log($"Registered FOObserver for client {foobserver.OwnerId} is owner {foobserver.IsOwner} "); //why is IsOwner wrong on the host?
-            if (InstanceFinder.NetworkManager == null)
-                throw new System.Exception("Instance Finder is not yet initialized! Do not register FOObjects before the InstanceFinder is fully initialized!");
-
-            if (InstanceFinder.IsClientOnly && !foobserver.IsOwner)
                 return;
+            }
+            InstanceFinder.TimeManager.OnTick += OnTick;
 
-            if (localObserver == null)
-                localObserver = foobserver;
-            observers.Add(foobserver);
+            GetComponent<TimeManager>().SetPhysicsMode(PhysicsMode.Disabled);
+            Physics.autoSimulation = false;
+            SetPhysicsMode(PhysicsMode);
+        }
 
-            Vector3d initialPosition = Mathd.toVector3d(foobserver.unityPosition);
-            if (InstanceFinder.IsServer)
+        private void ClientFullStart(ClientConnectionStateArgs args)
+        {
+            Log(args.ConnectionState.ToString(), "NETWORKING");
+            if (args.ConnectionState != LocalConnectionState.Started || InstanceFinder.IsServer)
             {
-                MoveToSceneFromNull(foobserver, SceneManager.GetSceneAt(1));
-                Log(initialPosition.ToString());
-                Log(foobserver.unityPosition.ToString());
+                return;
+            }
+            InstanceFinder.ClientManager.RegisterBroadcast<OffsetSyncBroadcast>(OnOffsetSyncBroadcast);
+            Log("Listening for offset sync broadcasts...", "NETWORKING");
+        }
+
+        public bool HasScene(Scene scene)
+        {
+            return offsetGroups.ContainsKey(scene);
+        }
+
+        internal void RegisterObserver(FOObserver observer)
+        {
+            if (first == null)
+            {
+                first = observer;
+            }
+            observers.Add(observer);
+
+            if (!networkedObservers.ContainsKey(observer.Owner))
+            {
+                networkedObservers.Add(observer.Owner, observer);
+            }
+            OffsetGroup group = null;
+            if (!offsetGroups.ContainsKey(observer.gameObject.scene))
+            {
+                group = new OffsetGroup(observer.gameObject.scene, Vector3d.zero);
+
+                offsetGroups.Add(observer.gameObject.scene, group);
+                Log($"Added group {group.scene.handle}", "HOUSEKEEPING");
             }
             else
             {
-                if (!FOGroups.ContainsKey(foobserver.gameObject.scene))
-                    FOGroups.Add(foobserver.gameObject.scene, new FOGroup());
+                group = offsetGroups[observer.gameObject.scene];
+            }
+
+            group.observers.Add(observer);
+            Log($"Added observer to group {group.scene.handle}", "HOUSEKEEPING");
+
+            if (!observer.IsOwner)
+            {
+                //this is good
+                SyncOffset(observer, observer.realPosition - group.offset);
+                // observer.SyncPosition(observer.Owner, observer.unityPosition);
             }
 
         }
-        internal void RebuildOffsetGroup(FOObserver first, Vector3Int gridPos, Vector3d newPosition)
+        internal void UnregisterObserver(FOObserver observer)
         {
-            //Remove from old hash grid cell
-            if (FOHashGrid.ContainsKey(first.gridPosition))
+            if (observer.GetType() == typeof(FOObserver))
             {
-                FOHashGrid[first.gridPosition].Remove(first);
-                //This means there are no FOObservers or FOObjects in this cell
-                if (FOHashGrid[first.gridPosition].Count < 1)
+                observers.Remove((FOObserver)observer);
+                offsetGroups[observer.gameObject.scene].observers.Remove((FOObserver)observer);
+
+                if (networkedObservers.ContainsKey(observer.Owner))
                 {
-                    FOHashGrid.Remove(first.gridPosition);
+                    networkedObservers.Remove(observer.Owner);
                 }
             }
-            //Add to new hash grid cell
-            if (!FOHashGrid.ContainsKey(gridPos))
-                FOHashGrid.Add(gridPos, new HashSet<FOObject>());
-
-            FOHashGrid[gridPos].Add(first);
-            GridCellEnabled(gridPos, true, first.gameObject.scene);
-            List<FOObserver> observers = new List<FOObserver>();
-            observers.Add(first);
-            // create list of adjacent grid cells
-            // is anyone in the adjacent grid cells who isn't in my group?
-            // if yes, rebuild offset group for them and move to appropriate scene
-            FindAdjacentAndGroup(first, gridPos, true, observers);
-
-            //average out the offset
-            Vector3 averageOffset = AverageOffset(observers);
-            Log(averageOffset.ToString());
-
-            //if none are found, we are the only person in the new scene so create a new scene, unless we were the only ones in our previous scene, so we just keep it.
-            if (observers.Count <= 1 && FOGroups[first.gameObject.scene].members > 1)
-            {
-                Log($"Moving player {first.OwnerId} to new group ");
-                MoveToNewGroup(first, averageOffset);
-            }
-            else
-            {
-                Log($"Offsetting scene {first.gameObject.scene.handle} from offset {first.groupOffset} to offset {averageOffset} ");
-                OffsetScene(first.gameObject.scene, first.groupOffset, averageOffset);
-                foreach (var observer in observers)
-                {
-                    EnableAdjacent(observer, observer.gridPosition, first.gameObject.scene);
-                }
-            }
-
+        }
+        void OnTick()
+        {
             foreach (FOObserver observer in observers)
-                SyncOffset(observer, averageOffset);
-        }
-        /// <summary>
-        /// Automatic culling of FOObjects in unrendered scenes, also ensures no FOObjects will be destroyed when a scene is automatically unloaded.
-        /// </summary>
-        /// <param name="cell"></param>
-        /// <param name="enable"></param>
-        /// <param name="scene"></param>
-        protected void GridCellEnabled(Vector3Int cell, bool enable, Scene scene)
-        {
-            Log($"Grid cell {cell} enabled {enable} for scene {scene.handle} ");
-            if (!FOHashGrid.ContainsKey(cell))
-                return;
-
-            if (enable)
-                foreach (var foobject in FOHashGrid[cell])
-                {
-                    if (foobject.enabled == false && foobject.sceneHandle == scene.handle)
-                    {
-                        MoveFromSceneToScene(foobject, scene, null);
-                        foobject.realPosition = foobject.overrideRealPosition;
-                        foobject.overrideRealPosition = Vector3d.zero;
-                        foobject.gameObject.SetActive(true);
-                    }
-
-                }
-            else
             {
-                foreach (var foobject in FOHashGrid[cell])
-                {
-                    if (foobject.enabled == true && foobject.sceneHandle == scene.handle)
-                    {
-                        MoveToNullScene(foobject);
-                        foobject.overrideRealPosition = foobject.realPosition;
-                        foobject.unityPosition = Vector3.zero;
-                        foobject.gameObject.SetActive(false);
-                    }
-                }
-            }
-
-
-        }
-        private void FindAdjacentAndGroup(FOObserver first, Vector3Int gridPos, bool initial, List<FOObserver> observers)
-        {
-            Vector3Int[] searchGrid = AdjacentCellGroup(gridPos);
-
-            foreach (Vector3Int gridPosition in searchGrid)
-            {
-                if (FOHashGrid.ContainsKey(gridPosition))
-                {
-                    foreach (var foobject in FOHashGrid[gridPos])
-                    {
-                        if (foobject.sceneHandle != first.sceneHandle && !foobject.isBusy())
-                        {
-                            if (!initial)
-                                MoveToOtherObserverSceneAndOffset(foobject, first);
-
-                            if (foobject is FOObserver)
-                            {
-                                //if we found another object, move the first to this other object's scene, since it is likely it contains more members than ours
-                                if (initial)
-                                    MoveToOtherObserverSceneAndOffset(first, (FOObserver)foobject);
-                                observers.Add((FOObserver)foobject);
-                                FindAdjacentAndGroup((FOObserver)foobject, gridPos, false, observers);
-                            }
-                        }
-                    }
-
-                }
-            }
-        }
-        private void EnableAdjacent(FOObserver observer, Vector3Int gridPos, Scene scene)
-        {
-            Vector3Int[] searchGrid = AdjacentCellGroup(gridPos);
-            foreach (var cell in searchGrid)
-            {
-                GridCellEnabled(cell, true, scene);
-            }
-
-        }
-        private Vector3Int _grid_position;
-        public void OnTick()
-        {
-            if (!InstanceFinder.IsServer)
-                return;
-
-            foreach (var observer in observers)
-            {
-                if (observer.gameObject == null)
+                if (Functions.MaxLengthScalar(observer.unityPosition) < REBASE_CRITERIA)
                     continue;
 
-                _grid_position = ObserverGridPosition(observer);
-
-                if (_grid_position != observer.gridPosition && !observer.isBusy())
+                OffsetGroup group = offsetGroups[observer.gameObject.scene];
+                Vector3d difference = group.offset - observer.realPosition;
+                if (group.observers.Count > 1)
                 {
-                    Log("Can Rebuild");
-                    RebuildOffsetGroup(observer, _grid_position, observer.realPosition);
-                    observer.gridPosition = _grid_position;
+                    RequestMoveToNewGroup(observer);
+                    SyncObservers(group, difference);
+                    return; //we could also queue the remove operation in MoveFromGroupToGroup
+                }
+                else
+                {
+                    SetGroupOffset(group, observer.realPosition);
+                    SyncObservers(group, difference);
+                }
 
-                    return; //Only update one changed observer per tick!
+            }
+        }
+        // This does not seem to work very well at the moment.
+        void SyncObservers(OffsetGroup group, Vector3d difference)
+        {
+            foreach (FOObserver ob in group.observers)
+            {
+                if (!ob.IsOwner)
+                {
+                    SyncOffset(ob, difference);
                 }
             }
+        }
 
-        }
-        public Scene GetSceneForConnection(NetworkConnection connection)
+        internal void MoveFromGroupToGroup(FOObject foobject, OffsetGroup to)
         {
-            if(!connectionObservers.ContainsKey(connection))
-                return localObserver.gameObject.scene;
-                
-            return connectionObservers[connection].gameObject.scene;
+            if (foobject.GetType() == typeof(FOObserver))
+            {
+                offsetGroups[foobject.gameObject.scene].observers.Remove((FOObserver)foobject);
 
+                if (offsetGroups[foobject.gameObject.scene].observers.Count < 1)
+                {
+                    queuedGroups.Enqueue(offsetGroups[foobject.gameObject.scene]);
+                }
+
+                offsetGroups[to.scene].observers.Add((FOObserver)foobject);
+            }
+            SceneManager.MoveGameObjectToScene(foobject.gameObject, to.scene);
+
+            Log($"client {foobject.OwnerId} group {foobject.gameObject.scene.handle} moved to group {to.scene.handle}");
+            if (InstanceFinder.IsHost)
+                RecomputeVisibleScenes();
         }
-        public void Awake()
+
+
+
+        /// <summary>
+        /// Tries to move this observer and any nearby FOObjects in range to a new group.
+        /// </summary>
+        /// <param name="observer"></param>
+        /// <returns></returns>
+        private void RequestMoveToNewGroup(FOObserver observer)
         {
-            if (instance!=null){return;} //this should prevent the FOManager from attempting to initialize itself if it already exists
-            instance = this;
+            //This is super zorked!
+
+            OffsetGroup group = RequestNewGroup(observer.gameObject.scene);
+
+            if (group == null)
+                return;
+
+            // Vector3d difference = group.offset - observer.realPosition;
+            // foreach (FOObserver ob in group.observers)
+            // {
+            //     if (!ob.IsOwner)
+            //     {
+            //         SyncOffset(ob, difference);
+            //     }
+
+            // }
+
+            SetGroupOffset(group, observer.realPosition);
+
+
+            // MoveFromGroupToGroup(observer, group);
+
+
+
+
+
+
+            // observer.unityPosition -= difference;
+
+            Log($"Tried to move observer from client {observer.OwnerId} to {group.scene.handle}", "GROUP MANAGEMENT");
         }
+
+
+        private void SetPhysicsMode(PhysicsMode mode)
+        {
+            if (mode == PhysicsMode.TimeManager)
+            {
+                if (!subscribedToTick)
+                {
+                    InstanceFinder.TimeManager.OnTick += Simulate;
+                    subscribedToTick = true;
+                }
+            }
+            else
+            {
+                InstanceFinder.TimeManager.OnTick -= Simulate;
+                subscribedToTick = false;
+            }
+            _physicsMode = mode;
+        }
+        void FixedUpdate()
+        {
+            if (_physicsMode == PhysicsMode.Unity)
+                Simulate();
+        }
+        internal void Simulate()
+        {
+            foreach (Scene scene in offsetGroups.Keys)
+                if (scene.IsValid())
+                    scene.GetPhysicsScene().Simulate(Time.fixedDeltaTime);
+        }
+
+        internal Vector3d GetOffset(Scene scene) => offsetGroups[scene].offset;
     }
 }

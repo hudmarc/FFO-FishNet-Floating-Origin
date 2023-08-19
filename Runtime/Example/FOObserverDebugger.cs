@@ -13,18 +13,17 @@ namespace FishNet.FloatingOrigin
         {
             if (!enabled)
                 return;
-            if (!Application.isPlaying || observer == null || !ClientManager.Started || (!IsServer && !IsOwner) || FOManager.instance == null || FOManager.instance.localObserver == null)
+            if (!Application.isPlaying || observer == null || !ClientManager.Started || (!IsServer && !IsOwner) || FOManager.instance == null)
                 return;
 
-            Debug.DrawLine(FOManager.instance.RemoteToLocal(Vector3.zero, observer.groupOffset, FOManager.instance.localObserver.groupOffset), FOManager.instance.RealToUnity(Vector3d.zero, observer.groupOffset), Color.red);
-            Debug.DrawLine(FOManager.instance.RemoteToLocal(Vector3.zero, observer.groupOffset, FOManager.instance.localObserver.groupOffset), FOManager.instance.RemoteToLocal(transform.position, observer.groupOffset, FOManager.instance.localObserver.groupOffset), Color.blue);
+            Debug.DrawLine(Vector3.zero, FOManager.instance.RealToUnity(Vector3d.zero, observer.gameObject.scene), Color.red);
+            Debug.DrawLine(Vector3.zero, FOManager.instance.RealToUnity(observer.realPosition, observer.gameObject.scene), Color.blue);
 
-        }
-        private void OnGUI()
-        {
-            if (!enabled)
-                return;
-            FOManager.instance.DrawDebug();
+            // if (Functions.RealToUnity(Vector3d.zero, observer.gameObject.scene) != FOManager.instance.transform.position)
+            // {
+            //     Debug.LogError($"DESYNCHRONIZED BY {Vector3.Distance(FOManager.instance.RealToUnity(Vector3d.zero, observer.gameObject.scene), FOManager.instance.transform.position)} UNITS");
+            //     Debug.Break();
+            // }
         }
 #endif
     }

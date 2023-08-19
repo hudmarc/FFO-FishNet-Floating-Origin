@@ -1,8 +1,7 @@
-﻿using System.Collections.Generic;
-using FishNet.Connection;
+﻿using FishNet.Connection;
+using FishNet.FloatingOrigin.Types;
 using FishNet.Object;
 using FishNet.Observing;
-using FishNet.Utility.Extension;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -15,24 +14,24 @@ namespace FishNet.FloatingOrigin.Observing
     public class FOCondition : ObserverCondition
     {
         private bool registered = false;
-        bool processed = false;
+        // bool processed = false;
         /// <summary>
         /// Initializes this script for use.
         /// </summary>
         /// <param name="networkObject"></param>
-        public override void InitializeOnce(NetworkObject networkObject)
+        public override void Initialize(NetworkObject networkObject)
         {
-            base.InitializeOnce(networkObject);
-            if(registered)
+            base.Initialize(networkObject);
+            if (registered)
                 return;
-            FOManager.instance.SceneChanged += CheckConditionOnRebase;
+            // FOManager.instance.GroupChanged += CheckConditionOnRebase;
             registered = true;
         }
 
-        private void CheckConditionOnRebase(Scene scene)
-        {
-            processed = false;
-        }
+        // private void CheckConditionOnRebase(OffsetGroup group)
+        // {
+        //     processed = false;
+        // }
 
         /// <summary>
         /// Returns if the object which this condition resides should be visible to connection.
@@ -42,25 +41,12 @@ namespace FishNet.FloatingOrigin.Observing
         /// <param name="notProcessed">True if the condition was not processed. This can be used to skip processing for performance. While output as true this condition result assumes the previous ConditionMet value.</param>
         public override bool ConditionMet(NetworkConnection connection, bool currentlyAdded, out bool notProcessed)
         {
-            if(processed)
-            {
-                notProcessed = true;
-                processed = true;
-                return false;
-            }
             notProcessed = false;
-
-            if(connection == InstanceFinder.NetworkManager.ClientManager.Connection)
+            if (connection == InstanceFinder.NetworkManager.ClientManager.Connection)
                 return true;
 
             return FOManager.instance.GetSceneForConnection(connection).handle == NetworkObject.gameObject.scene.handle;
         }
-
-        /// <summary>
-        /// True if the condition requires regular updates.
-        /// </summary>
-        /// <returns></returns>
-        public override bool Timed() => true;
 
         /// <summary>
         /// Clones referenced ObserverCondition. This must be populated with your conditions settings.
@@ -71,5 +57,10 @@ namespace FishNet.FloatingOrigin.Observing
             return ScriptableObject.CreateInstance<FOCondition>();
         }
 
+        /// <summary>
+        /// How a condition is handled.
+        /// </summary>
+        /// <returns></returns>
+        public override ObserverConditionType GetConditionType() => ObserverConditionType.Timed;
     }
 }

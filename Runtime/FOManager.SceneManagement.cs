@@ -3,174 +3,129 @@ using FishNet.FloatingOrigin.Types;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using FishNet.Managing.Timing;
+using System.Collections;
+using FishNet.Object;
 
 namespace FishNet.FloatingOrigin
 {
     public partial class FOManager
     {
+        private Queue<OffsetGroup> queuedGroups = new Queue<OffsetGroup>();
+        private readonly Scene invalidScene = new Scene();
+        private IOffsetter ioffsetter;
         [Tooltip("How to perform physics.")]
         [SerializeField] private PhysicsMode _physicsMode = PhysicsMode.Unity;
+
+        private readonly LoadSceneParameters parameters = new LoadSceneParameters(LoadSceneMode.Additive, LocalPhysicsMode.Physics3D);
+
         /// <summary>
-        /// How to perform physics.
+        /// Requests a new group. Returns first found existing group that is unused or newly created group.
         /// </summary>
-        public PhysicsMode PhysicsMode => _physicsMode;
-        private IOffsetter ioffsetter;
-        protected Scene nullScene;
-        private LoadSceneParameters parameters = new LoadSceneParameters(LoadSceneMode.Additive, LocalPhysicsMode.Physics3D);
-        private bool subscribedToTick = false;
-        public Vector3 GetOffset(Scene scene) => FOGroups[scene].offset;
-        public void MoveToNullScene(FOObject foobject)
+        /// <param name="scene">
+        /// Creates or dequeues new group.
+        /// </param>
+        private OffsetGroup RequestNewGroup(Scene scene)
         {
-            Log($"Moved {foobject.name} to Null scene");
-            Vector3Int oldGridPosition = RealToGridPosition(foobject.realPosition);
-            MoveFromSceneToScene(foobject, nullScene, oldGridPosition);
-        }
-        public void MoveToOtherObserverSceneAndOffset(FOObject foobject, FOObserver target)
-        {
-            Vector3Int oldGridPosition = RealToGridPosition(foobject.realPosition);
-
-            OffsetObject(foobject, foobject.groupOffset, target.groupOffset);
-            MoveFromSceneToScene(foobject, target.gameObject.scene, oldGridPosition);
-        }
-        // this should be called before anything else
-        public void MoveToNewGroup(FOObject foobject, Vector3 newOffset)
-        {
-            Vector3 oldOffset = foobject.groupOffset;
-            foobject.setBusy(true);
-            //Bug here, says the scene is invalid??
-            SceneManager.LoadSceneAsync(foobject.gameObject.scene.buildIndex, parameters).completed += (AsyncOperation op) => OnMoveComplete(foobject, oldOffset, newOffset);
-        }
-        private void OnMoveComplete(FOObject foobject, Vector3 oldOffset, Vector3 newOffset)
-        {
-            Scene newScene = SceneManager.GetSceneAt(SceneManager.sceneCount - 1);
-            FOGroups.Add(newScene, new FOGroup());
-            Vector3Int oldGridPosition = RealToGridPosition(foobject.realPosition);
-            OffsetScene(newScene, Vector3.zero, newOffset);
-            OffsetObject(foobject, oldOffset, newOffset);
-            MoveFromSceneToScene(foobject, newScene, oldGridPosition);
-            if (foobject is FOObserver)
+            while (queuedGroups.Count > 0 && queuedGroups.Peek().observers.Count > 0)
             {
-                EnableAdjacent((FOObserver)foobject, foobject.gridPosition, newScene);
+                queuedGroups.Dequeue();
             }
-        }
-        private void OffsetScene(Scene scene, Vector3 oldOffset, Vector3 newOffset)
-        {
-            Vector3 difference = oldOffset - newOffset;
-            Log($"Offsetting scene! {scene.handle} old: {oldOffset.ToString()} new: {newOffset.ToString()} diff: {difference.ToString()}");
 
-            if (localObserver != null && scene.handle == localObserver.gameObject.scene.handle)
+            if (queuedGroups.Count > 0)
             {
-                ioffsetter.Offset(gameObject.scene, difference);
-            }
-            //this gets called first
-            ioffsetter.Offset(scene, difference);
-
-            FOGroups[scene] = FOGroups[scene].ChangedOffset(newOffset);
-
-            SceneChanged?.Invoke(scene);
-        }
-
-        private void OffsetObject(FOObject foobject, Vector3 oldOffset, Vector3 newOffset) => foobject.unityPosition += oldOffset - newOffset;
-        private void MoveFromSceneToScene(FOObject foobject, Scene newScene, Vector3Int? oldGridPosition)
-        {
-            var oldScene = foobject.gameObject.scene;
-
-            if (FOGroups.ContainsKey(oldScene) && oldScene != nullScene && oldScene != newScene)
-                FOGroups[oldScene] = FOGroups[oldScene].RemoveMember();
-
-            if (!FOGroups.ContainsKey(newScene))
-                FOGroups.Add(newScene, new FOGroup());
-
-            foobject.sceneHandle = newScene.handle;
-            if (foobject.gameObject.scene != newScene)
-            {
-                SceneManager.MoveGameObjectToScene(foobject.gameObject, newScene);
-
-                if (InstanceFinder.IsHost)
-                    RecomputeVisibleScenes();
-            }
-            foobject.setBusy(false);
-            foobject.OnMoveToNewScene(newScene);
-
-            if (oldScene.handle == newScene.handle)
-                return;
-
-            FOGroups[newScene] = FOGroups[newScene].AddMember();
-
-            if (FOGroups.ContainsKey(oldScene) && FOGroups[oldScene].members < 1 && oldScene.handle != nullScene.handle && oldGridPosition != null)//make sure the oserver is in a known scene
-            {
-                FOGroups.Remove(oldScene);
-                //This will destroy every object in the scene! Make sure all FOObjecs are moved to the null scene before this happens!
-                StartCoroutine(DelayedUnloadAsync(oldScene, oldGridPosition.Value, oldScene));
-            }
-        }
-        private void MoveToSceneFromNull(FOObject foobject, Scene newScene)
-        {
-            if (!FOGroups.ContainsKey(newScene))
-                FOGroups.Add(newScene, new FOGroup());
-
-            foobject.sceneHandle = newScene.handle;
-
-            if (foobject.gameObject.scene != newScene)
-            {
-                SceneManager.MoveGameObjectToScene(foobject.gameObject, newScene);
-
-                if (InstanceFinder.IsHost)
-                    RecomputeVisibleScenes();
-
-            }
-            foobject.setBusy(false);
-            foobject.OnMoveToNewScene(newScene);
-            FOGroups[newScene] = FOGroups[newScene].AddMember();
-
-        }
-        System.Collections.IEnumerator DelayedUnloadAsync(Scene scene, Vector3Int oldGridPosition, Scene oldScene)
-        {
-
-            yield return null;
-
-            GridCellEnabled(oldGridPosition, false, scene);
-            SceneManager.UnloadSceneAsync(scene);
-
-        }
-        public void SetPhysicsMode(PhysicsMode mode)
-        {
-            if (mode == PhysicsMode.TimeManager)
-            {
-                if (!subscribedToTick)
-                {
-                    InstanceFinder.TimeManager.OnTick += Simulate;
-                    subscribedToTick = true;
-                }
+                if (queuedGroups.Peek().scene.IsValid())
+                    return queuedGroups.Dequeue();
+                else
+                    return null;
             }
             else
             {
-                InstanceFinder.TimeManager.OnTick -= Simulate;
-                subscribedToTick = false;
+                var offsetGroup = new OffsetGroup(invalidScene, Vector3d.zero);
+                queuedGroups.Enqueue(offsetGroup);
+
+                SceneManager.LoadSceneAsync(scene.buildIndex, parameters).completed += (arg) => SetupGroup(offsetGroup);
+                return null;
             }
-            _physicsMode = mode;
+
         }
-        void FixedUpdate()
+
+        private void SetupGroup(OffsetGroup group)
         {
-            if (_physicsMode == PhysicsMode.Unity)
-                Simulate();
+            group.scene = SceneManager.GetSceneAt(SceneManager.sceneCount - 1);
+
+            offsetGroups.Add(group.scene, group);
+
+            CullNetworkObjects(group.scene);
         }
-        internal void Simulate()
+        /// <summary>
+        /// Remove scene NOB's on newly created scenes.
+        /// </summary>
+        /// <param name="scene">
+        /// The scene to cull NOB's from.
+        /// </param>
+        private void CullNetworkObjects(Scene scene)
         {
-            foreach (Scene scene in FOGroups.Keys)
-                if (scene.IsValid())
-                    scene.GetPhysicsScene().Simulate(Time.fixedDeltaTime);
+            var objects = scene.GetRootGameObjects();
+            foreach (GameObject g in objects)
+            {
+                if (g.TryGetComponent<NetworkObject>(out NetworkObject obj))
+                {
+                    obj.gameObject.SetActive(false);
+                    Destroy(obj.gameObject);
+                }
+            }
         }
+
+        /// <summary>
+        /// Unloads a given scene.
+        /// </summary>
+        /// <param name="scene">
+        /// The scene you want to unload.
+        /// </param>
+        private void UnloadScene(Scene scene)
+        {
+
+        }
+
+        private void SetGroupOffset(OffsetGroup group, Vector3d offset)
+        {
+            // hashGrid.Remove(group.offset);
+            // hashGrid.Add(offset, group);
+            //this is fine
+            Vector3d difference = group.offset - offset;
+            //this is allegedly fine
+            Vector3 remainder = (Vector3)(difference - ((Vector3d)(Vector3)difference));
+
+            // Log($"{group.scene.handle} old: {group.offset} new: {offset} diff: {difference} rem: {remainder}", "SCENE MANAGEMENT");
+
+            //this might be called in the wrong spot!
+            GroupChanged?.Invoke(group);
+
+            ioffsetter.Offset(group.scene, (Vector3)difference);
+
+            if (remainder != Vector3.zero)
+            {
+                ioffsetter.Offset(group.scene, (Vector3)remainder);
+                Log("Remainder was not zero, offset with precise remainder. If this causes a bug, now you know what to debug.", "SCENE MANAGEMENT");
+            }
+
+            group.offset = offset;
+
+            
+
+        }
+
         private void RecomputeVisibleScenes()
         {
-            Log($"Recomputing scene visibility. Local observer is {(localObserver == null ? "null" : "something")}");
-            if (localObserver == null)
+            if (first == null)
                 return;
 
-            foreach (Scene scn in FOGroups.Keys)
+            Log($"Recomputing scene visibility. Local observer is {(first == null ? "null" : "something")}", "SCENE MANAGEMENT");
+
+            foreach (Scene scn in offsetGroups.Keys)
             {
-                SetSceneVisibillity(scn, scn.handle == localObserver.sceneHandle);
-                if (scn.handle == localObserver.sceneHandle)
+                SetSceneVisibillity(scn, scn.handle == first.gameObject.scene.handle);
+                if (scn.handle == first.gameObject.scene.handle)
                     UnityEngine.SceneManagement.SceneManager.SetActiveScene(scn);
 
             }
@@ -178,7 +133,7 @@ namespace FishNet.FloatingOrigin
         }
         private void SetSceneVisibillity(Scene scene, bool visible)
         {
-            Log($"Set scene {scene.handle} {(visible ? "visible" : "not visible")}");
+            Log($"Set scene {scene.handle} {(visible ? "visible" : "not visible")}", "SCENE MANAGEMENT");
             var rootObjectsInScene = scene.GetRootGameObjects();
             for (int i = 0; i < rootObjectsInScene.Length; i++)
             {
