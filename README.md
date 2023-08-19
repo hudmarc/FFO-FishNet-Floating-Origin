@@ -1,5 +1,9 @@
-# Work in progress
-This package will not be frequently upgraded
+## Todo:
+- Syncing to clients does not work properly
+- determining whether or not to rebuild an offset group is somewhat iffy at the moment
+- Add screenshots for manager and NetworkObject setup
+- Fix Network Condition so it doesn't constantly update
+
 
 # Installation
 FishNet is a dependency for this package. Make sure you have the latest version installed first.
