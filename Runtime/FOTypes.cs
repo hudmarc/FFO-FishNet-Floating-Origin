@@ -11,7 +11,7 @@ namespace FishNet.FloatingOrigin
         {
             public Scene scene;
             public Vector3d offset;
-            public HashSet<FOObserver> observers = new HashSet<FOObserver>();
+            public HashSet<FOClient> clients = new HashSet<FOClient>();
 
             public OffsetGroup(Scene scene, Vector3d offset)
             {

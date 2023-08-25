@@ -20,6 +20,22 @@ public class Functional
         Assert.AreEqual(realPosition, Functions.UnityToReal(unityPosition, offset));
         Assert.AreNotEqual(realPosition, offset);
     }
+    [Test]
+    public void MaxDistanceBenchmark()
+    {
+        for (int i = 0; i < 100000; i++)
+        {
+            Functions.MaxLengthScalar(new Vector3d(i, i, i));
+        }
+    }
+    [Test]
+    public void Vector3dDistanceBenchmark()
+    {
+        for (int i = 0; i < 100000; i++)
+        {
+            Vector3d.Distance(new Vector3d(i, i, i), Vector3d.zero);
+        }
+    }
 
     [Test]
     public void TestZeroNegativeUnity()
@@ -143,5 +159,5 @@ public class Functional
         Assert.AreEqual(unityPosition, Functions.RealToUnity(realPosition, offset));
         Assert.AreNotEqual(realPosition, offset);
     }
-    
+
 }

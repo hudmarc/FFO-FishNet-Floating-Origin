@@ -67,7 +67,7 @@ namespace FishNet.FloatingOrigin
         {
             foreach (var val in offsetGroups)
             {
-                GUILayout.Button($" Scene {val.Key.handle}: {val.Value.offset} O: {val.Value.observers.Count} o: {val.Value.observers.Count}");
+                GUILayout.Button($" Scene {val.Key.handle}: {val.Value.offset} O: {val.Value.clients.Count} o: {val.Value.clients.Count}");
             }
             if (GUILayout.Button("Toggle FO Debug"))
             {
@@ -83,12 +83,12 @@ namespace FishNet.FloatingOrigin
             }
             foreach (var val in queuedGroups)
             {
-                GUILayout.Button($" Queued Group {val.scene.handle}");
+                GUILayout.Button($" Queued: {val.scene.handle}");
             }
-            foreach (var ob in observers)
+            foreach (var client in clients)
             {
-                if (ob != null)
-                    GUILayout.Button($"Owner: {ob.OwnerId} Unity Position: {(int)ob.unityPosition.x} {(int)ob.unityPosition.y} {(int)ob.unityPosition.z} Real Position: {(int)ob.realPosition.x} {(int)ob.realPosition.y} {(int)ob.realPosition.z}\n Group Members: {offsetGroups[ob.gameObject.scene].observers.Count} Expected Scene Handle {ob.gameObject.scene.handle} Actual: {ob.gameObject.scene.handle} Hash Grid Position: {ob.gridPosition.x} {ob.gridPosition.y} {ob.gridPosition.z}");
+                if (client != null)
+                    GUILayout.Button($"Object: {client.networking.ObjectId} Owner: {client.networking.OwnerId} Unity: {(int)client.transform.position.x} {(int)client.transform.position.y} {(int)client.transform.position.z} Real: {(int)client.realPosition.x} {(int)client.realPosition.y} {(int)client.realPosition.z}\n Members: {offsetGroups[client.gameObject.scene].clients.Count} Handle: {client.gameObject.scene.handle}");
             }
 
         }
