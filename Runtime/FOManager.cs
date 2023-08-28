@@ -29,7 +29,7 @@ namespace FishNet.FloatingOrigin
         private readonly Dictionary<Scene, OffsetGroup> offsetGroups = new Dictionary<Scene, OffsetGroup>();
         private readonly HashSet<FOClient> clients = new HashSet<FOClient>();
         private readonly HashGrid<FOObject> objects = new HashGrid<FOObject>(REBASE_CRITERIA);
-        private readonly HashGrid<OffsetGroup> groups = new HashGrid<OffsetGroup>(MERGE_CRITERIA / 2);
+        private readonly HashGrid<OffsetGroup> groups = new HashGrid<OffsetGroup>(REBASE_CRITERIA);
         private readonly Queue<OffsetGroup> queuedGroups = new Queue<OffsetGroup>();
 
         private readonly LoadSceneParameters parameters = new LoadSceneParameters(LoadSceneMode.Additive, LocalPhysicsMode.Physics3D);
@@ -61,7 +61,7 @@ namespace FishNet.FloatingOrigin
         {
             InstanceFinder.ServerManager.OnServerConnectionState -= ServerFullStart;
             InstanceFinder.ClientManager.UnregisterBroadcast<OffsetSyncBroadcast>(OnOffsetSyncBroadcast);
-            InstanceFinder.TimeManager.OnPostTick -= OnPostTick;
+            InstanceFinder.TimeManager.OnPreTick -= PreTick;
         }
 
         private void ServerFullStart(ServerConnectionStateArgs args)
@@ -69,7 +69,7 @@ namespace FishNet.FloatingOrigin
             if (args.ConnectionState != LocalConnectionState.Started)
                 return;
 
-            InstanceFinder.TimeManager.OnPostTick += OnPostTick;
+            InstanceFinder.TimeManager.OnPreTick += PreTick;
 
             GetComponent<TimeManager>().SetPhysicsMode(PhysicsMode.Disabled);
             Physics.autoSimulation = false;
@@ -198,16 +198,18 @@ namespace FishNet.FloatingOrigin
 
         }
 
-        void OnPostTick()
+        void PreTick()
         {
             foreach (FOClient client in clients)
             {
+                // when does this actually need to run? only if the group moved the previous frame, right?
                 var found = groups.FindAnyInBoundingBox(client.realPosition, MERGE_CRITERIA, offsetGroups[client.gameObject.scene]);
                 if (found != null)
                 {
-                    //move this client to a new group
                     MoveToGroup(client, found);
+                    continue;
                 }
+
                 if (Functions.MaxLengthScalar(client.transform.position) < REBASE_CRITERIA)
                     continue;
 
@@ -223,7 +225,6 @@ namespace FishNet.FloatingOrigin
                 {
                     SetGroupOffset(group, client.realPosition);
                 }
-
             }
         }
         /// <summary>
@@ -281,11 +282,10 @@ namespace FishNet.FloatingOrigin
 
             CollectObjectsIntoGroup(group);
 
-            Log($"Moved FOClient from client {observer.networking.OwnerId} to {group.scene.handle}", "GROUP MANAGEMENT");
+            Log($"Moved FOClient from client {observer.networking.OwnerId} to queued group {group.scene.handle}", "GROUP MANAGEMENT");
         }
         private void CollectObjectsIntoGroup(OffsetGroup group)
         {
-
             // Stopwatch watch = new Stopwatch();
             // watch.Start();
             var found = objects.FindInBoundingBox(group.offset, 4);

@@ -14,8 +14,8 @@ namespace FishNet.FloatingOrigin
         }
         public Vector3d realPosition => FOManager.instance.UnityToReal(transform.position, gameObject.scene);
 
-        internal virtual void Initialize() => FOManager.instance.RegisterObject(this);
-        internal virtual void Deinitialize() => FOManager.instance.UnregisterObject(this);
+        internal virtual void Initialize() => FOManager.instance?.RegisterObject(this);
+        internal virtual void Deinitialize() => FOManager.instance?.UnregisterObject(this);
         public override void OnOwnershipServer(NetworkConnection prevOwner)
         {
             base.OnOwnershipServer(prevOwner);

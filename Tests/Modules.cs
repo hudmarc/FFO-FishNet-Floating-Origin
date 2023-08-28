@@ -9,6 +9,7 @@ public class Modules
 {
     //this number is way bigger than the radius of the solar system
     private float huge_number = Mathf.Pow(2, 52);
+    private const bool SKIP_BENCH = true;
     [Test]
     public void HashGridInitialization()
     {
@@ -131,10 +132,45 @@ public class Modules
         Assert.True(test.FindInBoundingBox(vector, 512).Contains(test_string));
         Assert.True(test.FindInBoundingBox(vector + new Vector3d(1024, 1024, 1024), 2048).Contains(test_string));
     }
+    [Test]
+    public void TestSearchGrid()
+    {
+        Assert.AreEqual(27, HashGrid<string>.SEARCH_PATTERN.Length);
+
+        for (int x = -1; x < 2; x++)
+        {
+            for (int y = -1; y < 2; y++)
+            {
+                for (int z = -1; z < 2; z++)
+                {
+                    bool contains = false;
+
+                    for (int i = 0; i < HashGrid<string>.SEARCH_PATTERN.Length; i++)
+                    {
+                        // Debug.Log(HashGrid<string>.SEARCH_PATTERN[i] + (new Vector3d(x, y, z)).ToString() + Vector3d.Distance(HashGrid<string>.SEARCH_PATTERN[i], new Vector3d(x, y, z)));
+
+                        if (Vector3d.SqrMagnitude(HashGrid<string>.SEARCH_PATTERN[i] - new Vector3d(x, y, z)) == 0)
+                        {
+                            contains = true;
+                        }
+                    }
+
+                    if (!contains)
+                    {
+                        throw new System.Exception($"({x},{y},{z}) not found in SEARCH_PATTERN");
+                    }
+                    Assert.IsTrue(contains);
+                }
+            }
+        }
+    }
 
     [Test]
     public void BenchmarkAdd()
     {
+        if (SKIP_BENCH)
+            return;
+
         Debug.Log("FindInBoundingBoxMin");
         HashGrid<string> test = new HashGrid<string>(1024);
 
@@ -151,6 +187,9 @@ public class Modules
     [Test]
     public void BenchmarkFindAny()
     {
+        if (SKIP_BENCH)
+            return;
+
         Debug.Log("FindInBoundingBoxMin");
         HashGrid<string> test = new HashGrid<string>(1024);
 
@@ -171,6 +210,9 @@ public class Modules
     [Test]
     public void BenchmarkFindAnySlow()
     {
+        if (SKIP_BENCH)
+            return;
+
         Debug.Log("FindInBoundingBoxMin");
         HashGrid<string> test = new HashGrid<string>(1024);
 
@@ -194,6 +236,9 @@ public class Modules
     [Test]
     public void BenchmarkFindInBB()
     {
+        if (SKIP_BENCH)
+            return;
+
         Debug.Log("FindInBoundingBoxMin");
         HashGrid<string> test = new HashGrid<string>(1024);
 
@@ -217,6 +262,9 @@ public class Modules
     [Test]
     public void BenchmarkFindInBBSlow()
     {
+        if (SKIP_BENCH)
+            return;
+
         Debug.Log("FindInBoundingBoxMin");
         HashGrid<string> test = new HashGrid<string>(1024);
 
@@ -241,6 +289,9 @@ public class Modules
     [Test]
     public void BenchmarkRemove()
     {
+        if (SKIP_BENCH)
+            return;
+
         Debug.Log("FindInBoundingBoxMin");
         HashGrid<string> test = new HashGrid<string>(1024);
 

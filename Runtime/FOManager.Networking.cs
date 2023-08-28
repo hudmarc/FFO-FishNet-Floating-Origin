@@ -19,7 +19,9 @@ namespace FishNet.FloatingOrigin
         void OnOffsetSyncBroadcast(OffsetSyncBroadcast broadcast)
         {
             Vector3d difference = localOffset - broadcast.offset;
+
             Log($"Received Offset Sync Broadcast {broadcast.offset} offsetting {difference} from {localOffset}", "NETWORKING");
+            
             localOffset = broadcast.offset;
 
             if (InstanceFinder.IsServer)

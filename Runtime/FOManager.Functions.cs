@@ -1,4 +1,3 @@
-using System;
 using FishNet.Managing.Timing;
 using FishNet.Object;
 using UnityEngine;
@@ -20,8 +19,7 @@ namespace FishNet.FloatingOrigin
             {
                 SetSceneVisibillity(scn, scn.handle == local.gameObject.scene.handle);
                 if (scn.handle == local.gameObject.scene.handle)
-                    UnityEngine.SceneManagement.SceneManager.SetActiveScene(scn);
-
+                    SceneManager.SetActiveScene(scn);
             }
 
         }
@@ -95,10 +93,9 @@ namespace FishNet.FloatingOrigin
             }
             _physicsMode = mode;
         }
-        internal Vector3d GetOffset(Scene scene) => offsetGroups[scene].offset;
 
-        public Vector3 RealToUnity(Vector3d realPosition, Scene scene) => Functions.RealToUnity(realPosition, offsetGroups[scene].offset);
+        public Vector3 RealToUnity(Vector3d realPosition, Scene scene) => Functions.RealToUnity(realPosition, serverFullStart ? offsetGroups[scene].offset : localOffset);
 
-        public Vector3d UnityToReal(Vector3 unityPosition, Scene scene) => Functions.UnityToReal(unityPosition, offsetGroups[scene].offset);
+        public Vector3d UnityToReal(Vector3 unityPosition, Scene scene) => Functions.UnityToReal(unityPosition, serverFullStart ? offsetGroups[scene].offset : localOffset);
     }
 }

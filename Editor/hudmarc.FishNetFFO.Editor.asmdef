@@ -2,7 +2,8 @@
     "name": "FishNet.FloatingOrigin.Editor",
     "rootNamespace": "FishNet.FloatingOrigin.Editor",
     "references": [
-        "FishNet.FloatingOrigin.Runtime"
+        "FishNet.FloatingOrigin.Runtime",
+        "FishNet.Runtime"
     ],
     "includePlatforms": [
         "Editor"

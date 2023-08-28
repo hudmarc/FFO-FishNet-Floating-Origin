@@ -7,7 +7,47 @@ namespace FishNet.FloatingOrigin
 {
     public class HashGrid<T> where T : class
     {
-        private Dictionary<Vector3d, Dictionary<T, Vector3d>> dict = new Dictionary<Vector3d, Dictionary<T, Vector3d>>();
+        public static readonly Vector3d[] SEARCH_PATTERN = {
+            new Vector3d(0,0,0),
+            new Vector3d(0,0,1),
+            new Vector3d(1,0,1),
+
+            new Vector3d(1,0,0),
+            new Vector3d(1,0,-1),
+            new Vector3d(0,0,-1),
+
+            new Vector3d(-1,0,-1),
+            new Vector3d(-1,0,0),
+            new Vector3d(-1,0,1),
+
+
+            new Vector3d(-1,1,1),
+            new Vector3d(0,1,1),
+            new Vector3d(1,1,1),
+
+            new Vector3d(1,1,0),
+            new Vector3d(1,1,-1),
+            new Vector3d(0,1,-1),
+
+            new Vector3d(-1,1,-1),
+            new Vector3d(-1,1,0),
+            new Vector3d(0,1,0),
+
+
+            new Vector3d(0,-1,0),
+            new Vector3d(0,-1,1),
+            new Vector3d(1,-1,1),
+
+            new Vector3d(1,-1,0),
+            new Vector3d(1,-1,-1),
+            new Vector3d(0,-1,-1),
+
+            new Vector3d(-1,-1,-1),
+            new Vector3d(-1,-1,0),
+            new Vector3d(-1,-1,1),
+
+         };
+        private readonly Dictionary<Vector3d, Dictionary<T, Vector3d>> dict = new Dictionary<Vector3d, Dictionary<T, Vector3d>>();
         private readonly int resolution;
         private readonly float resolutionInverseScalar;
         public HashGrid(int resolution)
@@ -41,7 +81,7 @@ namespace FishNet.FloatingOrigin
             return dict.ContainsKey(Quantize(vector));
         }
         /// <summary>
-        /// Finds a set of objects in the given Bounding Box. This function is not very fast.
+        /// Finds a set of objects in the given Bounding Box.
         /// </summary>
         /// <param name="vector">
         /// Center of search.
@@ -52,35 +92,27 @@ namespace FishNet.FloatingOrigin
         /// <returns></returns>
         public HashSet<T> FindInBoundingBox(Vector3d vector, double distance)
         {
+            if (distance > resolution * 2)
+            {
+                throw new System.Exception("Distance is greater than resolution");
+            }
             int range = (int)Mathd.Ceil(distance * (1d / resolution));
             range += range % 2;
 
             HashSet<T> found = new HashSet<T>();
 
-            Vector3d initial = Quantize(vector - new Vector3d(resolution * (range / 2), resolution * (range / 2), resolution * (range / 2))) * resolution;
-            Vector3d cell = initial;
-            for (int x = 0; x < range; x++)
+            Vector3d initial = Quantize(vector) * resolution;
+
+            for (int i = 0; i < SEARCH_PATTERN.Length; i++)
             {
-                cell.y = initial.y;
-                for (int y = 0; y < range; y++)
+                if (dict.ContainsKey(Quantize(initial + SEARCH_PATTERN[i])))
                 {
-                    cell.z = initial.z;
-                    for (int z = 0; z < range; z++)
+                    foreach (var cell_element in dict[Quantize(initial + SEARCH_PATTERN[i])])
                     {
-                        if (dict.ContainsKey(Quantize(cell)))
-                        {
-                            foreach (var cell_element in dict[Quantize(cell)])
-                            {
-                                if (Functions.MaxLengthScalar(cell_element.Value - vector) < distance)
-                                    found.Add(cell_element.Key);
-                            }
-                        }
-                        // Debug.Log(cell);
-                        cell += new Vector3d(0, 0, resolution);
+                        if (Functions.MaxLengthScalar(cell_element.Value - vector) < distance)
+                            found.Add(cell_element.Key);
                     }
-                    cell += new Vector3d(0, resolution, 0);
                 }
-                cell += new Vector3d(resolution, 0, 0);
             }
             return found;
         }
@@ -89,30 +121,18 @@ namespace FishNet.FloatingOrigin
             int range = (int)Mathd.Ceil(distance * (1d / resolution));
             range += range % 2;
 
-            Vector3d initial = Quantize(vector - new Vector3d(resolution * (range / 2), resolution * (range / 2), resolution * (range / 2))) * resolution;
-            Vector3d cell = initial;
-            for (int x = 0; x < range; x++)
+            Vector3d initial = Quantize(vector) * resolution;
+
+            for (int i = 0; i < SEARCH_PATTERN.Length; i++)
             {
-                cell.y = initial.y;
-                for (int y = 0; y < range; y++)
+                if (dict.ContainsKey(Quantize(initial + SEARCH_PATTERN[i])))
                 {
-                    cell.z = initial.z;
-                    for (int z = 0; z < range; z++)
+                    foreach (var cell_element in dict[Quantize(initial + SEARCH_PATTERN[i])])
                     {
-                        if (dict.ContainsKey(Quantize(cell)))
-                        {
-                            foreach (var cell_element in dict[Quantize(cell)])
-                            {
-                                if (cell_element.Key != exclude && Functions.MaxLengthScalar(cell_element.Value - vector) < distance)
-                                    return cell_element.Key;
-                            }
-                        }
-                        // Debug.Log(cell);
-                        cell += new Vector3d(0, 0, resolution);
+                        if (cell_element.Key != exclude && Functions.MaxLengthScalar(cell_element.Value - vector) < distance)
+                            return cell_element.Key;
                     }
-                    cell += new Vector3d(0, resolution, 0);
                 }
-                cell += new Vector3d(resolution, 0, 0);
             }
             return null;
         }
