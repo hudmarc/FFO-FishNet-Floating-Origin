@@ -54,6 +54,8 @@ FOClients are best used for FOObjects with NetworkTransforms which can move far 
 
 🔲 Create demo scene/game
 
+🔲 Create demo video
+
 🔲 Integrate CI testing on GitHub repo
 
 ### Code Quality of Life
