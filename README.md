@@ -11,7 +11,7 @@ Click "Add package from git URL..." in the Unity Package Manager (UPM) and paste
 
 <img width="412" alt="image" src="https://github.com/hudmarc/FFO-FishNet-Floating-Origin/assets/44267994/5213f8e8-f3a1-4f89-9133-3e066068f03e">
 
-> Add the Floating Origin Condition to the default observers of the `ObserverManager` in order to hide clients in different offset groups from eachother. Note the Condition has not been fully tested as of writing this Readme.
+> Add the `Floating Origin Condition` to the default observers of the `ObserverManager` in order to hide clients in different offset groups from eachother. Note the Condition has not been fully tested as of writing this Readme.
 
 > The current "best practice" is to separate your "game world" from your "manager world". You can use FishNet's `DefaultScene` component in order to automatically load the game world when needed. The idea behind this is to avoid cloning the `NetworkManager` and attached `FOManager` but both modules should be able to tolerate cloning.
 
@@ -33,13 +33,20 @@ Attach the `FOObject` component to any object you want only a single instance of
 
 ### Why is my physics not working properly?
 
-Because this package uses multi-scene stacking, you MUST remember to convert all calls to the Physics library to instead use the local physics scene. For example `Physics.Raycast` would be `gameObject.scene.GetPhysicsScene().Raycast`. Otherwise your physics will not work correctly!
+Because this package uses multi-scene stacking, you MUST remember to convert all calls to the `Physics` library to instead use the local physics scene. For example `Physics.Raycast` would be `gameObject.scene.GetPhysicsScene().Raycast`. Otherwise your physics will not work correctly!
 
 ### Why are FOClients on game clients desynchronizing on offset?
-You should enable Teleport on your FOClient's NetworkTransform if this is a problem you are encountering with your game.
+You should enable Teleport on your FOClient's `NetworkTransform` if this is a problem you are encountering with your game.
 
-### When should I use an FOClient or an FOObject?
-The general rule is to use an FOObject for any NetworkObjects without NetworkTransforms (or which can't move far enough to cause a rebase) which you need to synchronize accross the network, since this will ensure only one instance of the NetworkObject exists at a time. FOClients are best used for FOObjects with NetworkTransforms which can move far distances, like players.
+### When should I use an `FOClient` or an `FOObject`?
+The general rule is to use an `FOObject` for any NetworkObjects which:
+
+- Don't have a `NetworkTransform` component OR can't move far enough to cause a rebase
+- Must be synchronized accross the network
+
+The `FOObject` will ensure only one instance of the `NetworkObject` exists at a time.
+
+FOClients are best used for FOObjects with NetworkTransforms which can move far distances, (i.e. players and nothing else)
 
 ## Todo:
 ### Quality of life
