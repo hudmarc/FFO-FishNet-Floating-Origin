@@ -49,12 +49,20 @@ The `FOObject` will ensure only one instance of the `NetworkObject` exists at a 
 FOClients are best used for FOObjects with NetworkTransforms which can move far distances, (i.e. players and nothing else)
 
 ## Todo:
-### Quality of life
+### Quality of Life
 ✅ Add screenshots for manager and NetworkObject setup
 
 🔲 Create demo scene/game
 
 🔲 Integrate CI testing on GitHub repo
+
+### Code Quality of Life
+
+✅ Added `transform.GetRealPosition()` extension method
+
+🔲 Add extension method `gameObject.Physics()` as alias for `gameObject.scene.GetPhysicsScene().Raycast`
+
+🔲 Add method to update grid position of `FOObject` component
 
 ### Refactoring
 ✅ Core rewrite
