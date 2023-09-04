@@ -60,7 +60,7 @@ FOClients are best used for FOObjects with NetworkTransforms which can move far 
 
 ✅ Added `transform.GetRealPosition()` extension method
 
-🔲 Add extension method `gameObject.Physics()` as alias for `gameObject.scene.GetPhysicsScene().Raycast`
+🔲 Add extension method `gameObject.Physics()` as alias for `gameObject.scene.GetPhysicsScene()`
 
 🔲 Add method to update grid position of `FOObject` component
 
