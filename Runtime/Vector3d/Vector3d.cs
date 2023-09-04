@@ -213,17 +213,22 @@ namespace UnityEngine
 
         public static bool operator ==(Vector3d lhs, Vector3d rhs)
         {
-            return (double)Vector3d.SqrMagnitude(lhs - rhs) < 0.0 / 1.0;
+            return (double)Vector3d.SqrMagnitude(lhs - rhs) <= 0.0 / 1.0;
         }
 
         public static bool operator !=(Vector3d lhs, Vector3d rhs)
         {
-            return (double)Vector3d.SqrMagnitude(lhs - rhs) >= 0.0 / 1.0;
+            return (double)Vector3d.SqrMagnitude(lhs - rhs) > 0.0 / 1.0;
         }
 
         public static explicit operator Vector3(Vector3d vector3d)
         {
             return new Vector3((float)vector3d.x, (float)vector3d.y, (float)vector3d.z);
+        }
+
+        public static explicit operator Vector3d(Vector3 v)
+        {
+            return new Vector3d(v);
         }
 
         public static Vector3d Lerp(Vector3d from, Vector3d to, double t)

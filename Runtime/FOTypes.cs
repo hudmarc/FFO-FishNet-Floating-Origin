@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using FishNet.Broadcast;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -6,29 +7,25 @@ namespace FishNet.FloatingOrigin
 {
     namespace Types
     {
-        public struct FOGroup
+        public class OffsetGroup
         {
-            public Vector3 offset;
-            public int members;
-            public FOGroup ChangedOffset(Vector3 newOffset)
+            public Scene scene;
+            public Vector3d offset;
+            public HashSet<FOClient> clients = new HashSet<FOClient>();
+
+            public OffsetGroup(Scene scene, Vector3d offset)
             {
-                this.offset = newOffset;
-                return this;
+                this.scene = scene;
+                this.offset = offset;
             }
-            public FOGroup ChangedMembers(int members)
+            public Vector3 GetClientCentroid()
             {
-                this.members = members;
-                return this;
-            }
-            public FOGroup RemoveMember()
-            {
-                members = members-1;
-                return this;
-            }
-            public FOGroup AddMember()
-            {
-                members = members+1;
-                return this;
+                Vector3 position = Vector3.zero;
+                foreach (var client in clients)
+                {
+                    position += client.transform.position;
+                }
+                return position / clients.Count;
             }
         }
         /// <summary>
@@ -40,10 +37,10 @@ namespace FishNet.FloatingOrigin
         }
         public struct OffsetSyncBroadcast : IBroadcast
         {
-            public float offsetX, offsetY, offsetZ;
-            public Vector3 offset => new Vector3(offsetX, offsetY, offsetZ);
+            public double offsetX, offsetY, offsetZ;
+            public Vector3d offset => new Vector3d(offsetX, offsetY, offsetZ);
 
-            public OffsetSyncBroadcast(Vector3 offset)
+            public OffsetSyncBroadcast(Vector3d offset)
             {
                 this.offsetX = offset.x;
                 this.offsetY = offset.y;
@@ -51,7 +48,7 @@ namespace FishNet.FloatingOrigin
             }
             public override string ToString()
             {
-                return $"Offset: {offset.ToString()}";
+                return $"Offset: {offset}";
             }
         }
     }
