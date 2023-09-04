@@ -5,16 +5,15 @@ using UnityEngine;
 using FishNet.Managing.Timing;
 using UnityEngine.SceneManagement;
 using FishNet.Transporting;
-using System.Diagnostics;
 
 namespace FishNet.FloatingOrigin
 {
     public partial class FOManager : MonoBehaviour
     {
         /// <summary>
-        /// Set to whatever value in meters your game starts to noticeably lose precision at.
+        /// Set to whatever value in meters your game starts to noticeably lose precision at. ~8km is the default setting.
         /// </summary>
-        public const int REBASE_CRITERIA = 512;
+        public const int REBASE_CRITERIA = 8192;
         public const int HYSTERESIS = 0;
         public const int MERGE_CRITERIA = REBASE_CRITERIA / 2;
         public static FOManager instance;
@@ -24,14 +23,14 @@ namespace FishNet.FloatingOrigin
         internal FOClient local;
 
         [Tooltip("How to perform physics.")]
-        [SerializeField] private PhysicsMode _physicsMode = PhysicsMode.Unity;
+        [SerializeField]
+        private PhysicsMode _physicsMode = PhysicsMode.Unity;
 
         private readonly Dictionary<Scene, OffsetGroup> offsetGroups = new Dictionary<Scene, OffsetGroup>();
         private readonly HashSet<FOClient> clients = new HashSet<FOClient>();
         private readonly HashGrid<FOObject> objects = new HashGrid<FOObject>(REBASE_CRITERIA);
         private readonly HashGrid<OffsetGroup> groups = new HashGrid<OffsetGroup>(REBASE_CRITERIA);
         private readonly Queue<OffsetGroup> queuedGroups = new Queue<OffsetGroup>();
-
         private readonly LoadSceneParameters parameters = new LoadSceneParameters(LoadSceneMode.Additive, LocalPhysicsMode.Physics3D);
         private readonly Scene invalidScene = new Scene();
         private IOffsetter ioffsetter;
@@ -55,12 +54,14 @@ namespace FishNet.FloatingOrigin
             InstanceFinder.ServerManager.OnServerConnectionState += ServerFullStart;
             InstanceFinder.ClientManager.OnClientConnectionState += ClientFullStart;
             ioffsetter = GetComponent<IOffsetter>();
-
         }
+
         void OnDisable()
         {
             InstanceFinder.ServerManager.OnServerConnectionState -= ServerFullStart;
-            InstanceFinder.ClientManager.UnregisterBroadcast<OffsetSyncBroadcast>(OnOffsetSyncBroadcast);
+            InstanceFinder.ClientManager.UnregisterBroadcast<OffsetSyncBroadcast>(
+                OnOffsetSyncBroadcast
+            );
             InstanceFinder.TimeManager.OnPreTick -= PreTick;
         }
 
@@ -82,7 +83,9 @@ namespace FishNet.FloatingOrigin
             if (args.ConnectionState != LocalConnectionState.Started || InstanceFinder.IsServer)
                 return;
 
-            InstanceFinder.ClientManager.RegisterBroadcast<OffsetSyncBroadcast>(OnOffsetSyncBroadcast);
+            InstanceFinder.ClientManager.RegisterBroadcast<OffsetSyncBroadcast>(
+                OnOffsetSyncBroadcast
+            );
             Log("Listening for offset sync broadcasts...", "NETWORKING");
             clientFullStart = true;
         }
@@ -121,13 +124,12 @@ namespace FishNet.FloatingOrigin
             }
 
             group.clients.Add(client);
-            Log($"Added FOClient to group {group.scene.handle}", "HOUSEKEEPING");
+            Log($"Added FOClient to group {Math.Abs(group.scene.handle):X}", "HOUSEKEEPING");
 
             if (!client.networking.IsOwner)
             {
                 SyncOffset(client);
             }
-
         }
 
         internal void UnregisterClient(FOClient client)
@@ -153,30 +155,17 @@ namespace FishNet.FloatingOrigin
             else
                 objects.Add((Vector3d)foobject.transform.position, foobject);
         }
+
         internal void UnregisterObject(FOObject foobject)
         {
             if (!serverFullStart && InstanceFinder.IsClientOnly)
                 return;
             objects.Remove(foobject.realPosition);
         }
-        /// <summary>
-        /// Adds the given OffsetGroups to the tracked OffsetGroups and to the Groups hashgrid.
-        /// </summary>
-        /// <param name="group">
-        /// The offset group being added.
-        /// </param>
-        void AddOffsetGroup(OffsetGroup group)
-        {
-            //add to HashGrid as well!
-            offsetGroups.Add(group.scene, group);
-            //There should NEVER be two OffsetGroups with the same offset. By virtue of having the same offset this means the groups would be merged.
-            groups.Add(group.offset, group);
-            Log($"Added group {group.scene.handle} on grid position {groups.Quantize(group.offset)}", "HOUSEKEEPING");
-        }
 
         private void SetGroupOffset(OffsetGroup group, Vector3d offset)
         {
-            Log("Set group offset.", "SCENE MANAGEMENT");
+            Log($"Set group offset {offset} for {Math.Abs(group.scene.handle):X}", "SCENE MANAGEMENT");
             groups.Remove(group.offset);
             groups.Add(offset, group);
 
@@ -188,24 +177,37 @@ namespace FishNet.FloatingOrigin
             if (remainder != Vector3.zero)
             {
                 ioffsetter.Offset(group.scene, remainder);
-                Log("Remainder was not zero, offset with precise remainder. If this causes a bug, now you know what to debug.", "SCENE MANAGEMENT");
+                Log(
+                    "Remainder was not zero, offset with precise remainder. If this causes a bug, now you know what to debug.",
+                    "SCENE MANAGEMENT"
+                );
             }
 
             group.offset = offset;
 
             CollectObjectsIntoGroup(group);
             SyncGroup(group);
-
         }
 
-        void PreTick()
+        private void PreTick()
         {
+            // If an OffsetGroup has a pack of clients which are closely clumped this should keep them in the group while automatically kicking stragglers off to other groups.
+            foreach (OffsetGroup group in offsetGroups.Values)
+            {
+                Vector3 centroid = group.GetClientCentroid();
+                if (centroid.sqrMagnitude >= REBASE_CRITERIA * REBASE_CRITERIA)
+                {
+                    SetGroupOffset(group, group.offset + (Vector3d)centroid);
+                }
+            }
             foreach (FOClient client in clients)
             {
-                // when does this actually need to run? only if the group moved the previous frame, right?
-                var found = groups.FindAnyInBoundingBox(client.realPosition, MERGE_CRITERIA, offsetGroups[client.gameObject.scene]);
-                if (found != null)
+                // If this loop becomes a performance concern, can it be run less than every frame? For example only processing every nth client every frame?
+                OffsetGroup found = groups.FindAnyInBoundingBox(client.realPosition, MERGE_CRITERIA, offsetGroups[client.gameObject.scene]);
+
+                if (found != null && found.clients.Count > 0)
                 {
+                    Debug.Log($"Client in {Math.Abs(client.gameObject.scene.handle):X} found non-empty group {Math.Abs(found.scene.handle):X}");
                     MoveToGroup(client, found);
                     continue;
                 }
@@ -213,20 +215,18 @@ namespace FishNet.FloatingOrigin
                 if (Functions.MaxLengthScalar(client.transform.position) < REBASE_CRITERIA)
                     continue;
 
+                Debug.Log($"Rebasing {Math.Abs(client.gameObject.scene.handle):X}");
+
                 OffsetGroup group = offsetGroups[client.gameObject.scene];
-                Vector3d difference = group.offset - client.realPosition;
 
                 if (group.clients.Count > 1)
                 {
                     RequestMoveToNewGroup(client);
                     return;
                 }
-                else
-                {
-                    SetGroupOffset(group, client.realPosition);
-                }
             }
         }
+
         /// <summary>
         /// Moves the given Foobject to the given group.
         /// If the given Foobject was an FOClient, re-registers the FOClient with the new group.
@@ -242,14 +242,14 @@ namespace FishNet.FloatingOrigin
             if (foobject.GetType() == typeof(FOClient))
                 UpdateClientGroup((FOClient)foobject, to);
 
+            foobject.transform.position = RealToUnity(foobject.realPosition, to.scene);
             SceneManager.MoveGameObjectToScene(foobject.gameObject, to.scene);
 
-            foobject.transform.position = RealToUnity(foobject.realPosition, to.scene);
-
-            Log($"client {foobject.networking.OwnerId} group {foobject.gameObject.scene.handle} moved to group {to.scene.handle}");
+            Log($"client {foobject.networking.OwnerId} group {Math.Abs(foobject.gameObject.scene.handle):X} moved to group {Math.Abs(to.scene.handle):X}");
             if (InstanceFinder.IsHost)
                 RecomputeVisibleScenes();
         }
+
         // This updates the registration of the given FOClient. Should only be called internally by MoveToGroup.
         private void UpdateClientGroup(FOClient client, OffsetGroup to)
         {
@@ -257,18 +257,17 @@ namespace FishNet.FloatingOrigin
 
             if (offsetGroups[client.gameObject.scene].clients.Count < 1)
             {
-                queuedGroups.Enqueue(offsetGroups[client.gameObject.scene]);
+                if (queuedGroups.Count < 1 || queuedGroups.Peek() != offsetGroups[client.gameObject.scene])
+                    queuedGroups.Enqueue(offsetGroups[client.gameObject.scene]);
             }
 
             offsetGroups[to.scene].clients.Add(client);
         }
 
-
         /// <summary>
         /// Tries to move this FOClient and any nearby FOObjects in range to a new group.
         /// </summary>
         /// <param name="observer"></param>
-        /// <returns></returns>
         private void RequestMoveToNewGroup(FOClient observer)
         {
             OffsetGroup group = RequestNewGroup(observer.gameObject.scene);
@@ -282,8 +281,9 @@ namespace FishNet.FloatingOrigin
 
             CollectObjectsIntoGroup(group);
 
-            Log($"Moved FOClient from client {observer.networking.OwnerId} to queued group {group.scene.handle}", "GROUP MANAGEMENT");
+            Log($"Moved FOClient from client {observer.networking.OwnerId} to queued group {Math.Abs(group.scene.handle):X}", "GROUP MANAGEMENT");
         }
+
         private void CollectObjectsIntoGroup(OffsetGroup group)
         {
             // Stopwatch watch = new Stopwatch();
@@ -297,17 +297,19 @@ namespace FishNet.FloatingOrigin
             // watch.Stop();
         }
 
-
-        void FixedUpdate()
+        private void FixedUpdate()
         {
             if (_physicsMode == PhysicsMode.Unity)
                 Simulate();
         }
+
         internal void Simulate()
         {
             foreach (Scene scene in offsetGroups.Keys)
+            {
                 if (scene.IsValid())
                     scene.GetPhysicsScene().Simulate(Time.fixedDeltaTime);
+            }
         }
 
         /// <summary>
@@ -322,25 +324,18 @@ namespace FishNet.FloatingOrigin
             {
                 queuedGroups.Dequeue();
             }
-
             if (queuedGroups.Count > 0)
             {
-                if (queuedGroups.Peek().scene.IsValid())
-                    return queuedGroups.Dequeue();
-                else
-                    return null;
+                return queuedGroups.Dequeue();
             }
             else
             {
                 var offsetGroup = new OffsetGroup(invalidScene, Vector3d.zero);
-                queuedGroups.Enqueue(offsetGroup);
-
-                SceneManager.LoadSceneAsync(scene.buildIndex, parameters).completed += (arg) => SetupGroup(offsetGroup);
+                SceneManager.LoadSceneAsync(scene.buildIndex, parameters).completed += (arg) =>
+                    SetupGroup(offsetGroup);
                 return null;
             }
-
         }
-
         private void SetupGroup(OffsetGroup group)
         {
             group.scene = SceneManager.GetSceneAt(SceneManager.sceneCount - 1);
@@ -348,6 +343,24 @@ namespace FishNet.FloatingOrigin
             AddOffsetGroup(group);
 
             CullNetworkObjects(group.scene);
+        }
+        /// <summary>
+        /// Adds the given OffsetGroups to the tracked OffsetGroups and to the Groups hashgrid.
+        /// </summary>
+        /// <param name="group">
+        /// The offset group being added.
+        /// </param>
+        private void AddOffsetGroup(OffsetGroup group)
+        {
+            //add to HashGrid as well!
+            offsetGroups.Add(group.scene, group);
+            //There should NEVER be two OffsetGroups with the same offset. By virtue of having the same offset this means the groups would be merged.
+            groups.Add(group.offset, group);
+            queuedGroups.Enqueue(group);
+            Log(
+                $"Added group {Math.Abs(group.scene.handle):X} on grid position {groups.Quantize(group.offset)}",
+                "HOUSEKEEPING"
+            );
         }
     }
 }

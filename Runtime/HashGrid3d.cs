@@ -55,7 +55,7 @@ namespace FishNet.FloatingOrigin
             this.resolution = resolution;
             this.resolutionInverseScalar = 1 / ((float)resolution);
         }
-
+        public int Count { get => dict.Count; }
         public void Add(Vector3d vector, T value)
         {
             Vector3d quantized = Quantize(vector);
@@ -83,14 +83,16 @@ namespace FishNet.FloatingOrigin
         /// <summary>
         /// Finds a set of objects in the given Bounding Box.
         /// </summary>
-        /// <param name="vector">
+        /// <param name="center">
         /// Center of search.
         /// </param>
         /// <param name="distance">
         /// Search bounding box radius.
         /// </param>
-        /// <returns></returns>
-        public HashSet<T> FindInBoundingBox(Vector3d vector, double distance)
+        /// <returns>
+        /// A HashSet containing all found objects.
+        /// </returns>
+        public HashSet<T> FindInBoundingBox(Vector3d center, double distance)
         {
             if (distance > resolution * 2)
             {
@@ -101,7 +103,7 @@ namespace FishNet.FloatingOrigin
 
             HashSet<T> found = new HashSet<T>();
 
-            Vector3d initial = Quantize(vector) * resolution;
+            Vector3d initial = Quantize(center) * resolution;
 
             for (int i = 0; i < SEARCH_PATTERN.Length; i++)
             {
@@ -109,19 +111,19 @@ namespace FishNet.FloatingOrigin
                 {
                     foreach (var cell_element in dict[Quantize(initial + SEARCH_PATTERN[i])])
                     {
-                        if (Functions.MaxLengthScalar(cell_element.Value - vector) < distance)
+                        if (Functions.MaxLengthScalar(cell_element.Value - center) < distance)
                             found.Add(cell_element.Key);
                     }
                 }
             }
             return found;
         }
-        public T FindAnyInBoundingBox(Vector3d vector, double distance, T exclude = null)
+        public T FindAnyInBoundingBox(Vector3d center, double distance, T exclude = null)
         {
             int range = (int)Mathd.Ceil(distance * (1d / resolution));
             range += range % 2;
 
-            Vector3d initial = Quantize(vector) * resolution;
+            Vector3d initial = Quantize(center) * resolution;
 
             for (int i = 0; i < SEARCH_PATTERN.Length; i++)
             {
@@ -129,7 +131,7 @@ namespace FishNet.FloatingOrigin
                 {
                     foreach (var cell_element in dict[Quantize(initial + SEARCH_PATTERN[i])])
                     {
-                        if (cell_element.Key != exclude && Functions.MaxLengthScalar(cell_element.Value - vector) < distance)
+                        if (cell_element.Key != exclude && Functions.MaxLengthScalar(cell_element.Value - center) < distance)
                             return cell_element.Key;
                     }
                 }

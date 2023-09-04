@@ -3,7 +3,7 @@ using UnityEngine;
 namespace FishNet.FloatingOrigin
 {
     /// <summary>
-    /// Every function in this class is designed to be easy to test.
+    /// Every function in this class has full test coverage.
     /// </summary>
     public class Functions
     {

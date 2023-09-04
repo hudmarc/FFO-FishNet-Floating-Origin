@@ -18,6 +18,15 @@ namespace FishNet.FloatingOrigin
                 this.scene = scene;
                 this.offset = offset;
             }
+            public Vector3 GetClientCentroid()
+            {
+                Vector3 position = Vector3.zero;
+                foreach (var client in clients)
+                {
+                    position += client.transform.position;
+                }
+                return position / clients.Count;
+            }
         }
         /// <summary>
         /// Interface used for communicating with an Offsetter. An Offsetter is responsible for correctly offsetting all scene objects when the origin is shifted. If you wish to write your own implementation, make sure it uses this interface.

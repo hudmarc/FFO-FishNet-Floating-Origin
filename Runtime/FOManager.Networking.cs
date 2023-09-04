@@ -1,4 +1,3 @@
-// using FishNet.Component.Transforming;
 using System;
 using System.Collections.Generic;
 using FishNet.Connection;
@@ -64,7 +63,7 @@ namespace FishNet.FloatingOrigin
 
         void SyncGroup(OffsetGroup group)
         {
-            Log($"Synchronizing group {group.scene.handle}", "NETWORKING");
+            Log($"Synchronizing group {Math.Abs(group.scene.handle):X}", "NETWORKING");
 
             foreach (FOClient client in group.clients)
             {

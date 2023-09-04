@@ -1,3 +1,4 @@
+using System;
 using FishNet.Managing.Timing;
 using FishNet.Object;
 using UnityEngine;
@@ -13,7 +14,7 @@ namespace FishNet.FloatingOrigin
             if (local == null)
                 return;
 
-            Log($"Recomputing scene visibility. Local observer is {(local == null ? "null" : "something")}", "SCENE MANAGEMENT");
+            Log("Recomputing scene visibility on server.", "SCENE MANAGEMENT");
 
             foreach (Scene scn in offsetGroups.Keys)
             {
@@ -25,7 +26,7 @@ namespace FishNet.FloatingOrigin
         }
         private void SetSceneVisibillity(Scene scene, bool visible)
         {
-            Log($"Set scene {scene.handle} {(visible ? "visible" : "not visible")}", "SCENE MANAGEMENT");
+            Log($"Set scene {Math.Abs(scene.handle):X} {(visible ? "visible" : "not visible")}", "SCENE MANAGEMENT");
             var rootObjectsInScene = scene.GetRootGameObjects();
             for (int i = 0; i < rootObjectsInScene.Length; i++)
             {
@@ -97,5 +98,9 @@ namespace FishNet.FloatingOrigin
         public Vector3 RealToUnity(Vector3d realPosition, Scene scene) => Functions.RealToUnity(realPosition, serverFullStart ? offsetGroups[scene].offset : localOffset);
 
         public Vector3d UnityToReal(Vector3 unityPosition, Scene scene) => Functions.UnityToReal(unityPosition, serverFullStart ? offsetGroups[scene].offset : localOffset);
+    }
+    public static class FOManagerExtensions
+    {
+        public static Vector3d GetRealPosition(this Transform transform) => FOManager.instance.UnityToReal(transform.position, transform.gameObject.scene);
     }
 }
