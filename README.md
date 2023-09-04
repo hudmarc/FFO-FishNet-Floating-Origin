@@ -12,13 +12,19 @@ Click "Add package from git URL..." in the Unity Package Manager (UPM) and paste
 <img width="412" alt="image" src="https://github.com/hudmarc/FFO-FishNet-Floating-Origin/assets/44267994/5213f8e8-f3a1-4f89-9133-3e066068f03e">
 
 > Add the Floating Origin Condition to the default observers of the `ObserverManager` in order to hide clients in different offset groups from eachother. Note the Condition has not been fully tested as of writing this Readme.
-
+> The current "best practice" is to separate your "game world" from your "manager world". You can use the builtin `DefaultScene` module in order to automatically load the game world when needed. The idea behind this is to avoid cloning of the `NetworkManager` and attached `FOManager` but both modules should be capable of tolerating cloning.
 
 ### FOClient:
 
 <img width="412" alt="image" src="https://github.com/hudmarc/FFO-FishNet-Floating-Origin/assets/44267994/e4a396ce-81bc-4450-ad39-c6b1030b7d88">
 
 > Remember to enable Teleport on your NetworkTransform if syncing is broken on game clients!
+
+### FOObject:
+Attach the `FOObject` component to any object you want only a single instance of (Anything with a `NetworkObject` component that can't move far enough to cause a rebase)
+> For example unique settlements or trader posts or AI that always stays within a close radius from its spawn.
+> FOObjects are just FOClients which don't get updated every time they move.
+> It should be possible to have scened NetworkObjects as FOObjects but this has not been thoroughly tested.
 
 # FAQ
 
