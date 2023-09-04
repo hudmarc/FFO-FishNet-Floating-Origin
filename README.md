@@ -13,7 +13,7 @@ Click "Add package from git URL..." in the Unity Package Manager (UPM) and paste
 
 > Add the Floating Origin Condition to the default observers of the `ObserverManager` in order to hide clients in different offset groups from eachother. Note the Condition has not been fully tested as of writing this Readme.
 
-> The current "best practice" is to separate your "game world" from your "manager world". You can use FishNet's `DefaultScene` component in order to automatically load the game world when needed. The idea behind this is to avoid cloning of the `NetworkManager` and attached `FOManager` but both modules should be able to tolerate cloning.
+> The current "best practice" is to separate your "game world" from your "manager world". You can use FishNet's `DefaultScene` component in order to automatically load the game world when needed. The idea behind this is to avoid cloning the `NetworkManager` and attached `FOManager` but both modules should be able to tolerate cloning.
 
 ### FOClient:
 
