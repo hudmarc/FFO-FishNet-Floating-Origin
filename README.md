@@ -38,6 +38,9 @@ Because this package uses multi-scene stacking, you MUST remember to convert all
 ### Why are FOClients on game clients desynchronizing on offset?
 You should enable Teleport on your FOClient's NetworkTransform if this is a problem you are encountering with your game.
 
+### When should I use an FOClient or an FOObject?
+The general rule is to use an FOObject for any NetworkObjects without NetworkTransforms (or which can't move far enough to cause a rebase) which you need to synchronize accross the network, since this will ensure only one instance of the NetworkObject exists at a time. FOClients are best used for FOObjects with NetworkTransforms which can move far distances, like players.
+
 ## Todo:
 ### Quality of life
 ✅ Add screenshots for manager and NetworkObject setup
