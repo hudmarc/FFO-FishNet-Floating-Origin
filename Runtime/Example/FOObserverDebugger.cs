@@ -3,11 +3,11 @@ using UnityEngine;
 
 namespace FishNet.FloatingOrigin
 {
-    [RequireComponent(typeof(FOClient))]
+    [RequireComponent(typeof(FOView))]
     public class FOObserverDebugger : NetworkBehaviour
     {
-        private FOClient observer;
-        void OnEnable() => observer = GetComponent<FOClient>();
+        private FOView observer;
+        void OnEnable() => observer = GetComponent<FOView>();
 #if UNITY_EDITOR
         void OnDrawGizmos()
         {

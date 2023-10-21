@@ -11,7 +11,7 @@ namespace FishNet.FloatingOrigin
         {
             public Scene scene;
             public Vector3d offset;
-            public HashSet<FOClient> clients = new HashSet<FOClient>();
+            public HashSet<FOView> views = new HashSet<FOView>();
 
             public OffsetGroup(Scene scene, Vector3d offset)
             {
@@ -21,11 +21,11 @@ namespace FishNet.FloatingOrigin
             public Vector3 GetClientCentroid()
             {
                 Vector3 position = Vector3.zero;
-                foreach (var client in clients)
+                foreach (var client in views)
                 {
                     position += client.transform.position;
                 }
-                return position / clients.Count;
+                return position / views.Count;
             }
         }
         /// <summary>

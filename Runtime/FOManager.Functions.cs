@@ -26,7 +26,7 @@ namespace FishNet.FloatingOrigin
         }
         private void SetSceneVisibillity(Scene scene, bool visible)
         {
-            Log($"Set scene {Math.Abs(scene.handle):X} {(visible ? "visible" : "not visible")}", "SCENE MANAGEMENT");
+            Log($"Set scene {scene.ToHex()} {(visible ? "visible" : "not visible")}", "SCENE MANAGEMENT");
             var rootObjectsInScene = scene.GetRootGameObjects();
             for (int i = 0; i < rootObjectsInScene.Length; i++)
             {
@@ -60,17 +60,21 @@ namespace FishNet.FloatingOrigin
         }
 
         /// <summary>
-        /// Remove scene NOB's on newly created scenes.
+        /// Remove scene FOObjects and FOViews on newly created scenes.
         /// </summary>
         /// <param name="scene">
-        /// The scene to cull NOB's from.
+        /// The scene to cull FOObjects and FOViews from.
         /// </param>
-        private void CullNetworkObjects(Scene scene)
+        private void CullFOObjects(Scene scene)
         {
+            Debug.Log($"Culling objects from scene {scene.ToHex()}");
             var objects = scene.GetRootGameObjects();
             foreach (GameObject g in objects)
             {
-                if (g.TryGetComponent<NetworkObject>(out NetworkObject obj))
+
+                FOObject obj = g.GetComponent<FOObject>();
+
+                if (obj != null)
                 {
                     obj.gameObject.SetActive(false);
                     Destroy(obj.gameObject);
@@ -95,12 +99,30 @@ namespace FishNet.FloatingOrigin
             _physicsMode = mode;
         }
 
-        public Vector3 RealToUnity(Vector3d realPosition, Scene scene) => Functions.RealToUnity(realPosition, serverFullStart ? offsetGroups[scene].offset : localOffset);
+        public Vector3 RealToUnity(Vector3d realPosition, Scene scene) => Functions.RealToUnity(realPosition, hostFullStart ? offsetGroups[scene].offset : localOffset);
 
-        public Vector3d UnityToReal(Vector3 unityPosition, Scene scene) => Functions.UnityToReal(unityPosition, serverFullStart ? offsetGroups[scene].offset : localOffset);
+        public Vector3d UnityToReal(Vector3 unityPosition, Scene scene) => Functions.UnityToReal(unityPosition, hostFullStart ? offsetGroups[scene].offset : localOffset);
+        public void RecomputeObjectGridPositions()
+        {
+            var foobjects = GameObject.FindObjectsOfType<FOObject>();
+
+            objects.Clear();
+
+            foreach (var foo in foobjects)
+            {
+                objects.Add(foo.realPosition, foo);
+            }
+        }
     }
     public static class FOManagerExtensions
     {
+        const string HEX = "X";
         public static Vector3d GetRealPosition(this Transform transform) => FOManager.instance.UnityToReal(transform.position, transform.gameObject.scene);
+        public static string ToHex(this Scene scene) => Math.Abs(scene.handle).ToString(HEX);
+        public static PhysicsScene PhysicsScene(this GameObject gameObject) => gameObject.scene.GetPhysicsScene();
+        // public static void SetPosition(this FOObject foo, Vector3 position)
+        // {
+        //     FOManager.instance.SetPosition(foo, position);
+        // }
     }
 }

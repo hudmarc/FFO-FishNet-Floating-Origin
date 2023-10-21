@@ -72,10 +72,6 @@ namespace FishNet.FloatingOrigin
                             Mathd.Floor(vector.y * resolutionInverseScalar),
                             Mathd.Floor(vector.z * resolutionInverseScalar));
         }
-        public void Remove(Vector3d vector)
-        {
-            dict.Remove(Quantize(vector));
-        }
         public bool Has(Vector3d vector)
         {
             return dict.ContainsKey(Quantize(vector));
@@ -139,5 +135,7 @@ namespace FishNet.FloatingOrigin
             return null;
         }
         public HashSet<T> this[Vector3d vector] => dict[Quantize(vector)].Keys.ToHashSet<T>();
+        public void Clear() => dict.Clear();
+        public void Remove(Vector3d vector) => dict.Remove(Quantize(vector));
     }
 }

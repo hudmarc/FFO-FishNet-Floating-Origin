@@ -13,9 +13,9 @@ namespace FishNet.FloatingOrigin
             if (!loggingEnabled)
                 return;
             if (category == null)
-                Debug.Log($"[{InstanceFinder.TimeManager.Tick}] {message}");
+                Debug.Log($"[{InstanceFinder.TimeManager?.Tick}] {message}");
             else
-                Debug.Log($"[{category}    {InstanceFinder.TimeManager.Tick}] {message}");
+                Debug.Log($"[{category} : {InstanceFinder.TimeManager?.Tick}] {message}");
 #endif
         }
         bool hideDebug = false;
@@ -52,10 +52,10 @@ namespace FishNet.FloatingOrigin
 #endif
         public void DrawDebug()
         {
-            GUILayout.Button($"Groups: {offsetGroups.Count} Tracked Groups: {groups.Count} Clients: {clients.Count} Objects: {objects.Count} Queued Groups: {queuedGroups.Count}");
+            GUILayout.Button($"Groups: {offsetGroups.Count} Tracked Groups: {groups.Count} Clients: {views.Count} Objects: {objects.Count} Queued Groups: {queuedGroups.Count}");
             foreach (var val in offsetGroups)
             {
-                GUILayout.Button($" Scene {val.Key.handle}: {val.Value.offset} O: {val.Value.clients.Count} o: {val.Value.clients.Count}");
+                GUILayout.Button($" Scene {val.Key.ToHex()}: {val.Value.offset} O: {val.Value.views.Count} o: {val.Value.views.Count}");
             }
             if (GUILayout.Button("Toggle FO Debug"))
             {
@@ -64,22 +64,14 @@ namespace FishNet.FloatingOrigin
             if (hideDebug)
                 return;
 
-            if (queuedGroups.Count > 100)
-            {
-                Debug.Break();
-                return;
-            }
             foreach (var val in queuedGroups)
             {
-                GUILayout.Button($" Queued: {Math.Abs(val.scene.handle):X}");
+                GUILayout.Button($" Queued: {val.scene.ToHex()}");
             }
-            foreach (var client in clients)
-            {
-                if (client != null)
-                    GUILayout.Button($"Object: {client.networking.ObjectId} Owner: {client.networking.OwnerId} Unity: {(int)client.transform.position.x} {(int)client.transform.position.y} {(int)client.transform.position.z} Real: {(int)client.realPosition.x} {(int)client.realPosition.y} {(int)client.realPosition.z}\n Members: {offsetGroups[client.gameObject.scene].clients.Count} Handle: {Math.Abs(client.gameObject.scene.handle):X}");
-            }
-
         }
-
+        public String GetDebugText(FOObject foo)
+        {
+            return $"Unity: {(int)foo.transform.position.x} {(int)foo.transform.position.y} {(int)foo.transform.position.z} Real: {(int)foo.realPosition.x} {(int)foo.realPosition.y} {(int)foo.realPosition.z} Members: {offsetGroups[foo.gameObject.scene].views.Count} Handle: {foo.gameObject.scene.ToHex()} Grid: {objects.Quantize(foo.realPosition)}";
+        }
     }
 }

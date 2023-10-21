@@ -8,7 +8,7 @@ using UnityEngine.SceneManagement;
 namespace FishNet.FloatingOrigin.Observing
 {
     /// <summary>
-    /// When this observer condition is placed on an object, a client must be within the same floating origin group to view the object.
+    /// When this observer condition is placed on an object, a View must be within the same floating origin group to see the object.
     /// </summary>
     [CreateAssetMenu(menuName = "FishNet/Observers/Floating Origin Condition", fileName = "New Floating Origin Condition")]
     public class FOCondition : ObserverCondition

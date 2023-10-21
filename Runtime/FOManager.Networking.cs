@@ -1,3 +1,4 @@
+#if FISHNET
 using System;
 using System.Collections.Generic;
 using FishNet.Connection;
@@ -10,8 +11,6 @@ namespace FishNet.FloatingOrigin
 {
     public partial class FOManager
     {
-        private readonly Dictionary<NetworkConnection, FOClient> networkedClients = new Dictionary<NetworkConnection, FOClient>();
-        internal Scene mainScene;
         private Vector3d localOffset = Vector3d.zero;
 
         [Client]
@@ -20,7 +19,7 @@ namespace FishNet.FloatingOrigin
             Vector3d difference = localOffset - broadcast.offset;
 
             Log($"Received Offset Sync Broadcast {broadcast.offset} offsetting {difference} from {localOffset}", "NETWORKING");
-            
+
             localOffset = broadcast.offset;
 
             if (InstanceFinder.IsServer)
@@ -28,50 +27,55 @@ namespace FishNet.FloatingOrigin
 
             Vector3 remainder = (Vector3)(difference - ((Vector3d)(Vector3)difference));
 
-            if (!mainScene.IsValid())
+            if (!GetLocalFirstCached().gameObject.scene.IsValid())
             {
                 return;
             }
-            ioffsetter.Offset(mainScene, (Vector3)difference);
+            ioffsetter.Offset(GetLocalFirstCached().gameObject.scene, (Vector3)difference);
 
             if (remainder != Vector3.zero)
             {
-                ioffsetter.Offset(mainScene, (Vector3)remainder);
+                ioffsetter.Offset(GetLocalFirstCached().gameObject.scene, (Vector3)remainder);
                 Log("Remainder was not zero, offset with precise remainder. If this causes a bug, now you know what to debug.", "NETWORKING");
             }
 
         }
 
         [Server]
-        internal void SyncOffset(FOClient client)
+        internal void SyncOffset(FOView view)
         {
-            Log("Synchronizing Broadcast", "NETWORKING");
-            if (!client.networking.IsOwner)
+            if (view._networking != null && view._networking.Owner?.IsValid == true && !view._networking.IsOwner)
             {
-                InstanceFinder.ServerManager.Broadcast(client.networking.Owner, new OffsetSyncBroadcast(offsetGroups[client.gameObject.scene].offset));
+                Log("Synchronizing Broadcast", "NETWORKING");
+                InstanceFinder.ServerManager.Broadcast(view._networking.Owner, new OffsetSyncBroadcast(offsetGroups[view.gameObject.scene].offset));
             }
         }
-
-        internal Scene GetSceneForConnection(NetworkConnection connection)
+        [Client]
+        private NetworkObject GetLocalFirstCached()
         {
-            if (!networkedClients.ContainsKey(connection))
+            if (cachedFirst == null && InstanceFinder.ClientManager.Connection != null)
             {
-                return new Scene();
+                cachedFirst = GetLocalFirst();
             }
-            return networkedClients[connection].gameObject.scene;
+            return cachedFirst;
         }
+        [Client]
+        private NetworkObject GetLocalFirst() => InstanceFinder.ClientManager.Connection.FirstObject;
 
+        internal Scene GetSceneForConnection(NetworkConnection connection) => connection.FirstObject.gameObject.scene;
+        private NetworkObject cachedFirst = null;
         void SyncGroup(OffsetGroup group)
         {
-            Log($"Synchronizing group {Math.Abs(group.scene.handle):X}", "NETWORKING");
+            Log($"Synchronizing group {group.scene.ToHex()}", "NETWORKING");
 
-            foreach (FOClient client in group.clients)
+            foreach (FOView view in group.views)
             {
-                if (!client.IsOwner)
+                if (view._networking?.IsOwner == false)
                 {
-                    SyncOffset(client);
+                    SyncOffset(view);
                 }
             }
         }
     }
 }
+#endif
