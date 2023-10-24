@@ -62,7 +62,14 @@ namespace FishNet.FloatingOrigin
         [Client]
         private NetworkObject GetLocalFirst() => InstanceFinder.ClientManager.Connection.FirstObject;
 
-        internal Scene GetSceneForConnection(NetworkConnection connection) => connection.FirstObject.gameObject.scene;
+        internal Scene GetSceneForConnection(NetworkConnection connection)
+        {
+            if (connection.FirstObject == null)
+            {
+                return invalidScene;
+            }
+            return connection.FirstObject.gameObject.scene;
+        }
         private NetworkObject cachedFirst = null;
         void SyncGroup(OffsetGroup group)
         {

@@ -1,0 +1,14 @@
+{
+    "name": "hudmarc.FFO.Tests",
+    "rootNamespace": "",
+    "references": [
+        "FishNet.FloatingOrigin.Runtime",
+        "FishNet.Runtime"
+    ],
+    "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": []
+
+}

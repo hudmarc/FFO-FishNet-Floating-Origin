@@ -1,10 +1,11 @@
 {
-    "name": "Tests.fishnet-floating-origin_Tests",
+    "name": "hudmarc.FFO.Editor.Tests",
     "rootNamespace": "",
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "FishNet.FloatingOrigin.Runtime"
+        "FishNet.FloatingOrigin.Runtime",
+        "FishNet.Runtime"
     ],
     "includePlatforms": [
         "Editor"

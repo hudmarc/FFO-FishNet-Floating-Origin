@@ -6,6 +6,7 @@ using FishNet.Managing.Timing;
 using UnityEngine.SceneManagement;
 using FishNet.Transporting;
 using System.Collections;
+using FishNet.Managing;
 
 namespace FishNet.FloatingOrigin
 {
@@ -34,7 +35,9 @@ namespace FishNet.FloatingOrigin
         private readonly Queue<OffsetGroup> queuedGroups = new Queue<OffsetGroup>();
         private readonly LoadSceneParameters parameters = new LoadSceneParameters(LoadSceneMode.Additive, LocalPhysicsMode.Physics3D);
         private readonly Scene invalidScene = new Scene();
+
         private IOffsetter ioffsetter;
+        private NetworkManager networkManager;
 
         private bool subscribedToTick = false;
         private bool hostFullStart = false;
@@ -47,13 +50,12 @@ namespace FishNet.FloatingOrigin
                 gameObject.SetActive(false);
                 return;
             }
-            if (InstanceFinder.NetworkManager == null)
+            Physics.autoSimulation = false;
+            if (!TryGetComponent(out networkManager))
             {
                 //Offline setup
                 Log("Started FOManager in offline mode", "HOUSEKEEPING");
                 StartCoroutine(OfflineUpdate());
-                Physics.autoSimulation = false;
-                hostFullStart = true; //host is considered the local game in this case
             }
             instance = this;
         }
@@ -62,24 +64,28 @@ namespace FishNet.FloatingOrigin
         {
             Log("Starting FOManager", "HOUSEKEEPING");
             ioffsetter = GetComponent<IOffsetter>();
-            if (InstanceFinder.NetworkManager == null)
+            if (networkManager == null)
+            {
+                hostFullStart = true; //host is considered the local game in this case
                 return;
+            }
 
-            InstanceFinder.ServerManager.OnServerConnectionState += ServerFullStart;
-            InstanceFinder.ClientManager.OnClientConnectionState += ClientFullStart;
+
+            networkManager.ServerManager.OnServerConnectionState += ServerFullStart;
+            networkManager.ClientManager.OnClientConnectionState += ClientFullStart;
         }
 
         void OnDisable()
         {
-            if (InstanceFinder.NetworkManager == null)
+            if (networkManager == null)
                 return;
 
-            InstanceFinder.ServerManager.OnServerConnectionState -= ServerFullStart;
+            networkManager.ServerManager.OnServerConnectionState -= ServerFullStart;
 
             if (hostFullStart)
             {
-                InstanceFinder.ClientManager.UnregisterBroadcast<OffsetSyncBroadcast>(OnOffsetSyncBroadcast);
-                InstanceFinder.TimeManager.OnPreTick -= ProcessGroupsAndViews;
+                networkManager.ClientManager.UnregisterBroadcast<OffsetSyncBroadcast>(OnOffsetSyncBroadcast);
+                networkManager.TimeManager.OnPreTick -= ProcessGroupsAndViews;
             }
         }
 
@@ -88,19 +94,18 @@ namespace FishNet.FloatingOrigin
             if (args.ConnectionState != LocalConnectionState.Started)
                 return;
 
-            InstanceFinder.TimeManager.OnPreTick += ProcessGroupsAndViews;
+            networkManager.TimeManager.OnPreTick += ProcessGroupsAndViews;
             GetComponent<TimeManager>().SetPhysicsMode(PhysicsMode.Disabled);
-            Physics.autoSimulation = false;
             SetPhysicsMode(PhysicsMode);
             hostFullStart = true;
         }
 
         private void ClientFullStart(ClientConnectionStateArgs args)
         {
-            if (args.ConnectionState != LocalConnectionState.Started || InstanceFinder.IsServer)
+            if (args.ConnectionState != LocalConnectionState.Started || networkManager.IsServer)
                 return;
 
-            InstanceFinder.ClientManager.RegisterBroadcast<OffsetSyncBroadcast>(
+            networkManager.ClientManager.RegisterBroadcast<OffsetSyncBroadcast>(
                 OnOffsetSyncBroadcast
             );
             Log("Listening for offset sync broadcasts...", "NETWORKING");
@@ -114,12 +119,17 @@ namespace FishNet.FloatingOrigin
 
         internal void RegisterView(FOView view)
         {
-            // if (!hostFullStart && InstanceFinder.IsClientOnly)
-            //     return;
+            if (networkManager != null && networkManager.IsClientOnly)
+                return;
 
             if (local == null)
             {
                 local = view;
+            }
+            if (views.Contains(view))
+            {
+                Debug.LogWarning($"Tried to register FOView on {view.gameObject.name} that was already registered!");
+                return;
             }
             views.Add(view);
 
@@ -147,8 +157,11 @@ namespace FishNet.FloatingOrigin
 
         internal void UnregisterView(FOView view)
         {
-            // if (!hostFullStart && InstanceFinder.IsClientOnly)
-            //     return;
+            if (!views.Contains(view))
+                return;
+            // Debug.LogWarning($"Tried to unregister FOView on {view.gameObject.name} that is not registered!");
+
+
 
             views.Remove(view);
             offsetGroups[view.gameObject.scene].views.Remove(view);
@@ -178,16 +191,19 @@ namespace FishNet.FloatingOrigin
 
             Vector3d difference = group.offset - offset;
 
-            Vector3 remainder = (Vector3)(difference - ((Vector3d)((Vector3)difference)));
+            // Vector3 remainder = -(Vector3)(difference - ((Vector3d)((Vector3)difference)));
 
             ioffsetter.Offset(group.scene, (Vector3)difference);
 
-            if (remainder != Vector3.zero)
-            {
-                Debug.LogWarning($"Remainder was {remainder}");
-                ioffsetter.Offset(group.scene, remainder);
-                Log("Offset with precise remainder. If this causes a bug, now you know what to debug.", "SCENE MANAGEMENT");
-            }
+            Log($"Offset {group.scene.ToHex()} by {(Vector3)difference}");
+
+            // if (remainder != Vector3.zero)
+            // {
+            //     Debug.LogWarning($"Remainder was {remainder}");
+            //     ioffsetter.Offset(group.scene, remainder);
+            //     Log($"Offset {group.scene.ToHex()} by {remainder}");
+            //     Log("Offset with precise remainder. If this causes a bug, now you know what to debug.", "SCENE MANAGEMENT");
+            // }
 
             group.offset = offset;
 
@@ -197,16 +213,7 @@ namespace FishNet.FloatingOrigin
 
         internal void ProcessGroupsAndViews()
         {
-            // If an OffsetGroup has a pack of Views which are closely clumped this should keep them in the group while automatically kicking stragglers off to other groups.
-            foreach (OffsetGroup group in offsetGroups.Values)
-            {
-                Vector3 centroid = group.GetClientCentroid();
-                if (centroid.sqrMagnitude >= REBASE_CRITERIA * REBASE_CRITERIA)
-                {
-                    //This seems to cause problems when in multiplayer
-                    SetGroupOffset(group, group.offset + (Vector3d)centroid);
-                }
-            }
+            
             foreach (FOView view in views)
             {
                 // If this loop becomes a performance concern, can it be run less than every frame? For example only processing every nth view every frame?
@@ -229,13 +236,27 @@ namespace FishNet.FloatingOrigin
                 if (Functions.MaxLengthScalar(view.transform.position) < REBASE_CRITERIA)
                     continue;
 
-                Log($"Rebasing {view.gameObject.scene.ToHex()}");
+                Log($"View {view.networking?.ObjectId} in group {view.gameObject.scene.ToHex()} is out of bounds ({view.realPosition}), attempting to move to new group.");
 
                 OffsetGroup group = offsetGroups[view.gameObject.scene];
 
                 if (group.views.Count > 1)
                 {
                     RequestMoveToNewGroup(view);
+                }
+            }
+
+            // If an OffsetGroup has a pack of Views which are closely clumped this should keep them in the group while automatically kicking stragglers off to other groups.
+            // If this for loop is runs before the loop that iterates over Views it freaks out in a multiplayer environment and will sometimes cause incorrect offset.
+            // When the loop runs here, after Views, it seems to work fine.
+            foreach (OffsetGroup group in offsetGroups.Values)
+            {
+                Vector3 centroid = group.GetClientCentroid();
+                if (centroid.sqrMagnitude >= REBASE_CRITERIA * REBASE_CRITERIA)
+                {
+                    Log($"Rebasing {group.scene.ToHex()}");
+                    //This seems to cause problems when in multiplayer
+                    SetGroupOffset(group, group.offset + (Vector3d)centroid);
                 }
             }
         }
@@ -257,7 +278,7 @@ namespace FishNet.FloatingOrigin
 
             foobject.transform.position = RealToUnity(foobject.realPosition, to.scene);
 
-            Log($"View {foobject._networking?.ObjectId} of group {foobject.gameObject.scene.ToHex()} moving to group {to.scene.ToHex()}");
+            Log($"View {foobject._networking?.ObjectId} {foobject.gameObject.scene.ToHex()} will move to {to.scene.ToHex()}");
 
             SceneManager.MoveGameObjectToScene(foobject.gameObject, to.scene);
 
@@ -298,13 +319,18 @@ namespace FishNet.FloatingOrigin
                 return;
             }
             String old = view.gameObject.scene.ToHex();
+            if (view.realPosition == Vector3d.one * REBASE_CRITERIA)
+            {
+                Debug.LogWarning("POTENTIAL ERROR CONDITION!");
+            }
+
             SetGroupOffset(group, view.realPosition);
 
             MoveToGroup(view, group);
 
             // CollectObjectsIntoGroup(group);
 
-            Log($"Moved FOView from client {old} to queued group {group.scene.ToHex()}", "GROUP MANAGEMENT");
+            Log($"View {view.networking?.ObjectId} {old} -> {group.scene.ToHex()}", "GROUP MANAGEMENT");
         }
         /// <summary>
         /// Collects FOObjects in range of group into this OffsetGroup.
@@ -350,9 +376,18 @@ namespace FishNet.FloatingOrigin
             if (queuedGroups.Count > 0)
             {
                 if (queuedGroups.Peek().scene != invalidScene)
+                {
+                    //doesn't seem to be an issue
+                    // if (queuedGroups.Peek().offset != Vector3d.zero)
+                    // {
+                    //     Debug.LogWarning("DEQUEUED SCENE WITH NONZERO OFFSET");
+                    // }
                     return queuedGroups.Dequeue();
+                }
                 else
+                {
                     return null;
+                }
             }
             else
             {

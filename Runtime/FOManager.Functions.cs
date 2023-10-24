@@ -112,6 +112,7 @@ namespace FishNet.FloatingOrigin
             {
                 objects.Add(foo.realPosition, foo);
             }
+           
         }
     }
     public static class FOManagerExtensions
@@ -119,7 +120,7 @@ namespace FishNet.FloatingOrigin
         const string HEX = "X";
         public static Vector3d GetRealPosition(this Transform transform) => FOManager.instance.UnityToReal(transform.position, transform.gameObject.scene);
         public static string ToHex(this Scene scene) => Math.Abs(scene.handle).ToString(HEX);
-        public static PhysicsScene PhysicsScene(this GameObject gameObject) => gameObject.scene.GetPhysicsScene();
+        public static PhysicsScene Physics(this GameObject gameObject) => gameObject.scene.GetPhysicsScene();
         // public static void SetPosition(this FOObject foo, Vector3 position)
         // {
         //     FOManager.instance.SetPosition(foo, position);
