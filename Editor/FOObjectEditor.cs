@@ -17,7 +17,7 @@ namespace FishNet.FloatingOrigin
             DrawDefaultInspector();
             if (Application.isPlaying)
             {
-                if (FOManager.instance != null)
+                if (FOManager.instance != null && !InstanceFinder.IsClientOnly)
                 {
                     var position = foobject.realPosition;
                     EditorGUILayout.BeginHorizontal("box");
