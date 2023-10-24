@@ -88,6 +88,8 @@ FOClients are best used for FOObjects with NetworkTransforms which can move far 
 
 🔲 Test more than one FOClient per connection
 
+🔲 Test multiple FOClients merging then separating
+
 🔲 Test FOObjects being moved around between groups
 
 🔲 Test wandering agents (tests two clients wandering around and then meeting again at a given point)
