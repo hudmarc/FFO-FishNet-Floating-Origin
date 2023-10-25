@@ -56,11 +56,13 @@ FOViews are best used for FOObjects with NetworkTransforms which can move far di
 ### Quality of Life
 ✅ Add screenshots for manager and NetworkObject setup
 
-🔲 Create demo scene/game
+🔲 Re-add FOAnchor component.
 
 🔲 Add a function to set the "main view" for a connection. Might be necessary if you spawned in your AI's before your player.
 
-🔲 Create demo video
+🔲 Create a demo scene/game
+
+🔲 Create a demo video
 
 🔲 Integrate CI testing on GitHub repo for automatic testing (currently the tests are run manually)
 
@@ -79,8 +81,6 @@ FOViews are best used for FOObjects with NetworkTransforms which can move far di
 
 ### Performance
 ✅ Optimize Hashgrid search to use lookup table for adjacent squares
-
-🔲 Fix Network Condition so it doesn't constantly update
 
 ## Unit Testing
 
@@ -121,13 +121,15 @@ Editor:
 
 #### Networking
 
+I have observed all of the below working correctly when running other networked tests, but have not written automated tests specifically for these network faliure cases. They are low priority since no bugs have been observered.
+
 🔲 Test client FOClients only, no server FOClient
 
 🔲 Test client joining then leaving then rejoining
 
 🔲 Test hot reloading/ starting a new game without restarting the server
 
-🔲 Stress test Network Condition
+🔲 Stress test FO Observer Network Condition
 
 
 
