@@ -23,9 +23,9 @@ Click "Add package from git URL..." in the Unity Package Manager (UPM) and paste
 
 <img width="503" alt="image" src="https://github.com/hudmarc/FFO-FishNet-Floating-Origin/assets/44267994/b0d23fa3-3246-4ad7-b8c8-64cfea18cc45">
 
-> Remember to enable Teleport on your NetworkTransform if syncing is broken on game clients!
+> Remember to *disable* Teleport on your NetworkTransform, unless you absolutely need to teleport the NT somewhere! Then it's ok to enable it temporarily. Otherwise it will cause rubberbanding!
 
-> Client Authoritative network transforms are not supported currently. This package is designed for use with server-authoritative movement with (or without) client side prediction.
+> Client Authoritative network transforms are untested and not supported. This package is designed for use with server-authoritative movement with (or without) client side prediction.
 
 ### `FOObject`
 Attach the `FOObject` component to any object you want only a single instance of (Anything with a `NetworkObject` component that can't move far enough to cause a rebase)
@@ -40,7 +40,7 @@ If you want the object anchored to a point in 3D space, set the Anchored Positio
 
 # FAQ
 
-### Why is my physics not working properly?
+### Why are my physics interactions not working properly?
 
 Because this package uses multi-scene stacking, you MUST remember to convert all calls to the `Physics` library to instead use the local physics scene. For example `Physics.Raycast` would be `gameObject.scene.GetPhysicsScene().Raycast` or the shortcut provided by this package `gameObject.Physics().Raycast`. Otherwise your physics will not work correctly!
 
@@ -48,6 +48,9 @@ Because this package uses multi-scene stacking, you MUST remember to convert all
 You should enable Teleport on your FOView's `NetworkTransform` if this is a problem you are encountering with your game.
 
 ### When should I use an `FOView` or an `FOObject`?
+
+For giant, immovable stuff like planets, don't use `FOObject` or `FOView`. This way they will exist in all stacked scenes, so that all players can view them and interact with them.
+
 The general rule is to use an `FOObject` for any NetworkObjects which:
 
 - Don't have a `NetworkTransform` component OR can't move far enough to cause a rebase
@@ -63,7 +66,7 @@ FOViews are best used for FOObjects with NetworkTransforms which can move far di
 ### Quality of Life
 ✅ Add screenshots for manager and NetworkObject setup
 
-✅ Re-add FOAnchor component. (Now implemented directly in FOObject)
+🔲 Re-add FOAnchor component. (currently FOObjects expose the same behaviour, but it makes more sense to have the FOAnchor as a separate component, to anchor i.e. huge stuff like planets that shouldn't be an FOObject because they can't exist in only one scene)
 
 🔲 Add a function to set the "main view" for a connection. Might be necessary if you spawned in your AI's before your player.
 
