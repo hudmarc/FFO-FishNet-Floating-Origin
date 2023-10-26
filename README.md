@@ -25,6 +25,9 @@ Click "Add package from git URL..." in the Unity Package Manager (UPM) and paste
 
 ### `FOObject`
 Attach the `FOObject` component to any object you want only a single instance of (Anything with a `NetworkObject` component that can't move far enough to cause a rebase)
+
+If you want the object anchored to a point in 3D space, set the Anchored Position to something other than 0,0,0
+
 > For example unique settlements or trader posts or AI that always stays within a close radius from its spawn.
 
 > FOObjects are just FOView's which don't get updated every time they move.
@@ -56,11 +59,13 @@ FOViews are best used for FOObjects with NetworkTransforms which can move far di
 ### Quality of Life
 ✅ Add screenshots for manager and NetworkObject setup
 
-🔲 Create demo scene/game
+✅ Re-add FOAnchor component. (Now implemented directly in FOObject)
 
 🔲 Add a function to set the "main view" for a connection. Might be necessary if you spawned in your AI's before your player.
 
-🔲 Create demo video
+🔲 Create a demo scene/game
+
+🔲 Create a demo video
 
 🔲 Integrate CI testing on GitHub repo for automatic testing (currently the tests are run manually)
 
@@ -79,8 +84,6 @@ FOViews are best used for FOObjects with NetworkTransforms which can move far di
 
 ### Performance
 ✅ Optimize Hashgrid search to use lookup table for adjacent squares
-
-🔲 Fix Network Condition so it doesn't constantly update
 
 ## Unit Testing
 
@@ -121,13 +124,15 @@ Editor:
 
 #### Networking
 
+I have observed all of the below working correctly when running other networked tests, but have not written automated tests specifically for these network faliure cases. They are low priority since no bugs have been observered.
+
 🔲 Test client FOClients only, no server FOClient
 
 🔲 Test client joining then leaving then rejoining
 
 🔲 Test hot reloading/ starting a new game without restarting the server
 
-🔲 Stress test Network Condition
+🔲 Stress test FO Observer Network Condition
 
 
 
