@@ -25,6 +25,9 @@ Click "Add package from git URL..." in the Unity Package Manager (UPM) and paste
 
 ### `FOObject`
 Attach the `FOObject` component to any object you want only a single instance of (Anything with a `NetworkObject` component that can't move far enough to cause a rebase)
+
+If you want the object anchored to a point in 3D space, set the Anchored Position to something other than 0,0,0
+
 > For example unique settlements or trader posts or AI that always stays within a close radius from its spawn.
 
 > FOObjects are just FOView's which don't get updated every time they move.
