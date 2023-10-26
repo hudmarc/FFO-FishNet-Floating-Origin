@@ -56,7 +56,7 @@ FOViews are best used for FOObjects with NetworkTransforms which can move far di
 ### Quality of Life
 ✅ Add screenshots for manager and NetworkObject setup
 
-🔲 Re-add FOAnchor component.
+✅ Re-add FOAnchor component. (Now implemented directly in FOObject)
 
 🔲 Add a function to set the "main view" for a connection. Might be necessary if you spawned in your AI's before your player.
 
