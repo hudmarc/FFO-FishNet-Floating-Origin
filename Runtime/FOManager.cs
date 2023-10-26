@@ -189,26 +189,34 @@ namespace FishNet.FloatingOrigin
             groups.Remove(group.offset);
             groups.Add(offset, group);
 
-            Vector3d difference = group.offset - offset;
+            OffsetScene(group.scene, group.offset, offset);
 
-            // Vector3 remainder = (Vector3)(difference - ((Vector3d)((Vector3)difference)));
-
-            ioffsetter.Offset(group.scene, (Vector3)difference);
-
-            Log($"Offset {group.scene.ToHex()} by {(Vector3)difference}");
-
-            // if (remainder != Vector3.zero)
-            // {
-            //     Debug.LogWarning($"Remainder was {remainder}");
-            //     ioffsetter.Offset(group.scene, remainder);
-            //     Log($"Offset {group.scene.ToHex()} by {remainder}");
-            //     Log("Offset with precise remainder. If this causes a bug, now you know what to debug.", "SCENE MANAGEMENT");
-            // }
             group.offset = offset;
 
             CollectObjectsIntoGroup(group);
             SyncGroup(group);
             DoOffsetCallbackOnObjects(group);
+        }
+        private void OffsetScene(Scene scene, Vector3d previous, Vector3d offset)
+        {
+            Vector3d difference = previous - offset;
+
+            Vector3 remainder = (Vector3)(difference - ((Vector3d)((Vector3)difference)));
+
+            ioffsetter.Offset(scene, (Vector3)difference);
+            if (InstanceFinder.IsServer)
+                Log($"Offset {scene.ToHex()} by {(Vector3)difference}");
+
+            if (remainder != Vector3.zero)
+            {
+                Debug.Log($"Remainder was {remainder}");
+                ioffsetter.Offset(scene, remainder);
+                if (InstanceFinder.IsServer)
+                {
+                    Log($"Offset {scene.ToHex()} by {remainder}");
+                    Log("Offset with precise remainder. If this causes a bug, now you know what to debug.", "SCENE MANAGEMENT");
+                }
+            }
         }
         private void DoOffsetCallbackOnObjects(OffsetGroup group)
         {

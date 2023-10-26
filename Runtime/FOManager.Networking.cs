@@ -25,20 +25,7 @@ namespace FishNet.FloatingOrigin
             if (InstanceFinder.IsServer)
                 return;
 
-            Vector3 remainder = (Vector3)(difference - ((Vector3d)(Vector3)difference));
-
-            if (!GetLocalFirstCached().gameObject.scene.IsValid())
-            {
-                return;
-            }
-            ioffsetter.Offset(GetLocalFirstCached().gameObject.scene, (Vector3)difference);
-
-            if (remainder != Vector3.zero)
-            {
-                ioffsetter.Offset(GetLocalFirstCached().gameObject.scene, (Vector3)remainder);
-                Log("Remainder was not zero, offset with precise remainder. If this causes a bug, now you know what to debug.", "NETWORKING");
-            }
-
+            OffsetScene(GetLocalFirstCached().gameObject.scene, localOffset, broadcast.offset);
         }
 
         [Server]
