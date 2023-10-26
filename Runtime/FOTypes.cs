@@ -12,6 +12,33 @@ namespace FishNet.FloatingOrigin
             public Scene scene;
             public Vector3d offset;
             public HashSet<FOView> views = new HashSet<FOView>();
+            private FOObject[] cached_objects;
+            private bool dirty = true;
+
+            public FOObject[] GetFOObjectsCached()
+            {
+                if (dirty || cached_objects == null)
+                {
+                    List<FOObject> foobjects = new List<FOObject>();
+
+                    var objects = scene.GetRootGameObjects();
+                    foreach (GameObject g in objects)
+                    {
+                        if (g.TryGetComponent(out FOObject obj))
+                        {
+                            foobjects.Add(obj);
+                        }
+                    }
+
+                    cached_objects = foobjects.ToArray();
+                    dirty = false;
+                }
+                return cached_objects;
+            }
+            public void MakeDirty()
+            {
+                dirty = true;
+            }
 
             public OffsetGroup(Scene scene, Vector3d offset)
             {

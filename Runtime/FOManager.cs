@@ -191,7 +191,7 @@ namespace FishNet.FloatingOrigin
 
             Vector3d difference = group.offset - offset;
 
-            // Vector3 remainder = -(Vector3)(difference - ((Vector3d)((Vector3)difference)));
+            // Vector3 remainder = (Vector3)(difference - ((Vector3d)((Vector3)difference)));
 
             ioffsetter.Offset(group.scene, (Vector3)difference);
 
@@ -204,16 +204,22 @@ namespace FishNet.FloatingOrigin
             //     Log($"Offset {group.scene.ToHex()} by {remainder}");
             //     Log("Offset with precise remainder. If this causes a bug, now you know what to debug.", "SCENE MANAGEMENT");
             // }
-
             group.offset = offset;
 
             CollectObjectsIntoGroup(group);
             SyncGroup(group);
+            DoOffsetCallbackOnObjects(group);
         }
-
+        private void DoOffsetCallbackOnObjects(OffsetGroup group)
+        {
+            var objects = group.GetFOObjectsCached();
+            foreach (FOObject foo in objects)
+            {
+                foo.MoveToAnchor();
+            }
+        }
         internal void ProcessGroupsAndViews()
         {
-            
             foreach (FOView view in views)
             {
                 // If this loop becomes a performance concern, can it be run less than every frame? For example only processing every nth view every frame?
@@ -273,15 +279,21 @@ namespace FishNet.FloatingOrigin
         /// </param>
         private void MoveToGroup(FOObject foobject, OffsetGroup to)
         {
-            if (foobject.GetType() == typeof(FOView))
+            bool is_view = foobject.GetType() == typeof(FOView);
+            if (is_view)
                 UpdateViewGroup((FOView)foobject, to);
 
             foobject.transform.position = RealToUnity(foobject.realPosition, to.scene);
 
             Log($"View {foobject._networking?.ObjectId} {foobject.gameObject.scene.ToHex()} will move to {to.scene.ToHex()}");
 
+            if (!is_view)
+                offsetGroups[foobject.gameObject.scene].MakeDirty();
+
             SceneManager.MoveGameObjectToScene(foobject.gameObject, to.scene);
 
+            if (!is_view)
+                to.MakeDirty();
 
             if (InstanceFinder.IsHost)
                 RecomputeVisibleScenes();

@@ -22,7 +22,7 @@ namespace FishNet.FloatingOrigin
 #if UNITY_EDITOR
         private void OnGUI()
         {
-            if (!enabled || offsetGroups.Count < 1)
+            if (!hideDebug || !enabled || offsetGroups.Count < 1)
                 return;
             DrawDebug();
         }

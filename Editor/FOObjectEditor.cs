@@ -36,6 +36,19 @@ namespace FishNet.FloatingOrigin
                     EditorGUILayout.EndHorizontal();
                 }
             }
+            else
+            {
+                EditorGUILayout.BeginHorizontal("box");
+                if (GUILayout.Button("Anchor Here"))
+                {
+                    foobject.anchoredPosition = (Vector3d)foobject.transform.position;
+                }
+                if (GUILayout.Button("Reset Anchor"))
+                {
+                    foobject.anchoredPosition = Vector3d.zero;
+                }
+                EditorGUILayout.EndHorizontal();
+            }
         }
     }
 }
