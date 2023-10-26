@@ -22,7 +22,7 @@ namespace FishNet.FloatingOrigin
 #if UNITY_EDITOR
         private void OnGUI()
         {
-            if (!hideDebug || !enabled || offsetGroups.Count < 1)
+            if (!hideDebug || !enabled || offsetGroups.Count < 1 || InstanceFinder.IsClientOnly || InstanceFinder.IsServerOnly)
                 return;
             DrawDebug();
         }

@@ -1,4 +1,5 @@
 using System;
+using FishNet.FloatingOrigin.Types;
 using FishNet.Managing.Timing;
 using FishNet.Object;
 using UnityEngine;
@@ -12,7 +13,10 @@ namespace FishNet.FloatingOrigin
         private void RecomputeVisibleScenes()
         {
             if (local == null)
+            {
+                Log("No local observer found.", "SCENE MANAGEMENT");
                 return;
+            }
 
             Log("Recomputing scene visibility on server.", "SCENE MANAGEMENT");
 
@@ -113,6 +117,14 @@ namespace FishNet.FloatingOrigin
                 objects.Add(foo.realPosition, foo);
             }
            
+        }
+        public OffsetGroup GetGroup(Scene scene)
+        {
+            return offsetGroups[scene];
+        }
+        public bool IsGroup(Scene scene)
+        {
+            return offsetGroups.ContainsKey(scene);
         }
     }
     public static class FOManagerExtensions

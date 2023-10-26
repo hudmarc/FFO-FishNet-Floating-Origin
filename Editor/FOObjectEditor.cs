@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 
 namespace FishNet.FloatingOrigin
 {
@@ -19,21 +20,28 @@ namespace FishNet.FloatingOrigin
             {
                 if (FOManager.instance != null && !InstanceFinder.IsClientOnly)
                 {
-                    var position = foobject.realPosition;
-                    EditorGUILayout.BeginHorizontal("box");
-                    EditorGUILayout.LabelField("Real Position: ");
-                    double x = EditorGUILayout.DoubleField(position.x);
-                    double y = EditorGUILayout.DoubleField(position.y);
-                    double z = EditorGUILayout.DoubleField(position.z);
-                    if (x != position.x || y != position.y || z != position.z)
+                    if (FOManager.instance.IsGroup(foobject.gameObject.scene))
                     {
-                        foobject.transform.position = FOManager.instance.RealToUnity(new Vector3d(x, y, z), foobject.gameObject.scene);
-                    }
+                        var position = foobject.realPosition;
+                        EditorGUILayout.BeginHorizontal("box");
+                        EditorGUILayout.LabelField("Real Position: ");
+                        double x = EditorGUILayout.DoubleField(position.x);
+                        double y = EditorGUILayout.DoubleField(position.y);
+                        double z = EditorGUILayout.DoubleField(position.z);
+                        if (x != position.x || y != position.y || z != position.z)
+                        {
+                            foobject.transform.position = FOManager.instance.RealToUnity(new Vector3d(x, y, z), foobject.gameObject.scene);
+                        }
 
-                    EditorGUILayout.EndHorizontal();
-                    EditorGUILayout.BeginHorizontal("box");
-                    EditorGUILayout.LabelField(FOManager.instance.GetDebugText(foobject));
-                    EditorGUILayout.EndHorizontal();
+                        EditorGUILayout.EndHorizontal();
+                        EditorGUILayout.BeginHorizontal("box");
+                        EditorGUILayout.LabelField(FOManager.instance.GetDebugText(foobject));
+                        EditorGUILayout.EndHorizontal();
+                    }
+                    else
+                    {
+                        EditorGUILayout.LabelField("View is not in valid Scene!");
+                    }
                 }
             }
             else

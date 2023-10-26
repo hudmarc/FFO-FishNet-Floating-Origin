@@ -119,10 +119,10 @@ namespace FishNet.FloatingOrigin
 
         internal void RegisterView(FOView view)
         {
-            if (networkManager != null && networkManager.IsClientOnly)
+            if (networkManager?.IsClientOnly == true)
                 return;
 
-            if (local == null)
+            if (local?._networking.IsOwner != true)
             {
                 local = view;
             }
@@ -305,6 +305,16 @@ namespace FishNet.FloatingOrigin
 
             if (InstanceFinder.IsHost)
                 RecomputeVisibleScenes();
+
+            if (is_view)
+            {
+                var view = (FOView)foobject;
+                if (view._networking != null && !view._networking.IsOwner)
+                {
+                    SyncOffset(view);
+                }
+            }
+
         }
 
         /// <summary>

@@ -18,14 +18,14 @@ namespace FishNet.FloatingOrigin
         {
             Vector3d difference = localOffset - broadcast.offset;
 
-            Log($"Received Offset Sync Broadcast {broadcast.offset} offsetting {difference} from {localOffset}", "NETWORKING");
-
-            localOffset = broadcast.offset;
+            Log($"Received Offset Sync Broadcast {broadcast.offset} offsetting {difference} from {localOffset} on tick {FishNet.InstanceFinder.TimeManager.Tick}", "NETWORKING");
 
             if (InstanceFinder.IsServer)
                 return;
 
             OffsetScene(GetLocalFirstCached().gameObject.scene, localOffset, broadcast.offset);
+
+            localOffset = broadcast.offset;
         }
 
         [Server]
