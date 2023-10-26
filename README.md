@@ -1,3 +1,5 @@
+<img width="1076" alt="image" src="https://github.com/hudmarc/FFO-FishNet-Floating-Origin/assets/44267994/547675bd-5f47-422e-8555-6a736e8e9082">
+> Screenshot from demo project. The faraway boxes are the other FOView's bounds, and the lines surrounding the camera are the local FOView's bounding box.
 # Installation
 > FishNet is a dependency for this package. Make sure you have the latest version installed first.
 
