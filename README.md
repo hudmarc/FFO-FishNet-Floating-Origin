@@ -141,5 +141,6 @@ I have observed all of the below working correctly when running other networked 
 
 🔲 Stress test FO Observer Network Condition
 
+> See the demo project's description for information on running the unit tests on your own machine.
 
 
