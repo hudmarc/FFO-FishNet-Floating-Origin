@@ -122,6 +122,10 @@ namespace FishNet.FloatingOrigin
         {
             return offsetGroups[scene];
         }
+        public OffsetGroup GetLocalGroup()
+        {
+            return offsetGroups[local.gameObject.scene];
+        }
         public bool IsGroup(Scene scene)
         {
             return offsetGroups.ContainsKey(scene);

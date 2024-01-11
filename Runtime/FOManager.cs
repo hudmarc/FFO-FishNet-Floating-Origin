@@ -10,6 +10,7 @@ using FishNet.Managing;
 
 namespace FishNet.FloatingOrigin
 {
+    [RequireComponent(typeof(IOffsetter))]
     public partial class FOManager : MonoBehaviour
     {
         /// <summary>
@@ -43,7 +44,6 @@ namespace FishNet.FloatingOrigin
 
         private bool subscribedToTick = false;
         private bool hostFullStart = false;
-        private bool clientFullStart = false;
 
         private void Awake()
         {
@@ -111,12 +111,15 @@ namespace FishNet.FloatingOrigin
                 OnOffsetSyncBroadcast
             );
             Log("Listening for offset sync broadcasts...", "NETWORKING");
-            clientFullStart = true;
         }
 
         public bool HasScene(Scene scene)
         {
             return offsetGroups.ContainsKey(scene);
+        }
+
+        public FOView GetLocal(){
+            return local;
         }
 
         internal void RegisterView(FOView view)
@@ -197,7 +200,7 @@ namespace FishNet.FloatingOrigin
 
             CollectObjectsIntoGroup(group);
             SyncGroup(group);
-            DoOffsetCallbackOnObjects(group);
+            DoOffsetCallbackOnAnchors(group);
         }
         private void OffsetScene(Scene scene, Vector3d previous, Vector3d offset)
         {
@@ -220,12 +223,11 @@ namespace FishNet.FloatingOrigin
                 }
             }
         }
-        private void DoOffsetCallbackOnObjects(OffsetGroup group)
+        private void DoOffsetCallbackOnAnchors(OffsetGroup group)
         {
-            var objects = group.GetFOObjectsCached();
-            foreach (FOObject foo in objects)
+            foreach (FOAnchor anchor in group.GetAnchorsCached())
             {
-                foo.MoveToAnchor();
+                anchor.MoveToAnchor();
             }
         }
         internal void ProcessGroupsAndViews()
@@ -445,9 +447,12 @@ namespace FishNet.FloatingOrigin
             Debug.Log($"setting up group {SceneManager.GetSceneAt(SceneManager.sceneCount - 1).ToHex()}");
 
             group.scene = SceneManager.GetSceneAt(SceneManager.sceneCount - 1);
+
             CullFOObjects(group.scene);
             AddOffsetGroup(group);
-
+            // warm up the caches
+            group.GetAnchorsCached();
+            group.GetFOObjectsCached();
         }
         /// <summary>
         /// Adds the given OffsetGroups to the tracked OffsetGroups and to the Groups hashgrid.

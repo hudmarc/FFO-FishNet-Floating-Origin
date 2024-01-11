@@ -9,8 +9,7 @@ namespace FishNet.FloatingOrigin
         internal NetworkObject _networking;
         public NetworkObject networking => _networking;
         private bool initialized = false;
-        [Tooltip("The object will move precisely to the anchored position, if it is not Vector3d.zero")]
-        public Vector3d anchoredPosition;
+        
         void Start()
         {
             TryGetComponent(out _networking);
@@ -30,13 +29,6 @@ namespace FishNet.FloatingOrigin
         internal virtual void Deinitialize()
         {
             FOManager.instance?.UnregisterObject(this);
-        }
-        public void MoveToAnchor()
-        {
-            if (anchoredPosition != Vector3d.zero)
-            {
-                transform.position = FOManager.instance.RealToUnity(anchoredPosition, gameObject.scene);
-            }
         }
     }
 }

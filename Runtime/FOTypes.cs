@@ -13,6 +13,7 @@ namespace FishNet.FloatingOrigin
             public Vector3d offset;
             public HashSet<FOView> views = new HashSet<FOView>();
             private FOObject[] cached_objects;
+            private FOAnchor[] cached_anchors;
             private bool dirty = true;
 
             public FOObject[] GetFOObjectsCached()
@@ -34,6 +35,26 @@ namespace FishNet.FloatingOrigin
                     dirty = false;
                 }
                 return cached_objects;
+            }
+            public FOAnchor[] GetAnchorsCached()
+            {
+                if (dirty || cached_anchors == null)
+                {
+                    List<FOAnchor> anchors = new List<FOAnchor>();
+
+                    var objects = scene.GetRootGameObjects();
+                    foreach (GameObject g in objects)
+                    {
+                        if (g.TryGetComponent(out FOAnchor obj))
+                        {
+                            anchors.Add(obj);
+                        }
+                    }
+
+                    cached_anchors = anchors.ToArray();
+                    dirty = false;
+                }
+                return cached_anchors;
             }
             public void MakeDirty()
             {
