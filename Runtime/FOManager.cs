@@ -13,15 +13,17 @@ namespace FishNet.FloatingOrigin
     public partial class FOManager : MonoBehaviour
     {
         /// <summary>
-        /// Set to whatever value in meters your game starts to noticeably lose precision at. ~8km is the default setting.
+        /// Set to whatever value in meters your game starts to noticeably lose precision at. 8192m (~8km) is the default setting.
         /// </summary>
         public const int REBASE_CRITERIA = 8192;
         public const int HYSTERESIS = 0;
         public const int MERGE_CRITERIA = REBASE_CRITERIA / 2;
         public static FOManager instance;
 
-        public PhysicsMode PhysicsMode => _physicsMode;
-
+        public PhysicsMode physicsMode => _physicsMode;
+        /// <summary>
+        /// The Local FOView is the FOView around which the world is rebased.
+        /// </summary>
         internal FOView local;
 
         [Tooltip("How to perform physics.")]
@@ -96,7 +98,7 @@ namespace FishNet.FloatingOrigin
 
             networkManager.TimeManager.OnPreTick += ProcessGroupsAndViews;
             GetComponent<TimeManager>().SetPhysicsMode(PhysicsMode.Disabled);
-            SetPhysicsMode(PhysicsMode);
+            SetPhysicsMode(physicsMode);
             hostFullStart = true;
         }
 

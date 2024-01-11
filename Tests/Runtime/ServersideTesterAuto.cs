@@ -1,10 +1,8 @@
 using System;
 using System.Collections;
 using System.Text;
-using FishNet;
 using FishNet.FloatingOrigin;
 using FishNet.Managing;
-using FishNet.Managing.Server;
 using FishNet.Object;
 using NUnit.Framework;
 using UnityEngine;
@@ -12,13 +10,35 @@ using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 
 /// <summary>
-/// These tests can be run automatically on the server and do not require a client connection. TODO: this isn't actually possible at the moment, I need to be manually spawing the main FOView inside of the setup functionhere..
+/// These tests can be run automatically on the server and do not require a client connection.
 /// </summary>
 public class ServersideTesterAuto
 {
-    private const float OFFSET_DISTANCE = 149597870700; //approximately one astronomical unit
-    private const float TEST_ITERATIONS = 600; //standard number of iterations for all tests
-
+    /// <summary>
+    /// Approximately one astronomical unit, expressed in meters.
+    /// </summary>
+    private const float OFFSET_DISTANCE = 149597870700;
+    
+    /// <summary>
+    /// Standard number of iterations for all tests.
+    /// </summary>
+    private const float TEST_ITERATIONS = 600;
+    
+    /// <summary>
+    /// Load the test scene by name. More robust than loading by index.
+    /// Please ensure you have added both 
+    /// "Testing/Automated Testing Scene" and "Testing/Offline Automated Testing Scene" 
+    /// to your Build Settings. If you can't find the Testing directory, you should
+    /// install the unitypackage found at "Packages > FishNet Floating Origin > Runtime > Example > TestingSetup.unitypackage"
+    /// into your project.
+    /// </summary>
+    public const string TEST_SCENE_NAME = "Offline Automated Testing Scene";
+    
+    /// <summary>
+    /// Sanity check to ensure the package does what it is supposed to do.
+    /// Checks if an FOView moving away from the origin by a continually
+    /// increasing amount (positive on all axes) gets consistently rebased.
+    /// </summary>
     [UnityTest]
     public IEnumerator OffsetTest()
     {
@@ -73,7 +93,10 @@ public class ServersideTesterAuto
         System.IO.File.WriteAllText(Application.persistentDataPath + "/output.csv", sb.ToString());
         System.Diagnostics.Process.Start(Application.persistentDataPath);
     }
-
+    
+    /// <summary>
+    /// Test to ensure significant error does not accumulate as a result of continuous offsets.
+    /// </summary>
     [UnityTest]
     public IEnumerator ErrorAccumulator()
     {
@@ -89,13 +112,15 @@ public class ServersideTesterAuto
         {
             view = UnityEngine.Object.FindObjectOfType<FOView>();
             origin = UnityEngine.GameObject.Find("Origin")?.GetComponent<FOObject>();
-            yield return new WaitForSeconds(2);
+            yield return new WaitForSeconds(1);
         }
 
         Vector3d position = (Vector3d)view.transform.position;
 
-        yield return new WaitForSeconds(2);
+        yield return new WaitForSeconds(1);
+
         Debug.Log("Starting test");
+
         for (int i = 0; i < 600; i++)
         {
             Vector3 delta = (i % 2 == 0 ? -1 : 1) * OFFSET_DISTANCE * Vector3.right;
@@ -119,16 +144,20 @@ public class ServersideTesterAuto
             sb.Append(distance_from_origin);
             sb.Append(";");
             sb.AppendLine(view.transform.position.ToString());
-
-
-            // Assert.IsTrue( < 0.01);
         }
+
         Debug.Log("--------RESULTS--------");
+
+        // Outputs results as a csv file to the persistentDataPath and then attempts to open the path with the system file explorer.
 
         System.IO.File.WriteAllText(Application.persistentDataPath + "/error_accumulator_output.csv", sb.ToString());
         System.Diagnostics.Process.Start(Application.persistentDataPath);
     }
-
+    
+    /// <summary>
+    /// Tests whether more than one FOView per connection works correctly,
+    /// and ensures the system can tolerate multiple FOViews merging then separating at the same time.
+    /// </summary>
     [UnityTest]
     public IEnumerator MultipleViewsSameClient()
     {
@@ -175,30 +204,17 @@ public class ServersideTesterAuto
             if ((val * 2) > 0)
                 val *= 2;
 
-            // var error = Vector3d.Distance(position, views[0].realPosition);
-            // var distance_from_origin = Vector3d.Distance(Vector3d.zero, views[0].realPosition);
-
             yield return new WaitForFixedUpdate();
-            // sb.Append(i);
-            // sb.Append(";");
-            // sb.Append((error * 1000));
-            // sb.Append(";");
-            // sb.Append(distance_from_origin);
-            // sb.Append(";");
-            // sb.AppendLine(val.ToString());
         }
-        // Debug.Log("--------RESULTS--------");
-
-        // System.IO.File.WriteAllText(Application.persistentDataPath + "/output.csv", sb.ToString());
-        // System.Diagnostics.Process.Start(Application.persistentDataPath);
     }
-
+    
+    /// <summary>
+    /// Test wandering agents (tests two clients wandering around, starting at an FOObject, and then
+    /// meeting again at the FOObject, asserts the FOObject and both clients end up in the same group)
+    /// </summary>
     [UnityTest]
     public IEnumerator FOObjectGroupChange()
     {
-        // StringBuilder sb = new StringBuilder();
-        // sb.AppendLine("Step; Error (mm); Distance; Delta");
-
         yield return SetupAndAwaitNetwork();
 
         //spawn multiple views
@@ -315,7 +331,12 @@ public class ServersideTesterAuto
         }
         Debug.Log($"Final real position of foobject: {foobject.realPosition}");
     }
-
+    
+    /// <summary>
+    /// Test stragglers vs group (tests a group of two clients heading in the opposite direction to a 
+    /// straggler client, which should be kicked out of the group the two clients are in)
+    /// </summary>
+    /// <returns></returns>
     [UnityTest]
     public IEnumerator StragglersVsGroup()
     {
@@ -389,7 +410,11 @@ public class ServersideTesterAuto
         Assert.AreNotEqual(views[0].gameObject.scene.handle, views[2].gameObject.scene.handle);
         Assert.AreEqual(views[2].gameObject.scene.handle, foobject.gameObject.scene.handle);
     }
-    static uint lastTick = 0;
+    
+    /// <summary>
+    /// Tests FOViews entering the same area then leaving. This is called "merging" because their scenes
+    /// are merged into one. When they leave, their scenes are split into separate scenes again.
+    /// </summary>
     public static IEnumerator MergeTest(FOView test, FOView control)
     {
 
@@ -443,24 +468,18 @@ public class ServersideTesterAuto
                 throw new Exception("Desynchronization lasted for more than 5 frames!");
             }
 
-            //waits until end of tick
-            // while (InstanceFinder.NetworkManager.TimeManager.Tick <= lastTick)
-            // {
-            //     yield return null;
-            // }
-            // lastTick = InstanceFinder.NetworkManager.TimeManager.Tick;
-
             yield return null;
 
             Debug.Log($"AFTER Test: {test.transform.position} Control: {control.transform.position} Test Real: {test.realPosition} Control Real: {control.realPosition}");
         }
     }
+    
+    /// <summary>
+    /// Runs the MergeTest offline.
+    /// </summary>
     [UnityTest]
     public IEnumerator MergeTestOffline()
     {
-        // StringBuilder sb = new StringBuilder();
-        // sb.AppendLine("Step; Error (mm); Distance; Delta");
-
         yield return SetupAndAwaitNetwork();
 
         //spawn multiple views
@@ -506,17 +525,17 @@ public class ServersideTesterAuto
         yield return MergeTest(views[0], views[1]);
     }
 
-    public IEnumerator SetupAndAwaitNetwork()
+    /// <summary>
+    /// Test harness to set up testing environment.
+    /// </summary>
+    public static IEnumerator SetupAndAwaitNetwork()
     {
-        SceneManager.LoadScene(3);
-        // if (SceneManager.sceneCount > 1 && !SceneManager.GetSceneAt(0).name.Contains("InitTestScene"))
-        //     SceneManager.UnloadSceneAsync(0);
+        SceneManager.LoadScene(TEST_SCENE_NAME);
 
         yield return new WaitForSeconds(2);
+
         Debug.Log("Finished loading test scene");
         var nm = UnityEngine.Object.FindObjectOfType<NetworkManager>();
-        // Use the Assert class to test conditions.
-        // Use yield to skip a frame.
 
         Debug.Log("Awaiting server connection");
         nm.ServerManager.StartConnection();
@@ -525,8 +544,8 @@ public class ServersideTesterAuto
         {
             yield return new WaitForFixedUpdate();
         }
-        Debug.Log("Started server connection");
-        Debug.Log("Awaiting client connection");
+
+        Debug.Log("Started server connection, awaiting client connection...");
         nm.ClientManager.StartConnection();
 
         while (nm.ClientManager.Started == false)

@@ -1,34 +1,40 @@
-using System;
 using System.Collections;
-using System.Text;
 using FishNet.FloatingOrigin;
-using FishNet.Managing;
 using NUnit.Framework;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 /// <summary>
 /// These tests require a manually connected client to function.
+/// The default time alloted to connect a client is 10 seconds,
+/// you may change this by modifying WAIT_FOR_CLIENT if you need more time,
+/// assuming you have installed the package in a way that lets you modify its scripts.
 /// </summary>
 public class ServersideTester
 {
-    private const float OFFSET_DISTANCE = 149597870700;//one astronomical unit
-
+    /// <summary>
+    /// Default time to wait for client is 10 seconds.
+    /// </summary>
+    private const float WAIT_FOR_CLIENT = 10;
+    /// <summary>
+    /// Networked test setup for the MergeTest. In this case the active FOView is the server's view.
+    /// You must manually add another game client, which should simply connect as a client. I recommend using
+    /// a tool like Parrelsync to test this locally.
+    /// </summary>
     [UnityTest]
-    public IEnumerator MergeUntilFailServer()
+    public IEnumerator NetworkedMergeUntilFailServer()
     {
-        yield return SetupAndAwaitNetwork();
+        yield return ServersideTesterAuto.SetupAndAwaitNetwork();
 
-        Debug.Log("You have 5 seconds to add a client!");
-        yield return new WaitForSeconds(5);
+        Debug.Log($"You have ${WAIT_FOR_CLIENT} seconds to add a client!");
+        yield return new WaitForSeconds(WAIT_FOR_CLIENT);
 
         FOView[] views = null;
         FOObject origin = null;
 
         while (views == null || origin == null)
         {
-            views = UnityEngine.Object.FindObjectsOfType<FOView>();
-            origin = UnityEngine.GameObject.Find("Origin")?.GetComponent<FOObject>();
+            views = Object.FindObjectsOfType<FOView>();
+            origin = GameObject.Find("Origin")?.GetComponent<FOObject>();
             yield return new WaitForFixedUpdate();
         }
 
@@ -58,14 +64,18 @@ public class ServersideTester
         Assert.NotNull(serverView);
         yield return ServersideTesterAuto.MergeTest(serverView, clientView);
     }
-
+    /// <summary>
+    /// Networked test setup for the MergeTest. In this case the active FOView is the client's view.
+    /// You must manually add another game client, which should simply connect as a client. I recommend using
+    /// a tool like Parrelsync to test this locally.
+    /// </summary>
     [UnityTest]
-    public IEnumerator MergeUntilFailClient()
+    public IEnumerator NetworkedMergeUntilFailClient()
     {
-        yield return SetupAndAwaitNetwork();
+        yield return ServersideTesterAuto.SetupAndAwaitNetwork();
 
-        Debug.Log("You have 5 seconds to add a client!");
-        yield return new WaitForSeconds(5);
+        Debug.Log($"You have ${WAIT_FOR_CLIENT} seconds to add a client!");
+        yield return new WaitForSeconds(WAIT_FOR_CLIENT);
 
         FOView[] views = null;
         FOObject origin = null;
@@ -102,29 +112,5 @@ public class ServersideTester
         Assert.NotNull(clientView);
         Assert.NotNull(serverView);
         yield return ServersideTesterAuto.MergeTest(clientView, serverView);
-    }
-
-    public IEnumerator SetupAndAwaitNetwork()
-    {
-        SceneManager.LoadScene(3);
-        yield return new WaitForSeconds(2);
-        Debug.Log("Finished loading test scene");
-        var nm = UnityEngine.Object.FindObjectOfType<NetworkManager>();
-        // Use the Assert class to test conditions.
-        // Use yield to skip a frame.
-
-
-        nm.ServerManager.StartConnection();
-
-        while (nm.ServerManager.Started == false)
-        {
-            yield return new WaitForFixedUpdate();
-        }
-        nm.ClientManager.StartConnection();
-
-        while (nm.ClientManager.Started == false)
-        {
-            yield return new WaitForFixedUpdate();
-        }
     }
 }
