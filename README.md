@@ -54,7 +54,7 @@ You should enable Teleport on your FOView's `NetworkTransform` if this is a prob
 
 ### When should I use an `FOView` or an `FOObject`?
 
-For giant, immovable stuff like planets, don't use `FOObject` or `FOView`. This way they will exist in all stacked scenes, so that all players can view them and interact with them.
+For giant, immovable stuff like planets, don't use `FOObject` or `FOView`. This way they will exist in all stacked scenes, so that all players can view them and interact with them. Consider anchoring them in space with an `FOAnchor` to ensure they don't lose precision.
 
 The general rule is to use an `FOObject` for any NetworkObjects which:
 
@@ -71,7 +71,9 @@ FOViews are best used for FOObjects with NetworkTransforms which can move far di
 ### Quality of Life
 ✅ Add screenshots for manager and NetworkObject setup
 
-🔲 Re-add FOAnchor component. (currently FOObjects expose the same behaviour, but it makes more sense to have the FOAnchor as a separate component, to anchor i.e. huge stuff like planets that shouldn't be an FOObject because they can't exist in only one scene)
+✅ Re-add FOAnchor component.
+
+🔲 Add automatic culling of faraway objects with FOAnchors.
 
 🔲 Add a function to set the "main view" for a connection. Might be necessary if you spawned in your AI's before your player.
 
@@ -128,6 +130,8 @@ Editor:
 ✅ Test wandering agents (tests two clients wandering around, starting at an FOObject, and then meeting again at the FOObject, asserts the FOObject and both clients end up in the same group) (see `FOObjectGroupChange`)
 
 ✅ Test stragglers vs group (tests a group of two clients heading in the opposite direction to a straggler client, which should be kicked out of the group the two clients are in) (see `StragglersVsGroup`)
+
+🔲 Test FOAnchor component
 
 #### Editor
 ✅ Test HashGrid implementation
