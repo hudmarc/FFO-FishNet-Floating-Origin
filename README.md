@@ -110,13 +110,13 @@ Editor:
 
 ✅ Test offsetting and offsetting far from origin (see `OffsetTest`)
 
-✅ Test Merging (case: server FOClient merges with client FOClient) (see `MergeUntilFailServer`)
+✅ Test Merging (case: server FOView merges with client FOView) (see `MergeUntilFailServer`)
 
-✅ Test Merging (case: client FOClient merges with server FOClient) (see `MergeUntilFailClient`)
+✅ Test Merging (case: client FOView merges with server FOView) (see `MergeUntilFailClient`)
 
-✅ Test more than one FOClient per connection (see `MultipleViewsSameClient`)
+✅ Test more than one FOView per connection (see `MultipleViewsSameClient`)
 
-✅ Test multiple FOClients merging then separating (see `MultipleViewsSameClient`)
+✅ Test multiple FOViews merging then separating (see `MultipleViewsSameClient`)
 
 ✅ Test FOObjects being moved around between groups (An FOObject is placed somewhere in the scene, then the two FOViews take turns moving into range of the object. Should assert the FOObject does not have a change in real position and the FOObject is always present in the same scene as the nearest FOView) (see `FOObjectGroupChange`)
 
@@ -133,7 +133,7 @@ Editor:
 
 I have observed all of the below working correctly when running other networked tests, but have not written automated tests specifically for these network faliure cases. They are low priority since no bugs have been observered.
 
-🔲 Test client FOClients only, no server FOClient
+🔲 Test client FOViews only, no server FOView
 
 🔲 Test client joining then leaving then rejoining
 
