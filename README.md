@@ -30,13 +30,18 @@ Click "Add package from git URL..." in the Unity Package Manager (UPM) and paste
 ### `FOObject`
 Attach the `FOObject` component to any object you want only a single instance of (Anything with a `NetworkObject` component that can't move far enough to cause a rebase)
 
-If you want the object anchored to a point in 3D space, set the Anchored Position to something other than 0,0,0
-
 > For example unique settlements or trader posts or AI that always stays within a close radius from its spawn.
 
 > FOObjects are just FOView's which don't get updated every time they move.
 
 > It ~~should be~~ is possible (and fully tested) to have scened NetworkObjects as FOObjects.
+
+~~If you want the object anchored to a point in 3D space, set the Anchored Position to something other than 0,0,0~~
+> NEW: See FOAnchor
+
+### `FOAnchor`
+
+Use the FOAnchor component to anchor any Transform in your world to a specific real coordinate. It will automatically be anchored to the real coordinate you set whenever a rebase happens on its OffsetGroup.
 
 # FAQ
 
