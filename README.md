@@ -77,7 +77,7 @@ FOViews are best used for FOObjects with NetworkTransforms which can move far di
 
 🔲 Add a function to set the "main view" for a connection. Might be necessary if you spawned in your AI's before your player.
 
-✅ Create a demo scene/game
+✅ Create a demo scene
 
 🔲 Create a demo video
 
