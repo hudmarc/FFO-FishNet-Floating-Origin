@@ -14,16 +14,17 @@ using UnityEngine.TestTools;
 /// </summary>
 public class ServersideTesterAuto
 {
+    static bool hasRun = false;
     /// <summary>
     /// Approximately one astronomical unit, expressed in meters.
     /// </summary>
     private const float OFFSET_DISTANCE = 149597870700;
-    
+
     /// <summary>
     /// Standard number of iterations for all tests.
     /// </summary>
     private const float TEST_ITERATIONS = 600;
-    
+
     /// <summary>
     /// Load the test scene by name. More robust than loading by index.
     /// Please ensure you have added both 
@@ -33,7 +34,7 @@ public class ServersideTesterAuto
     /// into your project.
     /// </summary>
     public const string TEST_SCENE_NAME = "Offline Automated Testing Scene";
-    
+
     /// <summary>
     /// Sanity check to ensure the package does what it is supposed to do.
     /// Checks if an FOView moving away from the origin by a continually
@@ -92,8 +93,10 @@ public class ServersideTesterAuto
 
         System.IO.File.WriteAllText(Application.persistentDataPath + "/output.csv", sb.ToString());
         System.Diagnostics.Process.Start(Application.persistentDataPath);
+
+        yield return Cleanup();
     }
-    
+
     /// <summary>
     /// Test to ensure significant error does not accumulate as a result of continuous offsets.
     /// </summary>
@@ -152,8 +155,10 @@ public class ServersideTesterAuto
 
         System.IO.File.WriteAllText(Application.persistentDataPath + "/error_accumulator_output.csv", sb.ToString());
         System.Diagnostics.Process.Start(Application.persistentDataPath);
+
+        yield return Cleanup();
     }
-    
+
     /// <summary>
     /// Tests whether more than one FOView per connection works correctly,
     /// and ensures the system can tolerate multiple FOViews merging then separating at the same time.
@@ -206,8 +211,10 @@ public class ServersideTesterAuto
 
             yield return new WaitForFixedUpdate();
         }
+
+        yield return Cleanup();
     }
-    
+
     /// <summary>
     /// Test wandering agents (tests two clients wandering around, starting at an FOObject, and then
     /// meeting again at the FOObject, asserts the FOObject and both clients end up in the same group)
@@ -330,8 +337,10 @@ public class ServersideTesterAuto
             together = !together;
         }
         Debug.Log($"Final real position of foobject: {foobject.realPosition}");
+
+        yield return Cleanup();
     }
-    
+
     /// <summary>
     /// Test stragglers vs group (tests a group of two clients heading in the opposite direction to a 
     /// straggler client, which should be kicked out of the group the two clients are in)
@@ -409,8 +418,10 @@ public class ServersideTesterAuto
         Assert.AreEqual(views[0].gameObject.scene.handle, views[1].gameObject.scene.handle);
         Assert.AreNotEqual(views[0].gameObject.scene.handle, views[2].gameObject.scene.handle);
         Assert.AreEqual(views[2].gameObject.scene.handle, foobject.gameObject.scene.handle);
+
+        yield return Cleanup();
     }
-    
+
     /// <summary>
     /// Tests FOViews entering the same area then leaving. This is called "merging" because their scenes
     /// are merged into one. When they leave, their scenes are split into separate scenes again.
@@ -472,8 +483,10 @@ public class ServersideTesterAuto
 
             Debug.Log($"AFTER Test: {test.transform.position} Control: {control.transform.position} Test Real: {test.realPosition} Control Real: {control.realPosition}");
         }
+
+        yield return Cleanup();
     }
-    
+
     /// <summary>
     /// Runs the MergeTest offline.
     /// </summary>
@@ -523,6 +536,8 @@ public class ServersideTesterAuto
         Debug.Log("Starting test");
 
         yield return MergeTest(views[0], views[1]);
+
+        yield return Cleanup();
     }
 
     /// <summary>
@@ -530,6 +545,10 @@ public class ServersideTesterAuto
     /// </summary>
     public static IEnumerator SetupAndAwaitNetwork()
     {
+        if(hasRun){
+            throw new System.Exception("Running multiple tests in quick succession is not supported because the Unity testing framework leaks state between tests!!");
+        }
+        Debug.LogWarning("------- Starting test -------");
         SceneManager.LoadScene(TEST_SCENE_NAME);
 
         yield return new WaitForSeconds(2);
@@ -553,5 +572,24 @@ public class ServersideTesterAuto
             yield return new WaitForFixedUpdate();
         }
         Debug.Log("Started client connection");
+
+        yield return Cleanup();
+    }
+    /// <summary>
+    /// The default behaviour of the Unity Test Runner is to keep scenes from previous test runs loaded. Strange.
+    /// This therefore needs to be run at the end of each test in order to make sure the next test gets a clean slate to start testing on.
+    /// </summary>
+    public static IEnumerator Cleanup()
+    {
+        // Unfortunately it seems there is no way to fully clear the state from the previous tests, so automatic running of playmode tests is currently not possible.
+        // see https://forum.unity.com/threads/running-tests-consecutively.781847/
+        
+        // specifically https://forum.unity.com/threads/running-tests-consecutively.781847/#post-8661573
+
+        // of course this has not been fixed and will likely never be addressed.
+        
+        yield return null;
+
+        hasRun = true;
     }
 }

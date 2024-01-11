@@ -498,6 +498,10 @@ namespace FishNet.FloatingOrigin
                 yield return new WaitForFixedUpdate();
             }
         }
+        private void OnDestroy()
+        {
+            instance = null;
+        }
         /// <summary>
         /// FOObjects shouldn't move! if you have to move an FOObject any time after spawning it, manually unregister it then
         /// register it again in the new spot!

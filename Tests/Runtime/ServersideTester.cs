@@ -63,6 +63,8 @@ public class ServersideTester
         Assert.NotNull(clientView);
         Assert.NotNull(serverView);
         yield return ServersideTesterAuto.MergeTest(serverView, clientView);
+
+        yield return ServersideTesterAuto.Cleanup();
     }
     /// <summary>
     /// Networked test setup for the MergeTest. In this case the active FOView is the client's view.
@@ -112,5 +114,7 @@ public class ServersideTester
         Assert.NotNull(clientView);
         Assert.NotNull(serverView);
         yield return ServersideTesterAuto.MergeTest(clientView, serverView);
+
+        yield return ServersideTesterAuto.Cleanup();
     }
 }
