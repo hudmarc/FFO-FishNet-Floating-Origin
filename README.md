@@ -1,3 +1,5 @@
+> This project is currently being refactored to decouple the various modules (currently tightly bound through partial classes) that make up the package, to make it possible to support more networking libraries (and potentially more engines) and to work in singleplayer, so open issues will not be addressed yet until the refactor is complete. This repository will stay available as a legacy source, but the new package should be a drop-in replacement for all currently known use cases. The timeline is currently somewhere in the ~1 month range.
+
 <img width="1076" alt="image" src="https://github.com/hudmarc/FFO-FishNet-Floating-Origin/assets/44267994/547675bd-5f47-422e-8555-6a736e8e9082">
 
 > Screenshot from demo project
