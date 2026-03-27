@@ -1,17 +1,17 @@
 {
-  "name": "com.hudmarc.fishnet-floating-origin",
-  "version": "1.0.0-beta.3",
-  "displayName": "FishNet Floating Origin",
+  "name": "com.hudmarc.floating-offset-unity",
+  "version": "0.1.0",
+  "displayName": "Floating Offset for Unity",
   "unity": "2020.3",
   "keywords": [
     "tools",
-	"floating origin"
+    "floating origin"
   ],
   "author": {
     "name": "hudmarc",
     "email": "",
     "url": "https://github.com/hudmarc"
   },
-  "description": "A floating origin solution for Unity that is compatible with the FishNet networking solution.",
+  "description": "A floating origin solution for Unity that can be run standalone and is compatible with major networking solutions.",
   "type": "library"
 }

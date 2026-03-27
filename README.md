@@ -1,31 +1,39 @@
 > [on hold until further notice due to time constraints] ~This project is currently being refactored to decouple the various modules (currently tightly bound through partial classes) that make up the package, to make it possible to support more networking libraries (and potentially more engines) and to work in singleplayer, so open issues will not be addressed yet until the refactor is complete. This repository will stay available as a legacy source, but the new package should be a drop-in replacement for all currently known use cases.~
 
 <img width="1076" alt="image" src="https://github.com/hudmarc/FFO-FishNet-Floating-Origin/assets/44267994/547675bd-5f47-422e-8555-6a736e8e9082">
+### 0.1.0 TODO list
 
-> Screenshot from demo project
+Implement:
 
-# Installation
-> FishNet is a dependency for this package. Make sure you have the latest version installed first.
+Preferences
 
-Click "Add package from git URL..." in the Unity Package Manager (UPM) and paste in [https://github.com/hudmarc/FFO-FishNet-Floating-Origin.git](https://github.com/hudmarc/FFO-FishNet-Floating-Origin.git)
+🔲 FOPreferences
 
-<img width="451" alt="image" src="https://user-images.githubusercontent.com/44267994/228247674-b075e104-a93a-4a9f-bdbe-5d0b2c8a49ba.png">
+Management
 
-# Quick Setup
+🔲 OffsetScene
+🔲 OffsetManager
 
-### `Network Manager`
+Helpers
 
-<img width="503" alt="image" src="https://github.com/hudmarc/FFO-FishNet-Floating-Origin/assets/44267994/4d8e927e-a204-48c7-aa11-1f3cc8479bd5">
+🔲 FloatingOffset
+🔲 FOExtensions
 
-> Add the `Floating Origin Condition` to the default observers of the `ObserverManager` in order to hide views in different offset groups from eachother. Note the Condition has not been fully tested as of writing this Readme.
+Transforms
 
-> The current "best practice" is to separate your "game world" from your "manager world". You can use FishNet's `DefaultScene` component in order to automatically load the game world when needed. The idea behind this is to avoid unnecessarily cloning the `NetworkManager` and attached `FOManager`. Both modules should be able to tolerate cloning in any case.
+🔲 OffsetTransform
+🔲 OffsetView
+🔲 OffsetAnchor
+🔲 IgnoreOffset
 
-### `FOView`
+Example
 
-<img width="503" alt="image" src="https://github.com/hudmarc/FFO-FishNet-Floating-Origin/assets/44267994/b0d23fa3-3246-4ad7-b8c8-64cfea18cc45">
+🔲 Default Offsetter
+🔲 DefaultFOSceneManager
+🔲 TestingSetup.unitypackage
+🔲 FishNetIntegration.unitypackage
 
-> Remember to *disable* Teleport on your NetworkTransform, unless you absolutely need to teleport the NT somewhere! Then it's ok to enable it temporarily. Otherwise it will cause rubberbanding!
+Abstractions
 
 > Client Authoritative network transforms are untested and not supported. This package is designed for use with server-authoritative movement with (or without) client side prediction.
 
@@ -154,4 +162,7 @@ I have observed all of the below working correctly when running other networked 
 
 > See the demo project's description for information on running the unit tests on your own machine.
 
+Testing
 
+🔲 Rewrite tests to work with new API
+🔲 Maximize test coverage

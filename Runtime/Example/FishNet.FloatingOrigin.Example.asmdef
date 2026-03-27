@@ -1,8 +1,7 @@
 {
-    "name": "FishNet.FloatingOrigin.Example",
-    "rootNamespace": "FishNet.FloatingOrigin.Example",
+    "name": "FloatingOffset.Example",
+    "rootNamespace": "FloatingOffset.Example",
     "references": [
-        "GUID:7c88a4a7926ee5145ad2dfa06f454c67",
         "GUID:76e6323f644e6164591e7b26dbd00722"
     ],
     "includePlatforms": [],

@@ -4,6 +4,7 @@ using System.Text;
 using FishNet.FloatingOrigin;
 using FishNet.Managing;
 using FishNet.Object;
+using FloatingOffset.Runtime;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -37,7 +38,7 @@ public class ServersideTesterAuto
 
     /// <summary>
     /// Sanity check to ensure the package does what it is supposed to do.
-    /// Checks if an FOView moving away from the origin by a continually
+    /// Checks if an OffsetView moving away from the origin by a continually
     /// increasing amount (positive on all axes) gets consistently rebased.
     /// </summary>
     [UnityTest]
@@ -48,13 +49,13 @@ public class ServersideTesterAuto
 
         yield return SetupAndAwaitNetwork();
 
-        FOView view = null;
-        FOObject origin = null;
+        OffsetView view = null;
+        OffsetTransform origin = null;
 
         while (view == null || origin == null)
         {
-            view = UnityEngine.Object.FindObjectOfType<FOView>();
-            origin = UnityEngine.GameObject.Find("Origin")?.GetComponent<FOObject>();
+            view = UnityEngine.Object.FindObjectOfType<OffsetView>();
+            origin = UnityEngine.GameObject.Find("Origin")?.GetComponent<OffsetTransform>();
             yield return new WaitForFixedUpdate();
         }
 
@@ -74,10 +75,10 @@ public class ServersideTesterAuto
             if ((val * 2) > 0) //prevent overflow
                 val *= 2;
 
-            var error = Vector3d.Distance(position, view.realPosition);
+            var error = Vector3d.Distance(position, view.GetRealPosition());
             Assert.IsTrue(error < 0.01);
-            var distance_from_origin = Vector3d.Distance(Vector3d.zero, view.realPosition);
-            var error_at_origin = Vector3d.Distance(Vector3d.zero, origin.realPosition);
+            var distance_from_origin = Vector3d.Distance(Vector3d.zero, view.GetRealPosition());
+            var error_at_origin = Vector3d.Distance(Vector3d.zero, origin.GetRealPosition());
             yield return new WaitForFixedUpdate();
             sb.Append(i);
             sb.Append(";");
@@ -108,13 +109,13 @@ public class ServersideTesterAuto
 
         yield return SetupAndAwaitNetwork();
 
-        FOView view = null;
-        FOObject origin = null;
+        OffsetView view = null;
+        OffsetTransform origin = null;
 
         while (view == null || origin == null)
         {
-            view = UnityEngine.Object.FindObjectOfType<FOView>();
-            origin = UnityEngine.GameObject.Find("Origin")?.GetComponent<FOObject>();
+            view = UnityEngine.Object.FindObjectOfType<OffsetView>();
+            origin = UnityEngine.GameObject.Find("Origin")?.GetComponent<OffsetTransform>();
             yield return new WaitForSeconds(1);
         }
 
@@ -133,10 +134,10 @@ public class ServersideTesterAuto
 
             yield return new WaitForFixedUpdate();
 
-            var error = Vector3d.Distance(position, view.realPosition);
+            var error = Vector3d.Distance(position, view.GetRealPosition());
             Assert.IsTrue(error < 0.01);
             var distance_from_origin = Vector3.Distance(view.transform.position, Vector3.zero);
-            var error_at_origin = Vector3d.Distance(Vector3d.zero, origin.realPosition);
+            var error_at_origin = Vector3d.Distance(Vector3d.zero, origin.GetRealPosition());
 
             sb.Append(i);
             sb.Append(";");
@@ -160,8 +161,8 @@ public class ServersideTesterAuto
     }
 
     /// <summary>
-    /// Tests whether more than one FOView per connection works correctly,
-    /// and ensures the system can tolerate multiple FOViews merging then separating at the same time.
+    /// Tests whether more than one OffsetView per connection works correctly,
+    /// and ensures the system can tolerate multiple OffsetViews merging then separating at the same time.
     /// </summary>
     [UnityTest]
     public IEnumerator MultipleViewsSameClient()
@@ -173,13 +174,13 @@ public class ServersideTesterAuto
 
         //spawn multiple views
 
-        FOView[] views = new FOView[8];
+        OffsetView[] views = new OffsetView[8];
 
-        FOView view_init = null;
+        OffsetView view_init = null;
 
         while (view_init == null)
         {
-            view_init = UnityEngine.Object.FindObjectOfType<FOView>();
+            view_init = UnityEngine.Object.FindObjectOfType<OffsetView>();
             yield return new WaitForSeconds(2);
         }
 
@@ -189,7 +190,7 @@ public class ServersideTesterAuto
 
         for (int i = 1; i < views.Length; i++)
         {
-            views[i] = GameObject.Instantiate(gob).GetComponent<FOView>();
+            views[i] = GameObject.Instantiate(gob).GetComponent<OffsetView>();
             FishNet.InstanceFinder.NetworkManager.ServerManager.Spawn(views[i].GetComponent<NetworkObject>());
         }
 
@@ -216,30 +217,30 @@ public class ServersideTesterAuto
     }
 
     /// <summary>
-    /// Test wandering agents (tests two clients wandering around, starting at an FOObject, and then
-    /// meeting again at the FOObject, asserts the FOObject and both clients end up in the same group)
+    /// Test wandering agents (tests two clients wandering around, starting at an OffsetTransform, and then
+    /// meeting again at the OffsetTransform, asserts the OffsetTransform and both clients end up in the same group)
     /// </summary>
     [UnityTest]
-    public IEnumerator FOObjectGroupChange()
+    public IEnumerator OffsetTransformGroupChange()
     {
         yield return SetupAndAwaitNetwork();
 
         //spawn multiple views
 
-        FOView[] views = new FOView[2];
+        OffsetView[] views = new OffsetView[2];
 
-        FOView view_init = null;
+        OffsetView view_init = null;
 
-        FOObject foobject = null;
+        OffsetTransform foobject = null;
 
         while (view_init == null || foobject == null)
         {
-            view_init = UnityEngine.Object.FindObjectOfType<FOView>();
-            FOObject[] objects = UnityEngine.Object.FindObjectsOfType<FOObject>();
+            view_init = UnityEngine.Object.FindObjectOfType<OffsetView>();
+            OffsetTransform[] objects = UnityEngine.Object.FindObjectsOfType<OffsetTransform>();
 
             foreach (var obj in objects)
             {
-                if (obj.GetType() != typeof(FOView))
+                if (obj.GetType() != typeof(OffsetView))
                 {
                     foobject = obj;
                 }
@@ -253,34 +254,34 @@ public class ServersideTesterAuto
 
         for (int i = 1; i < views.Length; i++)
         {
-            views[i] = GameObject.Instantiate(gob).GetComponent<FOView>();
+            views[i] = GameObject.Instantiate(gob).GetComponent<OffsetView>();
             FishNet.InstanceFinder.NetworkManager.ServerManager.Spawn(views[i].GetComponent<NetworkObject>());
         }
 
         foobject.transform.position = Vector3.one; //easier to test precision loss this way
 
-        Vector3d control_position = foobject.realPosition;
+        Vector3d control_position = foobject.GetRealPosition();
 
         yield return new WaitForSeconds(2);
         Debug.Log("Starting test");
 
-        //move both views to separate sides of the FOObject
+        //move both views to separate sides of the OffsetTransform
 
         views[0].transform.position = Vector3.right * OFFSET_DISTANCE;
         views[1].transform.position = Vector3.left * OFFSET_DISTANCE;
 
-        //inside the for loop, move one view to the FOObject, then move it away, then switch to the other FOView and do the same
+        //inside the for loop, move one view to the OffsetTransform, then move it away, then switch to the other OffsetView and do the same
 
         bool firstIsSelected = true;
 
         for (int i = 0; i < 60; i++)
         {
             Debug.Log($"Iteration {i} started");
-            FOView view = views[firstIsSelected ? 0 : 1];
+            OffsetView view = views[firstIsSelected ? 0 : 1];
 
-            view.SetRealPositionApproximate(view.realPosition.sqrMagnitude > 0 ? Vector3d.zero : (firstIsSelected ? Vector3d.right : Vector3d.left) * OFFSET_DISTANCE);
+            view.SetRealPositionApproximate(view.GetRealPosition().sqrMagnitude > 0 ? Vector3d.zero : (firstIsSelected ? Vector3d.right : Vector3d.left) * OFFSET_DISTANCE);
 
-            if (view.realPosition.sqrMagnitude > 0) //was at zero, is no longer at zero, switch active
+            if (view.GetRealPosition().sqrMagnitude > 0) //was at zero, is no longer at zero, switch active
             {
                 firstIsSelected = !firstIsSelected;
             }
@@ -291,19 +292,19 @@ public class ServersideTesterAuto
 
                 view = views[firstIsSelected ? 0 : 1];
 
-                //sanity check (if this fails the test is invalid and either the delay for waiting for rebase is too short, the wrong FOObject is selected, or something is wrong with the package)
+                //sanity check (if this fails the test is invalid and either the delay for waiting for rebase is too short, the wrong OffsetTransform is selected, or something is wrong with the package)
                 Debug.Log($"Iteration {i} finished. Checking assertions.");
-                if (view.realPosition.sqrMagnitude > 0)
+                if (view.GetRealPosition().sqrMagnitude > 0)
                 {
                     throw new Exception("Test invalid! Selected view is not at 0,0,0 real!");
                 }
 
-                // A) the FOView in range of the FOObject is in the same scene as the FOObject
+                // A) the OffsetView in range of the OffsetTransform is in the same scene as the OffsetTransform
 
                 Assert.AreEqual(view.gameObject.scene.handle, foobject.gameObject.scene.handle);
 
-                // B) the FOObject's real position remains mostly unchanged
-                Assert.True((control_position - foobject.realPosition).magnitude < 10);
+                // B) the OffsetTransform's real position remains mostly unchanged
+                Assert.True((control_position - foobject.GetRealPosition()).magnitude < 10);
 
                 Debug.Log($"Assertions for Iteration {i} passed");
             }
@@ -329,14 +330,14 @@ public class ServersideTesterAuto
             else
             {
                 Assert.AreNotEqual(views[0].gameObject.scene.handle, views[1].gameObject.scene.handle);
-                //the FOObject will end up in one of the other scenes
+                //the OffsetTransform will end up in one of the other scenes
                 Assert.True(views[0].gameObject.scene.handle == foobject.gameObject.scene.handle || views[1].gameObject.scene.handle == foobject.gameObject.scene.handle);
-                // the FOObject's real position remains mostly unchanged
-                Assert.True((control_position - foobject.realPosition).magnitude < 10);
+                // the OffsetTransform's real position remains mostly unchanged
+                Assert.True((control_position - foobject.GetRealPosition()).magnitude < 10);
             }
             together = !together;
         }
-        Debug.Log($"Final real position of foobject: {foobject.realPosition}");
+        Debug.Log($"Final real position of foobject: {foobject.GetRealPosition()}");
 
         yield return Cleanup();
     }
@@ -354,20 +355,20 @@ public class ServersideTesterAuto
 
         //spawn multiple views
 
-        FOView[] views = new FOView[3];
+        OffsetView[] views = new OffsetView[3];
 
-        FOView view_init = null;
+        OffsetView view_init = null;
 
-        FOObject foobject = null;
+        OffsetTransform foobject = null;
 
         while (view_init == null || foobject == null)
         {
-            view_init = UnityEngine.Object.FindObjectOfType<FOView>();
-            FOObject[] objects = UnityEngine.Object.FindObjectsOfType<FOObject>();
+            view_init = UnityEngine.Object.FindObjectOfType<OffsetView>();
+            OffsetTransform[] objects = UnityEngine.Object.FindObjectsOfType<OffsetTransform>();
 
             foreach (var obj in objects)
             {
-                if (obj.GetType() != typeof(FOView))
+                if (obj.GetType() != typeof(OffsetView))
                 {
                     foobject = obj;
                 }
@@ -381,13 +382,13 @@ public class ServersideTesterAuto
 
         for (int i = 1; i < views.Length; i++)
         {
-            views[i] = GameObject.Instantiate(gob).GetComponent<FOView>();
+            views[i] = GameObject.Instantiate(gob).GetComponent<OffsetView>();
             FishNet.InstanceFinder.NetworkManager.ServerManager.Spawn(views[i].GetComponent<NetworkObject>());
         }
 
         foobject.transform.position = Vector3.one; //easier to test precision loss this way
 
-        Vector3d control_position = foobject.realPosition;
+        Vector3d control_position = foobject.GetRealPosition();
 
         yield return new WaitForSeconds(2);
         Debug.Log("Starting test");
@@ -423,10 +424,10 @@ public class ServersideTesterAuto
     }
 
     /// <summary>
-    /// Tests FOViews entering the same area then leaving. This is called "merging" because their scenes
+    /// Tests OffsetViews entering the same area then leaving. This is called "merging" because their scenes
     /// are merged into one. When they leave, their scenes are split into separate scenes again.
     /// </summary>
-    public static IEnumerator MergeTest(FOView test, FOView control)
+    public static IEnumerator MergeTest(OffsetView test, OffsetView control)
     {
 
         test.transform.position = Vector3.zero;
@@ -434,12 +435,12 @@ public class ServersideTesterAuto
 
         Assert.AreEqual(control.gameObject.scene, test.gameObject.scene);
         Debug.Log("Starting test");
-        Debug.Log($"Test: {test.networking.ObjectId}");
-        Debug.Log($"Control: {control.networking.ObjectId}");
+        Debug.Log($"Test: {test.GetComponent<NetworkObject>().ObjectId}");
+        Debug.Log($"Control: {control.GetComponent<NetworkObject>().ObjectId}");
 
-        Vector3d controlReal = control.realPosition;
+        Vector3d controlReal = control.GetRealPosition();
 
-        Debug.Log($"Initial Unity Position: {control.transform.position} Inital Real: {control.realPosition} ");
+        Debug.Log($"Initial Unity Position: {control.transform.position} Inital Real: {control.GetRealPosition()} ");
         Vector3 move = Vector3.zero;
         int desyncFrameCount = 0;
 
@@ -449,11 +450,12 @@ public class ServersideTesterAuto
             if (i % 2 != 0)
             {
                 move = new Vector3(((i % 29) * OFFSET_DISTANCE) + i, ((i % 31) * OFFSET_DISTANCE) + i, ((i % 37) * OFFSET_DISTANCE) + i);
-                if (test.realPosition != Vector3d.zero)
+                if (test.GetRealPosition() != Vector3d.zero)
                 {
-                    test.transform.position = FOManager.instance.RealToUnity(Vector3d.zero, test.gameObject.scene);
+                    OffsetScene scene = FOServiceLocator.registry.GetScened<OffsetScene>(test.gameObject.scene);
+                    test.transform.position = Mathd.RealToUnity(Vector3d.zero, scene.GetOffset());
                 }
-                Debug.Log($"BEFORE Test: {test.transform.position} Control: {control.transform.position} Test Real: {test.realPosition} Control Real: {control.realPosition}");
+                Debug.Log($"BEFORE Test: {test.transform.position} Control: {control.transform.position} Test Real: {test.GetRealPosition()} Control Real: {control.GetRealPosition()}");
             }
             else
             {
@@ -461,12 +463,13 @@ public class ServersideTesterAuto
             }
             test.transform.position += move;
 
-            Debug.Log("Dist During: " + Vector3d.Magnitude(controlReal - control.realPosition).ToString("########.############"));
+            Debug.Log("Dist During: " + Vector3d.Magnitude(controlReal - control.GetRealPosition()).ToString("########.############"));
 
             //the whole point of this test is that since the control does not move this should never be true unless something is wrong with the offsetting
-            if (Vector3d.Magnitude(controlReal - control.realPosition) > 10)
+            if (Vector3d.Magnitude(controlReal - control.GetRealPosition()) > 10)
             {
-                Debug.Log($"Desynchronized! Dist: {Vector3d.Magnitude(controlReal - control.realPosition)} Merges: {i} Group: {control.gameObject.scene.ToHex()} Offset: {FOManager.instance.UnityToReal(Vector3.zero, control.gameObject.scene)} Unity Position: {control.transform.position} Real: {control.realPosition} Expected: {controlReal}");
+                OffsetScene scene = FOServiceLocator.registry.GetScened<OffsetScene>(test.gameObject.scene);
+                Debug.Log($"Desynchronized! Dist: {Vector3d.Magnitude(controlReal - control.GetRealPosition())} Merges: {i} Group: {control.gameObject.scene.ToHex()} Offset: {Mathd.UnityToReal(Vector3.zero, scene.GetOffset())} Unity Position: {control.transform.position} Real: {control.GetRealPosition()} Expected: {controlReal}");
                 desyncFrameCount++;
             }
             else
@@ -481,7 +484,7 @@ public class ServersideTesterAuto
 
             yield return null;
 
-            Debug.Log($"AFTER Test: {test.transform.position} Control: {control.transform.position} Test Real: {test.realPosition} Control Real: {control.realPosition}");
+            Debug.Log($"AFTER Test: {test.transform.position} Control: {control.transform.position} Test Real: {test.GetRealPosition()} Control Real: {control.GetRealPosition()}");
         }
 
         yield return Cleanup();
@@ -497,20 +500,20 @@ public class ServersideTesterAuto
 
         //spawn multiple views
 
-        FOView[] views = new FOView[2];
+        OffsetView[] views = new OffsetView[2];
 
-        FOView view_init = null;
+        OffsetView view_init = null;
 
-        FOObject foobject = null;
+        OffsetTransform foobject = null;
 
         while (view_init == null || foobject == null)
         {
-            view_init = UnityEngine.Object.FindObjectOfType<FOView>();
-            FOObject[] objects = UnityEngine.Object.FindObjectsOfType<FOObject>();
+            view_init = UnityEngine.Object.FindObjectOfType<OffsetView>();
+            OffsetTransform[] objects = UnityEngine.Object.FindObjectsOfType<OffsetTransform>();
 
             foreach (var obj in objects)
             {
-                if (obj.GetType() != typeof(FOView))
+                if (obj.GetType() != typeof(OffsetView))
                 {
                     foobject = obj;
                 }
@@ -524,13 +527,13 @@ public class ServersideTesterAuto
 
         for (int i = 1; i < views.Length; i++)
         {
-            views[i] = GameObject.Instantiate(gob).GetComponent<FOView>();
+            views[i] = GameObject.Instantiate(gob).GetComponent<OffsetView>();
             FishNet.InstanceFinder.NetworkManager.ServerManager.Spawn(views[i].GetComponent<NetworkObject>());
         }
 
         foobject.transform.position = Vector3.one; //easier to test precision loss this way
 
-        Vector3d control_position = foobject.realPosition;
+        Vector3d control_position = foobject.GetRealPosition();
 
         yield return new WaitForSeconds(1);
         Debug.Log("Starting test");
@@ -545,7 +548,8 @@ public class ServersideTesterAuto
     /// </summary>
     public static IEnumerator SetupAndAwaitNetwork()
     {
-        if(hasRun){
+        if (hasRun)
+        {
             throw new System.Exception("Running multiple tests in quick succession is not supported because the Unity testing framework leaks state between tests!!");
         }
         Debug.LogWarning("------- Starting test -------");
@@ -583,11 +587,11 @@ public class ServersideTesterAuto
     {
         // Unfortunately it seems there is no way to fully clear the state from the previous tests, so automatic running of playmode tests is currently not possible.
         // see https://forum.unity.com/threads/running-tests-consecutively.781847/
-        
+
         // specifically https://forum.unity.com/threads/running-tests-consecutively.781847/#post-8661573
 
         // of course this has not been fixed and will likely never be addressed.
-        
+
         yield return null;
 
         hasRun = true;
