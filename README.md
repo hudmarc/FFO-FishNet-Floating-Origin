@@ -62,7 +62,7 @@ If two OS's are within each other's merge area they will merge. merge area = 1/2
 
 All OS's have a real velocity and a real position. The real velocity of an OS is always zero, unless ALL OV's in the scene have a velocity significantly greater than zero (this margin should be settable, but should be set to the maximum velocity at which collisions can still be accurately detected)
 
-If an OS has a non-zero root velocity, all non-OV's in the scene (including OT's) will be removed and the dev will have to handle accurate collision detection in that case. Perhaps sweep test helper methods can be provided to this end.
+If an OS has a non-zero root velocity, all root objects in the scene without an OffsetView component (including OT's) will be removed and the dev will have to handle accurate collision detection in that case. Perhaps sweep test helper methods can be provided to this end.
 
 Can be used without an OffsetManager.
 Update mode is settable (default Unity, but can also be updated from the OffsetManager)
