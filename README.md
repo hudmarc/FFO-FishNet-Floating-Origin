@@ -64,7 +64,7 @@ All OS's have a real velocity and a real position. The real velocity of an OS is
 
 If an OS has a non-zero root velocity, all root objects in the scene without an OffsetView component (including OT's) will be removed and the dev will have to handle accurate collision detection in that case. Perhaps sweep test helper methods can be provided to this end.
 
-Can be used without an OffsetManager.
+Should not depend on OffsetManager.
 Update mode is settable (default Unity, but can also be updated from the OffsetManager)
 
 ## GlobalScaleScene
