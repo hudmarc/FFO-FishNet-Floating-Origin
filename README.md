@@ -4,42 +4,52 @@
 
 Implement:
 
-Preferences
+### Preferences
 
 🔲 FOPreferences (centralized preference management for the FO system)
 
-Management
+### Management
 
 🔲 OffsetScene
+
 🔲 OffsetManager
 
-Helpers
+### Helpers
 
 🔲 FloatingOffset
+
 🔲 FOExtensions
 
-Transforms
+### Transforms
 
 🔲 OffsetTransform (Formally FOObject)
+
 🔲 OffsetView (FOObserver)
+
 🔲 OffsetAnchor (Formally FOAnchor)
+
 🔲 IgnoreOffset
 
-Example
+### Example
 
 🔲 Default Offsetter
+
 🔲 DefaultFOSceneManager
+
 🔲 TestingSetup.unitypackage
+
 🔲 FishNetIntegration.unitypackage
 
-Abstractions
+### Abstractions
 
 ✅ IOffsetter
+
 🔲 FOSceneManager
 
-Testing
+### Testing
 
 🔲 Rewrite tests to work with new API
+
 🔲 Maximize test coverage
 
 ---
