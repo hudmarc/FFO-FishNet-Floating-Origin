@@ -73,7 +73,7 @@ Scene which is scaled so that the imprecise part of float64 = float32. This scen
 
 ## OffsetManager
 
-When an OffsetScene detects an OV that must be moved to a different OS, it will call a method on the OM that queues the OV for transfer to a different OS. While an OV is marked as "queued" it will  be ignored by the OffsetScene it is currently in, and will be moved to the first pooled OS as soon as it is ready.
+When an OffsetScene detects an OV that must be moved to a different OS, it will add the OV to its transfer queue. The OM will monitor queues of OS's. While an OV is marked as "queued" it will  be ignored by the OffsetScene it is currently in, and will be moved to the first pooled OS as soon as it is ready.
 
 OffsetScenes which contain no OV's will report this to the OM, which will pool them for later use (this means moving all their OT's to a null-scene)
 
