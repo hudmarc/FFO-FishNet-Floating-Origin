@@ -4,18 +4,11 @@ using UnityEngine;
 
 namespace FloatingOffset.Runtime
 {
+    /// <summary>
+    /// Marks an object as ignored by the Offset system, when a scene is rebased this object will not be moved.
+    /// </summary>
     public class IgnoreOffset : MonoBehaviour
     {
-        // Start is called before the first frame update
-        void Start()
-        {
         
-        }
-
-        // Update is called once per frame
-        void Update()
-        {
-        
-        }
     }
 }

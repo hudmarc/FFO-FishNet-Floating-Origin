@@ -1,4 +1,4 @@
-using FishNet.FloatingOrigin;
+using FloatingOffset.Runtime;
 using NUnit.Framework;
 using UnityEngine;
 

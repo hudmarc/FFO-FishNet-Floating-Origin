@@ -1,7 +1,7 @@
 // using FishNet.Object;
 // using UnityEngine;
 
-// namespace FishNet.FloatingOrigin
+// namespace FloatingOffset.Runtime
 // {
 //     [RequireComponent(typeof(FOView))]
 //     public class FOObserverDebugger : NetworkBehaviour

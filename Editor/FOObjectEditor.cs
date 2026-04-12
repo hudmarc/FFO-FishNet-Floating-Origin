@@ -1,7 +1,7 @@
 // using UnityEngine;
 // using UnityEditor;
 
-// namespace FishNet.FloatingOrigin
+// namespace FloatingOffset.Editor
 // {
 //     [CustomEditor(typeof(FOObject), true)]
 //     [CanEditMultipleObjects]

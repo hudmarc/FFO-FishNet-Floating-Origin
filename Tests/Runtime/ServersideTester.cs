@@ -1,5 +1,5 @@
 using System.Collections;
-using FishNet.FloatingOrigin;
+using FloatingOffset.Runtime;
 using FishNet.Object;
 using FloatingOffset.Runtime;
 using NUnit.Framework;

@@ -2,7 +2,7 @@ using System;
 // using FishNet.Object;
 using UnityEngine;
 
-namespace FishNet.FloatingOrigin
+namespace FloatingOffset.Runtime
 {
     [Obsolete("Replaced by OffsetTransform", true)]
     public class FOObject : MonoBehaviour

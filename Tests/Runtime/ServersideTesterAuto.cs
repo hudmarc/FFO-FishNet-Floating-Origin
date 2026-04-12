@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 using System.Text;
-using FishNet.FloatingOrigin;
+using FloatingOffset.Runtime;
 using FishNet.Managing;
 using FishNet.Object;
 using FloatingOffset.Runtime;

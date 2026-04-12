@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace FishNet.FloatingOrigin
+namespace FloatingOffset.Runtime
 {
     namespace Types
     {   
