@@ -1,9 +1,9 @@
-#if FISHNET
 using System;
 using System.Collections.Generic;
 using FishNet.Connection;
 using FishNet.FloatingOrigin.Types;
 using FishNet.Object;
+using FishNet.Transporting;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -14,7 +14,7 @@ namespace FishNet.FloatingOrigin
         private Vector3d localOffset = Vector3d.zero;
 
         [Client]
-        void OnOffsetSyncBroadcast(OffsetSyncBroadcast broadcast)
+        internal void OnOffsetSyncBroadcast(OffsetSyncBroadcast broadcast, Channel channel)
         {
             Vector3d difference = localOffset - broadcast.offset;
 
@@ -72,4 +72,3 @@ namespace FishNet.FloatingOrigin
         }
     }
 }
-#endif
