@@ -52,7 +52,7 @@ namespace FishNet.FloatingOrigin.Observing
         /// Clones referenced ObserverCondition. This must be populated with your conditions settings.
         /// </summary>
         /// <returns></returns>
-        public override ObserverCondition Clone()
+        public ObserverCondition Clone()
         {
             return ScriptableObject.CreateInstance<FOCondition>();
         }
