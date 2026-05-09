@@ -1,6 +1,4 @@
-using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 namespace FloatingOffset.Runtime
@@ -47,7 +45,8 @@ namespace FloatingOffset.Runtime
             new Vector3d(-1,-1,1),
 
          };
-        private readonly Dictionary<Vector3d, Dictionary<T, Vector3d>> dict = new Dictionary<Vector3d, Dictionary<T, Vector3d>>();
+        private readonly Dictionary<Vector3d, HashSet<T>> dict = new Dictionary<Vector3d, HashSet<T>>();
+        private readonly Dictionary<T, Vector3d> original_positions = new Dictionary<T, Vector3d>();
         private readonly int resolution;
         private readonly float resolutionInverseScalar;
         public HashGrid(int resolution)
@@ -61,9 +60,10 @@ namespace FloatingOffset.Runtime
             Vector3d quantized = Quantize(vector);
             if (!dict.ContainsKey(quantized))
             {
-                dict.Add(quantized, new Dictionary<T, Vector3d>());
+                dict.Add(quantized, new HashSet<T>());
             }
-            dict[quantized].Add(value, vector);
+            dict[quantized].Add(value);
+            original_positions.Add(value, vector);
         }
         public Vector3d Quantize(Vector3d vector)
         {
@@ -75,6 +75,14 @@ namespace FloatingOffset.Runtime
         public bool Has(Vector3d vector)
         {
             return dict.ContainsKey(Quantize(vector));
+        }
+        public bool Contains(Vector3d vector, T value)
+        {
+            return dict[Quantize(vector)].Contains(value);
+        }
+        public Vector3d GetOriginalPosition(T value)
+        {
+            return original_positions[value];
         }
         /// <summary>
         /// Finds a set of objects in the given Bounding Box.
@@ -107,8 +115,8 @@ namespace FloatingOffset.Runtime
                 {
                     foreach (var cell_element in dict[Quantize(initial + SEARCH_PATTERN[i])])
                     {
-                        if (Functions.MaxLengthScalar(cell_element.Value - center) < distance)
-                            found.Add(cell_element.Key);
+                        if (Mathd.MaxLengthScalar(original_positions[cell_element] - center) < distance)
+                            found.Add(cell_element);
                     }
                 }
             }
@@ -127,14 +135,14 @@ namespace FloatingOffset.Runtime
                 {
                     foreach (var cell_element in dict[Quantize(initial + SEARCH_PATTERN[i])])
                     {
-                        if (cell_element.Key != exclude && Functions.MaxLengthScalar(cell_element.Value - center) < distance)
-                            return cell_element.Key;
+                        if (cell_element != exclude && Mathd.MaxLengthScalar(original_positions[cell_element] - center) < distance)
+                            return cell_element;
                     }
                 }
             }
             return null;
         }
-        public HashSet<T> this[Vector3d vector] => dict[Quantize(vector)].Keys.ToHashSet<T>();
+        public HashSet<T> this[Vector3d vector] => dict[Quantize(vector)];
         public void Clear() => dict.Clear();
         public void Remove(Vector3d vector) => dict.Remove(Quantize(vector));
     }

@@ -1,7 +1,6 @@
 using System.Collections;
 using FloatingOffset.Runtime;
 using FishNet.Object;
-using FloatingOffset.Runtime;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -18,7 +17,7 @@ public class ServersideTester
     /// </summary>
     private const float WAIT_FOR_CLIENT = 10;
     /// <summary>
-    /// Networked test setup for the MergeTest. In this case the active OffsetView is the server's view.
+    /// Networked test setup for the MergeTest. In this case the active OffsetTransform is the server's view.
     /// You must manually add another game client, which should simply connect as a client. I recommend using
     /// a tool like Parrelsync to test this locally.
     /// </summary>
@@ -30,24 +29,24 @@ public class ServersideTester
         Debug.Log($"You have ${WAIT_FOR_CLIENT} seconds to add a client!");
         yield return new WaitForSeconds(WAIT_FOR_CLIENT);
 
-        OffsetView[] views = null;
+        OffsetTransform[] views = null;
         OffsetTransform origin = null;
 
         while (views == null || origin == null)
         {
-            views = Object.FindObjectsOfType<OffsetView>();
+            views = Object.FindObjectsOfType<OffsetTransform>();
             origin = GameObject.Find("Origin")?.GetComponent<OffsetTransform>();
             yield return new WaitForFixedUpdate();
         }
 
-        if (!FishNet.InstanceFinder.IsServer)
+        if (!FishNet.InstanceFinder.IsServerStarted)
         {
             yield break;
         }
-        OffsetView serverView = null;
-        OffsetView clientView = null;
+        OffsetTransform serverView = null;
+        OffsetTransform clientView = null;
 
-        foreach (OffsetView view in views)
+        foreach (OffsetTransform view in views)
         {
             if (serverView != null && clientView != null)
             {
@@ -69,7 +68,7 @@ public class ServersideTester
         yield return ServersideTesterAuto.Cleanup();
     }
     /// <summary>
-    /// Networked test setup for the MergeTest. In this case the active OffsetView is the client's view.
+    /// Networked test setup for the MergeTest. In this case the active OffsetTransform is the client's view.
     /// You must manually add another game client, which should simply connect as a client. I recommend using
     /// a tool like Parrelsync to test this locally.
     /// </summary>
@@ -81,24 +80,24 @@ public class ServersideTester
         Debug.Log($"You have ${WAIT_FOR_CLIENT} seconds to add a client!");
         yield return new WaitForSeconds(WAIT_FOR_CLIENT);
 
-        OffsetView[] views = null;
+        OffsetTransform[] views = null;
         OffsetTransform origin = null;
 
         while (views == null || origin == null)
         {
-            views = UnityEngine.Object.FindObjectsOfType<OffsetView>();
+            views = UnityEngine.Object.FindObjectsOfType<OffsetTransform>();
             origin = UnityEngine.GameObject.Find("Origin")?.GetComponent<OffsetTransform>();
             yield return new WaitForFixedUpdate();
         }
 
-        if (!FishNet.InstanceFinder.IsServer)
+        if (!FishNet.InstanceFinder.IsServerStarted)
         {
             yield break;
         }
-        OffsetView serverView = null;
-        OffsetView clientView = null;
+        OffsetTransform serverView = null;
+        OffsetTransform clientView = null;
 
-        foreach (OffsetView view in views)
+        foreach (OffsetTransform view in views)
         {
             if (serverView != null && clientView != null)
             {

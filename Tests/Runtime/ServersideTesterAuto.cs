@@ -4,7 +4,6 @@ using System.Text;
 using FloatingOffset.Runtime;
 using FishNet.Managing;
 using FishNet.Object;
-using FloatingOffset.Runtime;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -38,7 +37,7 @@ public class ServersideTesterAuto
 
     /// <summary>
     /// Sanity check to ensure the package does what it is supposed to do.
-    /// Checks if an OffsetView moving away from the origin by a continually
+    /// Checks if an OffsetTransform moving away from the origin by a continually
     /// increasing amount (positive on all axes) gets consistently rebased.
     /// </summary>
     [UnityTest]
@@ -49,17 +48,17 @@ public class ServersideTesterAuto
 
         yield return SetupAndAwaitNetwork();
 
-        OffsetView view = null;
+        OffsetTransform view = null;
         OffsetTransform origin = null;
 
         while (view == null || origin == null)
         {
-            view = UnityEngine.Object.FindObjectOfType<OffsetView>();
+            view = UnityEngine.Object.FindObjectOfType<OffsetTransform>();
             origin = UnityEngine.GameObject.Find("Origin")?.GetComponent<OffsetTransform>();
             yield return new WaitForFixedUpdate();
         }
 
-        Vector3d position = (Vector3d)view.transform.position;
+        Vector3d position = Mathd.toVector3d(view.transform.position);
 
         yield return new WaitForSeconds(2);
         Debug.Log("Starting test");
@@ -70,7 +69,7 @@ public class ServersideTesterAuto
             // Debug.Log(i);
             Vector3 delta = new Vector3(val, val, val);
             view.transform.position += delta;
-            position += (Vector3d)delta;
+            position += Mathd.toVector3d(delta);
 
             if ((val * 2) > 0) //prevent overflow
                 val *= 2;
@@ -109,17 +108,17 @@ public class ServersideTesterAuto
 
         yield return SetupAndAwaitNetwork();
 
-        OffsetView view = null;
+        OffsetTransform view = null;
         OffsetTransform origin = null;
 
         while (view == null || origin == null)
         {
-            view = UnityEngine.Object.FindObjectOfType<OffsetView>();
+            view = UnityEngine.Object.FindObjectOfType<OffsetTransform>();
             origin = UnityEngine.GameObject.Find("Origin")?.GetComponent<OffsetTransform>();
             yield return new WaitForSeconds(1);
         }
 
-        Vector3d position = (Vector3d)view.transform.position;
+        Vector3d position = Mathd.toVector3d(view.transform.position);
 
         yield return new WaitForSeconds(1);
 
@@ -130,7 +129,7 @@ public class ServersideTesterAuto
             Vector3 delta = (i % 2 == 0 ? -1 : 1) * OFFSET_DISTANCE * Vector3.right;
             view.transform.position += delta;
 
-            position += (Vector3d)delta;
+            position += Mathd.toVector3d(delta);
 
             yield return new WaitForFixedUpdate();
 
@@ -161,8 +160,8 @@ public class ServersideTesterAuto
     }
 
     /// <summary>
-    /// Tests whether more than one OffsetView per connection works correctly,
-    /// and ensures the system can tolerate multiple OffsetViews merging then separating at the same time.
+    /// Tests whether more than one OffsetTransform per connection works correctly,
+    /// and ensures the system can tolerate multiple OffsetTransforms merging then separating at the same time.
     /// </summary>
     [UnityTest]
     public IEnumerator MultipleViewsSameClient()
@@ -174,13 +173,13 @@ public class ServersideTesterAuto
 
         //spawn multiple views
 
-        OffsetView[] views = new OffsetView[8];
+        OffsetTransform[] views = new OffsetTransform[8];
 
-        OffsetView view_init = null;
+        OffsetTransform view_init = null;
 
         while (view_init == null)
         {
-            view_init = UnityEngine.Object.FindObjectOfType<OffsetView>();
+            view_init = UnityEngine.Object.FindObjectOfType<OffsetTransform>();
             yield return new WaitForSeconds(2);
         }
 
@@ -190,11 +189,11 @@ public class ServersideTesterAuto
 
         for (int i = 1; i < views.Length; i++)
         {
-            views[i] = GameObject.Instantiate(gob).GetComponent<OffsetView>();
+            views[i] = GameObject.Instantiate(gob).GetComponent<OffsetTransform>();
             FishNet.InstanceFinder.NetworkManager.ServerManager.Spawn(views[i].GetComponent<NetworkObject>());
         }
 
-        Vector3d position = (Vector3d)views[0].transform.position;
+        Vector3d position = Mathd.toVector3d(views[0].transform.position);
 
         yield return new WaitForSeconds(2);
         Debug.Log("Starting test");
@@ -205,7 +204,7 @@ public class ServersideTesterAuto
             int view = i % views.Length;
             Vector3 delta = new Vector3(val, val, val);
             views[view].transform.position += delta;
-            position += (Vector3d)delta;
+            position += Mathd.toVector3d(delta);
 
             if ((val * 2) > 0)
                 val *= 2;
@@ -227,20 +226,20 @@ public class ServersideTesterAuto
 
         //spawn multiple views
 
-        OffsetView[] views = new OffsetView[2];
+        OffsetTransform[] views = new OffsetTransform[2];
 
-        OffsetView view_init = null;
+        OffsetTransform view_init = null;
 
         OffsetTransform foobject = null;
 
         while (view_init == null || foobject == null)
         {
-            view_init = UnityEngine.Object.FindObjectOfType<OffsetView>();
+            view_init = UnityEngine.Object.FindObjectOfType<OffsetTransform>();
             OffsetTransform[] objects = UnityEngine.Object.FindObjectsOfType<OffsetTransform>();
 
             foreach (var obj in objects)
             {
-                if (obj.GetType() != typeof(OffsetView))
+                if (obj.GetType() != typeof(OffsetTransform))
                 {
                     foobject = obj;
                 }
@@ -254,7 +253,7 @@ public class ServersideTesterAuto
 
         for (int i = 1; i < views.Length; i++)
         {
-            views[i] = GameObject.Instantiate(gob).GetComponent<OffsetView>();
+            views[i] = GameObject.Instantiate(gob).GetComponent<OffsetTransform>();
             FishNet.InstanceFinder.NetworkManager.ServerManager.Spawn(views[i].GetComponent<NetworkObject>());
         }
 
@@ -270,14 +269,14 @@ public class ServersideTesterAuto
         views[0].transform.position = Vector3.right * OFFSET_DISTANCE;
         views[1].transform.position = Vector3.left * OFFSET_DISTANCE;
 
-        //inside the for loop, move one view to the OffsetTransform, then move it away, then switch to the other OffsetView and do the same
+        //inside the for loop, move one view to the OffsetTransform, then move it away, then switch to the other OffsetTransform and do the same
 
         bool firstIsSelected = true;
 
         for (int i = 0; i < 60; i++)
         {
             Debug.Log($"Iteration {i} started");
-            OffsetView view = views[firstIsSelected ? 0 : 1];
+            OffsetTransform view = views[firstIsSelected ? 0 : 1];
 
             view.SetRealPositionApproximate(view.GetRealPosition().sqrMagnitude > 0 ? Vector3d.zero : (firstIsSelected ? Vector3d.right : Vector3d.left) * OFFSET_DISTANCE);
 
@@ -299,7 +298,7 @@ public class ServersideTesterAuto
                     throw new Exception("Test invalid! Selected view is not at 0,0,0 real!");
                 }
 
-                // A) the OffsetView in range of the OffsetTransform is in the same scene as the OffsetTransform
+                // A) the OffsetTransform in range of the OffsetTransform is in the same scene as the OffsetTransform
 
                 Assert.AreEqual(view.gameObject.scene.handle, foobject.gameObject.scene.handle);
 
@@ -355,20 +354,20 @@ public class ServersideTesterAuto
 
         //spawn multiple views
 
-        OffsetView[] views = new OffsetView[3];
+        OffsetTransform[] views = new OffsetTransform[3];
 
-        OffsetView view_init = null;
+        OffsetTransform view_init = null;
 
         OffsetTransform foobject = null;
 
         while (view_init == null || foobject == null)
         {
-            view_init = UnityEngine.Object.FindObjectOfType<OffsetView>();
+            view_init = UnityEngine.Object.FindObjectOfType<OffsetTransform>();
             OffsetTransform[] objects = UnityEngine.Object.FindObjectsOfType<OffsetTransform>();
 
             foreach (var obj in objects)
             {
-                if (obj.GetType() != typeof(OffsetView))
+                if (obj.GetType() != typeof(OffsetTransform))
                 {
                     foobject = obj;
                 }
@@ -382,7 +381,7 @@ public class ServersideTesterAuto
 
         for (int i = 1; i < views.Length; i++)
         {
-            views[i] = GameObject.Instantiate(gob).GetComponent<OffsetView>();
+            views[i] = GameObject.Instantiate(gob).GetComponent<OffsetTransform>();
             FishNet.InstanceFinder.NetworkManager.ServerManager.Spawn(views[i].GetComponent<NetworkObject>());
         }
 
@@ -424,10 +423,10 @@ public class ServersideTesterAuto
     }
 
     /// <summary>
-    /// Tests OffsetViews entering the same area then leaving. This is called "merging" because their scenes
+    /// Tests OffsetTransforms entering the same area then leaving. This is called "merging" because their scenes
     /// are merged into one. When they leave, their scenes are split into separate scenes again.
     /// </summary>
-    public static IEnumerator MergeTest(OffsetView test, OffsetView control)
+    public static IEnumerator MergeTest(OffsetTransform test, OffsetTransform control)
     {
 
         test.transform.position = Vector3.zero;
@@ -500,20 +499,20 @@ public class ServersideTesterAuto
 
         //spawn multiple views
 
-        OffsetView[] views = new OffsetView[2];
+        OffsetTransform[] views = new OffsetTransform[2];
 
-        OffsetView view_init = null;
+        OffsetTransform view_init = null;
 
         OffsetTransform foobject = null;
 
         while (view_init == null || foobject == null)
         {
-            view_init = UnityEngine.Object.FindObjectOfType<OffsetView>();
+            view_init = UnityEngine.Object.FindObjectOfType<OffsetTransform>();
             OffsetTransform[] objects = UnityEngine.Object.FindObjectsOfType<OffsetTransform>();
 
             foreach (var obj in objects)
             {
-                if (obj.GetType() != typeof(OffsetView))
+                if (obj.GetType() != typeof(OffsetTransform))
                 {
                     foobject = obj;
                 }
@@ -527,7 +526,7 @@ public class ServersideTesterAuto
 
         for (int i = 1; i < views.Length; i++)
         {
-            views[i] = GameObject.Instantiate(gob).GetComponent<OffsetView>();
+            views[i] = GameObject.Instantiate(gob).GetComponent<OffsetTransform>();
             FishNet.InstanceFinder.NetworkManager.ServerManager.Spawn(views[i].GetComponent<NetworkObject>());
         }
 

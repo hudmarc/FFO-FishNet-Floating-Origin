@@ -1,17 +1,18 @@
+using System;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace FloatingOffset.Runtime
 {
-    /// <summary>
-    /// Every function in this class has full test coverage.
-    /// </summary>
-    public class Functions
+    public static class Functions
     {
-        public static Vector3 RealToUnity(Vector3d realPosition, Vector3d offset) => (Vector3)(realPosition - offset);
-        public static Vector3d UnityToReal(Vector3 unityPosition, Vector3d offset) => ((Vector3d)unityPosition) + offset;
-
-        public static float MaxLengthScalar(Vector3 vector) => Mathf.Max(Mathf.Abs(vector.x), Mathf.Abs(vector.y), Mathf.Abs(vector.z));
-
-        public static double MaxLengthScalar(Vector3d vector) => Mathd.Max(Mathd.Abs(vector.x), Mathd.Abs(vector.y), Mathd.Abs(vector.z));
+        const string HEX = "X";
+        /// <summary>
+        /// Converts the given scene handle to hex for easy display.
+        /// </summary>
+        /// <param name="scene">The scene to convert.</param>
+        /// <returns>The scene ID in Hex code.</returns>
+        public static string ToHex(this Scene scene) => Math.Abs(scene.handle).ToString(HEX);
+        public static PhysicsScene Physics(this GameObject gameObject) => gameObject.scene.GetPhysicsScene();
     }
 }

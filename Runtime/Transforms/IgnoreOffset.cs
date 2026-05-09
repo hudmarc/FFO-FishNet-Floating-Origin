@@ -9,6 +9,6 @@ namespace FloatingOffset.Runtime
     /// </summary>
     public class IgnoreOffset : MonoBehaviour
     {
-        
+        // nothing to see here...
     }
 }

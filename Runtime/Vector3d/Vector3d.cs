@@ -1,9 +1,6 @@
-// Type: UnityEngine.Vector3d
-// Assembly: UnityEngine, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-// Assembly location: C:\Program Files (x86)\Unity\Editor\Data\Managed\UnityEngine.dll
 using System;
 
-namespace UnityEngine
+namespace FloatingOffset.Runtime
 {
     [System.Serializable]
     public struct Vector3d
@@ -53,14 +50,6 @@ namespace UnityEngine
             get
             {
                 return Vector3d.Normalize(this);
-            }
-        }
-        public Vector3 normalizeLP
-        {
-            get
-            {
-                var norm = Vector3d.Normalize(this);
-                return new Vector3((float)norm.x, (float)norm.y, (float)norm.z);
             }
         }
 
@@ -167,13 +156,6 @@ namespace UnityEngine
             this.z = (double)z;
         }
 
-        public Vector3d(Vector3 v3)
-        {
-            this.x = (double)v3.x;
-            this.y = (double)v3.y;
-            this.z = (double)v3.z;
-        }
-
         public Vector3d(double x, double y)
         {
             this.x = x;
@@ -221,51 +203,10 @@ namespace UnityEngine
             return (double)Vector3d.SqrMagnitude(lhs - rhs) > 0.0 / 1.0;
         }
 
-        public static explicit operator Vector3(Vector3d vector3d)
-        {
-            return new Vector3((float)vector3d.x, (float)vector3d.y, (float)vector3d.z);
-        }
-
-        public static explicit operator Vector3d(Vector3 v)
-        {
-            return new Vector3d(v);
-        }
-
         public static Vector3d Lerp(Vector3d from, Vector3d to, double t)
         {
             t = Mathd.Clamp01(t);
             return new Vector3d(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t, from.z + (to.z - from.z) * t);
-        }
-
-        public static Vector3d Slerp(Vector3d from, Vector3d to, double t)
-        {
-            Vector3 v3 = Vector3.Slerp((Vector3)from, (Vector3)to, (float)t);
-            return new Vector3d(v3);
-        }
-
-        public static void OrthoNormalize(ref Vector3d normal, ref Vector3d tangent)
-        {
-            Vector3 v3normal = new Vector3();
-            Vector3 v3tangent = new Vector3();
-            v3normal = (Vector3)normal;
-            v3tangent = (Vector3)tangent;
-            Vector3.OrthoNormalize(ref v3normal, ref v3tangent);
-            normal = new Vector3d(v3normal);
-            tangent = new Vector3d(v3tangent);
-        }
-
-        public static void OrthoNormalize(ref Vector3d normal, ref Vector3d tangent, ref Vector3d binormal)
-        {
-            Vector3 v3normal = new Vector3();
-            Vector3 v3tangent = new Vector3();
-            Vector3 v3binormal = new Vector3();
-            v3normal = (Vector3)normal;
-            v3tangent = (Vector3)tangent;
-            v3binormal = (Vector3)binormal;
-            Vector3.OrthoNormalize(ref v3normal, ref v3tangent, ref v3binormal);
-            normal = new Vector3d(v3normal);
-            tangent = new Vector3d(v3tangent);
-            binormal = new Vector3d(v3binormal);
         }
 
         public static Vector3d MoveTowards(Vector3d current, Vector3d target, double maxDistanceDelta)
@@ -277,26 +218,6 @@ namespace UnityEngine
             else
                 return current + vector3 / magnitude * maxDistanceDelta;
         }
-
-        public static Vector3d RotateTowards(Vector3d current, Vector3d target, double maxRadiansDelta, double maxMagnitudeDelta)
-        {
-            Vector3 v3 = Vector3.RotateTowards((Vector3)current, (Vector3)target, (float)maxRadiansDelta, (float)maxMagnitudeDelta);
-            return new Vector3d(v3);
-        }
-
-        public static Vector3d SmoothDamp(Vector3d current, Vector3d target, ref Vector3d currentVelocity, double smoothTime, double maxSpeed)
-        {
-            double deltaTime = (double)Time.deltaTime;
-            return Vector3d.SmoothDamp(current, target, ref currentVelocity, smoothTime, maxSpeed, deltaTime);
-        }
-
-        public static Vector3d SmoothDamp(Vector3d current, Vector3d target, ref Vector3d currentVelocity, double smoothTime)
-        {
-            double deltaTime = (double)Time.deltaTime;
-            double maxSpeed = double.PositiveInfinity;
-            return Vector3d.SmoothDamp(current, target, ref currentVelocity, smoothTime, maxSpeed, deltaTime);
-        }
-
         public static Vector3d SmoothDamp(Vector3d current, Vector3d target, ref Vector3d currentVelocity, double smoothTime, double maxSpeed, double deltaTime)
         {
             smoothTime = Mathd.Max(0.0001d, smoothTime);

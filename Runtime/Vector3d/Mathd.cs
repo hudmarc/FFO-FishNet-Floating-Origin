@@ -1,11 +1,9 @@
-// Adapted from Mathf
-// Type: UnityEngine.Mathd
-// Assembly: UnityEngine, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null
-// Assembly location: C:\Program Files (x86)\Unity\Editor\Data\Managed\UnityEngine.dll
+// Adapted from Unity's Mathf
 using System;
 
-namespace UnityEngine
+namespace FloatingOffset.Runtime
 {
+    using Vector3 = UnityEngine.Vector3;
     public struct Mathd
     {
         public const double PI = 3.141593d;
@@ -302,61 +300,6 @@ namespace UnityEngine
         {
             return Mathd.Abs(b - a) < Mathd.Max(1E-06d * Mathd.Max(Mathd.Abs(a), Mathd.Abs(b)), 1.121039E-44d);
         }
-
-        public static double SmoothDamp(double current, double target, ref double currentVelocity, double smoothTime, double maxSpeed)
-        {
-            double deltaTime = (double)Time.deltaTime;
-            return Mathd.SmoothDamp(current, target, ref currentVelocity, smoothTime, maxSpeed, deltaTime);
-        }
-
-        public static double SmoothDamp(double current, double target, ref double currentVelocity, double smoothTime)
-        {
-            double deltaTime = Time.deltaTime;
-            double maxSpeed = double.PositiveInfinity;
-            return Mathd.SmoothDamp(current, target, ref currentVelocity, smoothTime, maxSpeed, deltaTime);
-        }
-
-        public static double SmoothDamp(double current, double target, ref double currentVelocity, double smoothTime, double maxSpeed, double deltaTime)
-        {
-            smoothTime = Mathd.Max(0.0001d, smoothTime);
-            double num1 = 2d / smoothTime;
-            double num2 = num1 * deltaTime;
-            double num3 = (1.0d / (1.0d + num2 + 0.479999989271164d * num2 * num2 + 0.234999999403954d * num2 * num2 * num2));
-            double num4 = current - target;
-            double num5 = target;
-            double max = maxSpeed * smoothTime;
-            double num6 = Mathd.Clamp(num4, -max, max);
-            target = current - num6;
-            double num7 = (currentVelocity + num1 * num6) * deltaTime;
-            currentVelocity = (currentVelocity - num1 * num7) * num3;
-            double num8 = target + (num6 + num7) * num3;
-            if (num5 - current > 0.0 == num8 > num5)
-            {
-                num8 = num5;
-                currentVelocity = (num8 - num5) / deltaTime;
-            }
-            return num8;
-        }
-
-        public static double SmoothDampAngle(double current, double target, ref double currentVelocity, double smoothTime, double maxSpeed)
-        {
-            double deltaTime = (double)Time.deltaTime;
-            return Mathd.SmoothDampAngle(current, target, ref currentVelocity, smoothTime, maxSpeed, deltaTime);
-        }
-
-        public static double SmoothDampAngle(double current, double target, ref double currentVelocity, double smoothTime)
-        {
-            double deltaTime = (double)Time.deltaTime;
-            double maxSpeed = double.PositiveInfinity;
-            return Mathd.SmoothDampAngle(current, target, ref currentVelocity, smoothTime, maxSpeed, deltaTime);
-        }
-
-        public static double SmoothDampAngle(double current, double target, ref double currentVelocity, double smoothTime, double maxSpeed, double deltaTime)
-        {
-            target = current + Mathd.DeltaAngle(current, target);
-            return Mathd.SmoothDamp(current, target, ref currentVelocity, smoothTime, maxSpeed, deltaTime);
-        }
-
         public static double Repeat(double t, double length)
         {
             return t - Mathd.Floor(t / length) * length;
@@ -438,7 +381,7 @@ namespace UnityEngine
             return true;
         }
 
-        public static Vector3d toVector3d(Vector3 vector) => new Vector3d(vector);
+        public static Vector3d toVector3d(Vector3 vector) => new Vector3d(vector.x, vector.y, vector.z);
         public static Vector3 toVector3(Vector3d vector) => new Vector3((float)vector.x, (float)vector.y, (float)vector.z);
 
         // Custom extension methods for the Floating Offset package. Full test coverage under "Functional".
@@ -449,22 +392,14 @@ namespace UnityEngine
         /// <param name="realPosition">The real position</param>
         /// <param name="offset">The offset of the scene.</param>
         /// <returns></returns>
-        public static Vector3 RealToUnity(Vector3d realPosition, Vector3d offset) => (Vector3)(realPosition - offset);
+        public static Vector3 RealToUnity(Vector3d realPosition, Vector3d offset) => toVector3(realPosition - offset);
         /// <summary>
         /// Given a unity position as a Vector3 and an offset as a vector3d, returns the resulting real position.
         /// </summary>
         /// <param name="unityPosition">The unity scene position.</param>
         /// <param name="offset">The offset of the scene.</param>
         /// <returns></returns>
-        public static Vector3d UnityToReal(Vector3 unityPosition, Vector3d offset) => ((Vector3d)unityPosition) + offset;
-        /// <summary>
-        /// Gets the longest scalar component from the given vector and returns its magnitude.
-        /// </summary>
-        /// <param name="vector">
-        /// The vector whose scalars will be compared.
-        /// </param>
-        /// <returns>The longest scalar component of the vector.</returns>
-        public static float MaxLengthScalar(Vector3 vector) => Mathf.Max(Mathf.Abs(vector.x), Mathf.Abs(vector.y), Mathf.Abs(vector.z));
+        public static Vector3d UnityToReal(Vector3 unityPosition, Vector3d offset) => toVector3d(unityPosition) + offset;
         /// <summary>
         /// Gets the longest scalar component from the given vector and returns its magnitude. This version operates on Vector3d's.
         /// </summary>
