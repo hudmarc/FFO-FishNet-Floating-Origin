@@ -2,7 +2,11 @@
 
 ### 2.0.0-dev TODO list
 
-Implement:
+### Networking
+
+🔲 Test offset syncing to clients
+
+🔲 Implement and test OffsetCondition for hiding objects not in your offset scene
 
 ### Preferences
 
