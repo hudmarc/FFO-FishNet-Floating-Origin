@@ -22,6 +22,8 @@ Implement:
 
 ✅ OffsetTransform (Formally FOObject, now also performs tasks of FOObserver)
 
+🔲 TODO: how to 're-discover' offset transforms after they have been moved to the null scene? hash grid?
+
 ✅ Deprecate FOObserver in favor of boolean on OffsetTransform
 
 ✅ OffsetAnchor (Formally FOAnchor)
