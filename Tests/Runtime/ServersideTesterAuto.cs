@@ -66,7 +66,7 @@ public class ServersideTesterAuto
 
         yield return new WaitForSeconds(2);
         Debug.Log("Starting test");
-
+        Debug.Break();
         var val = 1;
         for (int i = 0; i < TEST_ITERATIONS; i++)
         {

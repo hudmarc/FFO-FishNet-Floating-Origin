@@ -114,7 +114,9 @@ namespace FloatingOffset.Runtime
         /// <param name="offsettable"></param>
         internal void RegisterView(IOffsetObject<TSceneKey> offsettable)
         {
+            view_counts[offsettable.GetSceneKey()] = view_counts[offsettable.GetSceneKey()] + 1;
             views.Add(offsettable);
+            Debug.Log($"{offsettable.GetSceneKey()} now has {view_counts[offsettable.GetSceneKey()]} views");
         }
         /// <summary>
         /// Downgrades the given view to a transform
@@ -122,10 +124,13 @@ namespace FloatingOffset.Runtime
         /// <param name="offsettable"></param>
         internal void UnregisterView(IOffsetObject<TSceneKey> offsettable)
         {
-            pending_actions.Add(offsettable, OffsetActions.RemoveView);
+            pending_actions.TryAdd(offsettable, OffsetActions.RemoveView);
         }
         internal void Process()
         {
+            if (positions_summed.Count > 0)
+                positions_summed.Clear();
+
             for (int i = 0; i < views.Count; i++)
             {
                 IOffsetObject<TSceneKey> view = views[i];
@@ -155,6 +160,7 @@ namespace FloatingOffset.Runtime
                             break;
 
                         case OffsetActions.RemoveView:
+                            view_counts[views[i].GetSceneKey()]--;
                             views[i] = null;
                             break;
                     }
@@ -179,6 +185,10 @@ namespace FloatingOffset.Runtime
                     {
                         Vector3d sum = positions_summed[scene.GetSceneKey()] += view.GetEnginePosition();
                     }
+                    else
+                    {
+                        positions_summed.Add(scene.GetSceneKey(), view.GetEnginePosition());
+                    }
                 }
                 // 2)b)
                 if (view.EngineVelocitySquaredMagnitude() > SpeedLimitMsSquared)
@@ -186,46 +196,56 @@ namespace FloatingOffset.Runtime
                     pending_actions.Add(view, OffsetActions.PendingTransfer);
                 }
             }
-
+            if (scenes.Count < 1)
+            {
+                Debug.Log("No scenes!");
+            }
+            
             for (int i = 0; i < scenes.Count; i++)
             {
                 IOffsetScene<TSceneKey> scene = scenes[i];
                 TSceneKey key = scene.GetSceneKey();
                 // ignore/continue if scene is empty or otherwise not ready to process
                 if (view_counts[key] < 1)
+                {
                     continue;
+                }
 
                 // if sum and count includes the offset of the scene being processed...
                 if (positions_summed.ContainsKey(key))
                 {
-                    Vector3d sum = positions_summed[key];
-                    scene.SetOffset(sum / ((float)view_counts[key]));
+                    Vector3d average = positions_summed[key] / ((double)view_counts[key]);
+                    Debug.Log($"Offsetting {scene.GetHashCode()} by {average}");
+
+                    scene.SetOffset(scene.GetOffset() + average);
                     positions_summed.Remove(key);
                 }
 
                 // 3) What causes offset scenes to merge?
                 // If their origins are within bounds of one another, the scene with the most views absorbs the one with less views.
                 // O(n^2) but the assumption is that there will not be more than 100 scenes active at once per runtime ()
-                for (int j = i; j < scenes.Count; j++)
-                {
-                    IOffsetScene<TSceneKey> other = scenes[j];
-                    if ((scene.GetOffset() - other.GetOffset()).sqrMagnitude < MergeCriteriaSquared)
+                if (scenes.Count > 1 && i + 1 < scenes.Count)
+                    for (int j = i + 1; j < scenes.Count; j++)
                     {
-                        if (view_counts[key] > view_counts[other.GetSceneKey()])
+                        IOffsetScene<TSceneKey> other = scenes[j];
+                        if ((scene.GetOffset() - other.GetOffset()).sqrMagnitude < MergeCriteriaSquared)
                         {
-                            MergeBintoA(scene, other);
-                        }
-                        else
-                        {
-                            MergeBintoA(other, scene);
+                            if (view_counts[key] > view_counts[other.GetSceneKey()])
+                            {
+                                MergeBintoA(scene, other);
+                            }
+                            else
+                            {
+                                MergeBintoA(other, scene);
+                            }
                         }
                     }
-                }
             }
         }
 
         internal void RegisterScene(IOffsetScene<TSceneKey> scene)
         {
+            view_counts.Add(scene.GetSceneKey(), 0);
             scenes.Add(scene);
         }
 
@@ -236,14 +256,22 @@ namespace FloatingOffset.Runtime
         /// <param name="scene"></param>
         private void Transfer(IOffsetObject<TSceneKey> offsettable, IOffsetScene<TSceneKey> scene)
         {
+
+            bool same_scene = offsettable.GetSceneKey().Equals(scene.GetSceneKey());
             TSceneKey from = offsettable.GetSceneKey();
             TSceneKey to = scene.GetSceneKey();
             IOffsetScene<TSceneKey> source = registry.GetScene(from);
+            if (!same_scene)
+                view_counts[from]--;
 
-            view_counts[from]--;
-            view_counts[to]--;
+            view_counts[to]++;
 
-            source.MoveTo(offsettable, registry.GetScene(to));
+
+            Debug.Log($"TRANSFER: {offsettable.GetHashCode()} moved to {to} now has {view_counts[to]} views");
+
+            if (!same_scene)
+                source.MoveTo(offsettable, registry.GetScene(to));
+
         }
         /// <summary>
         /// Moves contents of scene b into scene a.
@@ -252,6 +280,7 @@ namespace FloatingOffset.Runtime
         /// <param name="b"></param>
         private void MergeBintoA(IOffsetScene<TSceneKey> a, IOffsetScene<TSceneKey> b)
         {
+            Debug.Log($"Merging {b.GetHashCode()} into {a.GetHashCode()}");
             Vector3d a_offset = a.GetOffset();
             Vector3d b_offset = b.GetOffset();
 
@@ -270,11 +299,11 @@ namespace FloatingOffset.Runtime
             b.MoveAllTo(a);
 
 
-            view_counts[to] += view_counts[from]; 
+            view_counts[to] += view_counts[from];
 
             // Add scene B to the empty scenes
             view_counts[from] = 0;
-            
+
             empty_scenes.Enqueue(b);
         }
 
@@ -338,6 +367,8 @@ namespace FloatingOffset.Runtime
         public void MoveTo(IOffsetObject<TSceneKey> offsettable, IOffsetScene<TSceneKey> scene);
         public void MoveAllTo(IOffsetScene<TSceneKey> scene);
         public void Clone(Action<(IOffsetScene<TSceneKey> scene, float delta)> onSceneReady);
+        public void RegisterOffsettable(IOffsettable offsettable);
+        public void UnregisterOffsettable(IOffsettable offsettable);
     }
     public interface IOffsetSceneRegistry<TSceneKey>
     {

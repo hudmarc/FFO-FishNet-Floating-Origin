@@ -168,10 +168,11 @@ namespace FloatingOffset.Runtime
         /// <param name="scene"></param>
         public void MoveTo(IOffsetObject<Scene> offsettable, IOffsetScene<Scene> scene)
         {
+            var from = gameObject.scene.ToHex();
             if (offsettable.GetSceneKey() != gameObject.scene)
-                throw new Exception($"Offsettable not found on scene {gameObject.scene.ToHex()}");
+                throw new Exception($"Offsettable not found on scene {from}");
             offsettable.MoveTo(scene.GetSceneKey());
-            Debug.Log("Transferred and unregistered transform");
+            Debug.Log($"Transferred {((MonoBehaviour)offsettable).name} from {from} to {scene.GetSceneKey().ToHex()}");
         }
         public void RegisterOffsettable(IOffsettable offsettable)
         {

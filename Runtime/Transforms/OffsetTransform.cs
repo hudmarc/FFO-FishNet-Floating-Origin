@@ -64,12 +64,6 @@ namespace FloatingOffset.Runtime
         {
             return referenceFrame == null ? 0 : referenceFrame.velocity.sqrMagnitude;
         }
-
-        public GameObject GetObject()
-        {
-            return gameObject;
-        }
-
         public void MoveTo(Scene scene)
         {
             SceneManager.MoveGameObjectToScene(gameObject, scene);

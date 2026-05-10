@@ -23,6 +23,7 @@ namespace FloatingOffset.Runtime
 
         private void MoveRootTransforms(Vector3 offset)
         {
+            Debug.Log($"Moving by {offset}");
             var objects = gameObject.scene.GetRootGameObjects();
             foreach (GameObject g in objects)
             {
@@ -48,15 +49,16 @@ namespace FloatingOffset.Runtime
 
         public void Offset(Vector3d old_offset, Vector3d new_offset)
         {
-            Vector3 difference = Mathd.toVector3(old_offset - new_offset);
+
+            Vector3d real_difference = old_offset - new_offset;
+            Vector3 difference = Mathd.toVector3(real_difference);
+
             MoveRootTransforms(difference);
 
-            Vector3d offset = old_offset + Mathd.toVector3d(difference);
+            Vector3 remainder = Mathd.toVector3(real_difference - Mathd.toVector3d(difference));
 
-            Vector3 precise_difference = Mathd.toVector3(offset - new_offset);
-
-            if (precise_difference != Vector3.zero)
-                MoveRootTransforms(difference);
+            if (remainder.sqrMagnitude > 0.0f)
+                MoveRootTransforms(remainder);
 
             MoveOffsettables(old_offset, new_offset);
         }
