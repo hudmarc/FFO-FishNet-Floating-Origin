@@ -10,7 +10,7 @@ Implement:
 
 ### Management
 
-🔲 Thin OffsetSceneManager that is decoupled from Offset Manager the internal data representation of OffsetScenes
+🔲 Thin OffsetSceneManager that is decoupled from the internal data representation of OffsetScenes
 
 ✅ Thin OffsetManager (only bootstraps OffsetServer and adds reference to OffsetUniverse)
 
