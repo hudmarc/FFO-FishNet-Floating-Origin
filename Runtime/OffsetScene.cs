@@ -68,31 +68,31 @@ namespace FloatingOffset.Runtime
 
             Scene scene = SceneManager.GetSceneAt(SceneManager.sceneCount - 1);
 
-            OffsetScene offsetScene = null;
+            // OffsetScene offsetScene = null;
 
-            // 1. Get all top-level GameObjects in this specific scene
-            GameObject[] rootObjects = scene.GetRootGameObjects();
+            // // 1. Get all top-level GameObjects in this specific scene
+            // GameObject[] rootObjects = scene.GetRootGameObjects();
 
-            // 2. Iterate through the roots and search their children
-            foreach (GameObject root in rootObjects)
-            {
-                offsetScene = root.GetComponent<OffsetScene>();
+            // // 2. Iterate through the roots and search their children
+            // foreach (GameObject root in rootObjects)
+            // {
+            //     offsetScene = root.GetComponent<OffsetScene>();
 
-                if (offsetScene != null)
-                {
-                    break; // Found it, stop searching
-                }
-            }
+            //     if (offsetScene != null)
+            //     {
+            //         break; // Found it, stop searching
+            //     }
+            // }
 
-            if (offsetScene != null)
-            {
-                // targetComponent is ready to use
-                onSceneReady?.Invoke((offsetScene, Time.time - start_time));
-            }
-            else
-            {
-                Debug.LogError($"Could not find an OffsetScene component in scene {scene.name}");
-            }
+            // if (offsetScene != null)
+            // {
+            //     // targetComponent is ready to use
+            //     onSceneReady?.Invoke((offsetScene, Time.time - start_time));
+            // }
+            // else
+            // {
+            //     Debug.LogError($"Could not find an OffsetScene component in scene {scene.name}");
+            // }
 
             CullFOObjects(scene);
         }

@@ -128,15 +128,12 @@ namespace FloatingOffset.Runtime
         }
         internal void Process()
         {
-            if (positions_summed.Count > 0)
-                positions_summed.Clear();
-
             for (int i = 0; i < views.Count; i++)
             {
                 IOffsetObject<TSceneKey> view = views[i];
 
                 // Swap-and-pop
-                if (view == null)
+                if (view.Equals(null))
                 {
                     int lastIndex = views.Count - 1;
                     views[i] = views[lastIndex];
@@ -155,7 +152,7 @@ namespace FloatingOffset.Runtime
                     switch (pending_actions[view])
                     {
                         case OffsetActions.PendingTransfer:
-                            RequestScene(view, view.GetRealPosition(), view.GetRealVelocity());
+                            RequestScene(view, view.GetRealPosition(), view.GetRealVelocity()); //MissingReferenceException: The object of type 'OffsetTransform' has been destroyed but you are still trying to access it. Your script should either check if it is null or you should not destroy the object.
                             pending_actions.Remove(view);
                             break;
 

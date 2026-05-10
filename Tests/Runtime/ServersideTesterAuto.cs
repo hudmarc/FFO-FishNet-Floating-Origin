@@ -66,7 +66,7 @@ public class ServersideTesterAuto
 
         yield return new WaitForSeconds(2);
         Debug.Log("Starting test");
-        Debug.Break();
+        // Debug.Break();
         var val = 1;
         for (int i = 0; i < TEST_ITERATIONS; i++)
         {
@@ -455,6 +455,10 @@ public class ServersideTesterAuto
 
         for (int i = 0; i < TEST_ITERATIONS; i++)
         {
+            if(test == null)
+            {
+                break;
+            }
             Debug.Log($"---------- Merge {i} ----------");
             if (i % 2 != 0)
             {
@@ -490,10 +494,10 @@ public class ServersideTesterAuto
             {
                 throw new Exception("Desynchronization lasted for more than 5 frames!");
             }
+            Debug.Log($"AFTER Test: {test.transform.position} Control: {control.transform.position} Test Real: {test.GetRealPosition()} Control Real: {control.GetRealPosition()}");
 
             yield return null;
 
-            Debug.Log($"AFTER Test: {test.transform.position} Control: {control.transform.position} Test Real: {test.GetRealPosition()} Control Real: {control.GetRealPosition()}");
         }
 
         yield return Cleanup();
