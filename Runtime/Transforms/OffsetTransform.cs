@@ -18,11 +18,13 @@ namespace FloatingOffset.Runtime
         private Rigidbody referenceFrame;
         void Awake()
         {
-            universe.Register(this);
+            if (isView)
+                universe.server.RegisterView(this);
         }
         void OnDestroy()
         {
-            universe.Unregister(this);
+            if (isView)
+                universe.server.UnregisterView(this);
         }
         public void SetRealPositionApproximate(Vector3d position)
         {

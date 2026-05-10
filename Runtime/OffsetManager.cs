@@ -1,5 +1,6 @@
 using UnityEngine.SceneManagement;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace FloatingOffset.Runtime
 {
@@ -10,10 +11,11 @@ namespace FloatingOffset.Runtime
     {
         void OnEnable()
         {
-            universe.server = new OffsetServer<Scene>(universe, universe.RebaseCriteria, universe.SpeedLimitMs);
+            universe.server = new OffsetServer<Scene>(universe.RebaseCriteria, universe.SpeedLimitMs);
         }
         void LateUpdate()
         {
+            // Debug.Log($"Frame: {Time.frameCount}");
             universe.server.Process();
         }
     }

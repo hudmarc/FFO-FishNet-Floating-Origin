@@ -9,18 +9,21 @@ namespace FloatingOffset.Runtime
     /// The offset scene handles its own offset and responds to offset requests from the OffsetServer.
     /// </summary>
     [RequireComponent(typeof(Offsetter))]
-    public class OffsetScene : OffsetBehaviour, IOffsetScene<Scene>
+    public class OffsetSceneHandler : OffsetBehaviour, IOffsetHandler<Scene>
     {
         [SerializeField]
         private Offsetter offsetter;
-        private Vector3d universe_offset;
-        private Vector3d universe_velocity;
+        private Vector3d current_offset;
+        private Vector3d current_velocity;
         private readonly LoadSceneParameters parameters = new LoadSceneParameters(LoadSceneMode.Additive, LocalPhysicsMode.Physics3D);
         void Awake()
         {
-            if (offsetter == null)
-                offsetter = GetComponent<Offsetter>();
-            universe.RegisterScene(this);
+            InitializeOffsetter();
+            universe.server.RegisterOffsetHandler(this);
+        }
+        void OnDestroy()
+        {
+            universe.server.UnregisterOffsetHandler(this);
         }
 #if UNITY_EDITOR
         protected override void Reset()
@@ -46,7 +49,7 @@ namespace FloatingOffset.Runtime
             }
         }
 
-        public void Clone(Action<(IOffsetScene<Scene> scene, float delta)> onSceneReady)
+        public void Clone(Action<(Scene scene, float delta)> onSceneReady)
         {
             float start_time = Time.time;
             bool completed = false;
@@ -54,7 +57,7 @@ namespace FloatingOffset.Runtime
             SceneManager.LoadSceneAsync(gameObject.scene.buildIndex, parameters).completed += (arg) => SetupScene(onSceneReady, start_time, ref completed);
         }
 
-        private void SetupScene(Action<(IOffsetScene<Scene> scene, float delta)> onSceneReady, float start_time, ref bool completed)
+        private void SetupScene(Action<(Scene scene, float delta)> onSceneReady, float start_time, ref bool completed)
         {
             //fixes a bizarre Unity bug where the "completed" callback from LoadSceneAsync gets called twice under certain circumstances.
             // offsetGroups.ContainsKey(SceneManager.GetSceneAt(SceneManager.sceneCount - 1)) is causing scenes to NEVER be registered!
@@ -64,42 +67,18 @@ namespace FloatingOffset.Runtime
                 return;
             }
             completed = true;
-            Debug.Log($"setting up group {SceneManager.GetSceneAt(SceneManager.sceneCount - 1).ToHex()}");
+            Debug.Log($"setting up scene {SceneManager.GetSceneAt(SceneManager.sceneCount - 1).handle.ToHex()}");
 
             Scene scene = SceneManager.GetSceneAt(SceneManager.sceneCount - 1);
 
-            // OffsetScene offsetScene = null;
-
-            // // 1. Get all top-level GameObjects in this specific scene
-            // GameObject[] rootObjects = scene.GetRootGameObjects();
-
-            // // 2. Iterate through the roots and search their children
-            // foreach (GameObject root in rootObjects)
-            // {
-            //     offsetScene = root.GetComponent<OffsetScene>();
-
-            //     if (offsetScene != null)
-            //     {
-            //         break; // Found it, stop searching
-            //     }
-            // }
-
-            // if (offsetScene != null)
-            // {
-            //     // targetComponent is ready to use
-            //     onSceneReady?.Invoke((offsetScene, Time.time - start_time));
-            // }
-            // else
-            // {
-            //     Debug.LogError($"Could not find an OffsetScene component in scene {scene.name}");
-            // }
+            onSceneReady?.Invoke((scene, Time.time - start_time));
 
             CullFOObjects(scene);
         }
 
         private void CullFOObjects(Scene scene)
         {
-            Debug.Log($"Culling objects from scene {scene.ToHex()}");
+            Debug.Log($"Culling objects from scene {scene.handle.ToHex()}");
             var objects = scene.GetRootGameObjects();
 
             foreach (GameObject g in objects)
@@ -114,44 +93,15 @@ namespace FloatingOffset.Runtime
             }
         }
 
-        public Vector3d GetOffset()
+        public void UpdateOffset(OffsetScene<Scene> scene, float delta = 0)
         {
-            return universe_offset;
+            Debug.Log($"Offset from {current_offset} to {scene.offset}");
+            Vector3d old_offset = current_offset;
+            current_offset = scene.offset;
+            current_velocity = scene.velocity;
+            offsetter.Offset(old_offset, current_offset);
         }
-
-        public Scene GetSceneKey()
-        {
-            return gameObject.scene;
-        }
-
-        public Vector3d GetVelocity()
-        {
-            return universe_velocity;
-        }
-
-        public void SetOffset(Vector3d offset, Vector3d velocity)
-        {
-            Offset(offset, Vector3d.zero, 0);
-        }
-
-        public void SetOffset(Vector3d offset)
-        {
-            Offset(offset, universe_velocity, Time.deltaTime);
-        }
-
-        public void SetOffset(Vector3d offset, Vector3d velocity, float delta)
-        {
-            Offset(offset, velocity, delta);
-        }
-        private void Offset(Vector3d offset, Vector3d velocity, float delta)
-        {
-            Debug.Log($"Offset from {this.universe_offset} to {offset}");
-            Vector3d old_offset = this.universe_offset;
-            this.universe_offset = offset + velocity * delta;
-            this.universe_velocity = velocity;
-            offsetter.Offset(old_offset, this.universe_offset);
-        }
-        public void MoveAllTo(IOffsetScene<Scene> scene)
+        public void MoveAllTo(OffsetScene<Scene> scene)
         {
             var objects = gameObject.scene.GetRootGameObjects();
             foreach (GameObject gob in objects)
@@ -166,13 +116,10 @@ namespace FloatingOffset.Runtime
         /// </summary>
         /// <param name="offsettable"></param>
         /// <param name="scene"></param>
-        public void MoveTo(IOffsetObject<Scene> offsettable, IOffsetScene<Scene> scene)
+        public void MoveTo(IOffsetObject<Scene> offsettable, OffsetScene<Scene> scene)
         {
-            var from = gameObject.scene.ToHex();
-            if (offsettable.GetSceneKey() != gameObject.scene)
-                throw new Exception($"Offsettable not found on scene {from}");
-            offsettable.MoveTo(scene.GetSceneKey());
-            Debug.Log($"Transferred {((MonoBehaviour)offsettable).name} from {from} to {scene.GetSceneKey().ToHex()}");
+            offsettable.MoveTo(scene.key);
+            Debug.Log($"Transferred {((MonoBehaviour)offsettable).name} from {gameObject.scene.handle.ToHex()} to {scene.key.handle.ToHex()}");
         }
         public void RegisterOffsettable(IOffsettable offsettable)
         {
@@ -182,6 +129,19 @@ namespace FloatingOffset.Runtime
         public void UnregisterOffsettable(IOffsettable offsettable)
         {
             offsetter.UnregisterOffsettable(offsettable);
+        }
+
+        public Scene GetSceneKey()
+        {
+            return gameObject.scene;
+        }
+        /// <summary>
+        /// Helper method to get the offest of an offset scene.
+        /// </summary>
+        /// <returns></returns>
+        public Vector3d GetOffset()
+        {
+            return universe.server.GetSceneOffset(gameObject.scene);
         }
     }
 }

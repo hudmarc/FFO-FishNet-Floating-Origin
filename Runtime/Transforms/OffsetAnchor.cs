@@ -12,11 +12,11 @@ namespace FloatingOffset.Runtime
         private Vector3d realPosition;
         void Start()
         {
-            universe.GetScene(gameObject.scene).RegisterOffsettable(this);
+            universe.server.GetHandler(gameObject.scene).RegisterOffsettable(this);
         }
         void OnDestroy()
         {
-            universe.GetScene(gameObject.scene).UnregisterOffsettable(this);
+            universe.server.GetHandler(gameObject.scene).UnregisterOffsettable(this);
         }
 
         public void OnOffset(Vector3d old_offset, Vector3d new_offset)

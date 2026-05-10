@@ -34,7 +34,7 @@ public class ServersideTesterAuto
     /// into your project.
     /// </summary>
     public const string TEST_SCENE_NAME = "Offline Automated Testing Scene";
-    private static OffsetScene scene;
+    private static OffsetSceneHandler handler;
     private static OffsetUniverse universe;
 
     /// <summary>
@@ -50,6 +50,8 @@ public class ServersideTesterAuto
 
         yield return SetupAndAwaitNetwork();
 
+
+
         OffsetTransform view = null;
         OffsetTransform origin = null;
 
@@ -57,8 +59,6 @@ public class ServersideTesterAuto
         {
             view = findView();
             origin = UnityEngine.GameObject.Find("Origin")?.GetComponent<OffsetTransform>();
-            scene = UnityEngine.GameObject.Find("OffsetScene")?.GetComponent<OffsetScene>();
-            universe = scene.universe;
             yield return new WaitForFixedUpdate();
         }
 
@@ -66,7 +66,7 @@ public class ServersideTesterAuto
 
         yield return new WaitForSeconds(2);
         Debug.Log("Starting test");
-        // Debug.Break();
+
         var val = 1;
         for (int i = 0; i < TEST_ITERATIONS; i++)
         {
@@ -79,12 +79,15 @@ public class ServersideTesterAuto
                 val *= 2;
 
             var error = Vector3d.Distance(position, view.GetRealPosition());
-            Debug.Log((i, val, error));
+            // Debug.Log((i, val, error));
             Assert.Less(error, 2);
+            yield return new WaitForEndOfFrame();
+            // Should have rebased here (rebase runs in LateUpdate)
+            if (view.GetEnginePositionSquareMagnitude() > (universe.RebaseCriteria * universe.RebaseCriteria) * 2)
+                Debug.LogWarning($"Rebase not working properly? Was {view.GetEnginePosition().x}");
 
             var distance_from_origin = Vector3d.Distance(Vector3d.zero, view.GetRealPosition());
             var error_at_origin = Vector3d.Distance(Vector3d.zero, origin.GetRealPosition());
-            yield return new WaitForFixedUpdate();
             sb.Append(i);
             sb.Append(";");
             sb.Append((error * 1000));
@@ -217,6 +220,8 @@ public class ServersideTesterAuto
 
             yield return new WaitForFixedUpdate();
         }
+
+        yield return new WaitForSeconds(2);
 
         yield return Cleanup();
     }
@@ -418,7 +423,7 @@ public class ServersideTesterAuto
 
             // Assert.IsTrue((SceneManager.sceneCount - unrelatedScenes) <= 2);
             if (views[0].gameObject.scene.handle != views[1].gameObject.scene.handle)
-                Debug.LogError($"Scene {views[0].gameObject.scene.ToHex()} is not {views[1].gameObject.scene.ToHex()}");
+                Debug.LogError($"Scene {views[0].gameObject.scene.handle.ToHex()} is not {views[1].gameObject.scene.handle.ToHex()}");
 
             Assert.AreEqual(views[0].gameObject.scene.handle, views[1].gameObject.scene.handle);
 
@@ -455,7 +460,7 @@ public class ServersideTesterAuto
 
         for (int i = 0; i < TEST_ITERATIONS; i++)
         {
-            if(test == null)
+            if (test == null)
             {
                 break;
             }
@@ -465,7 +470,7 @@ public class ServersideTesterAuto
                 move = new Vector3(((i % 29) * OFFSET_DISTANCE) + i, ((i % 31) * OFFSET_DISTANCE) + i, ((i % 37) * OFFSET_DISTANCE) + i);
                 if (test.GetRealPosition() != Vector3d.zero)
                 {
-                    IOffsetScene<Scene> scene = universe.GetScene(test.gameObject.scene);
+                    IOffsetHandler<Scene> scene = universe.server.GetHandler(test.gameObject.scene);
                     test.transform.position = Mathd.RealToUnity(Vector3d.zero, scene.GetOffset());
                 }
                 Debug.Log($"BEFORE Test: {test.transform.position} Control: {control.transform.position} Test Real: {test.GetRealPosition()} Control Real: {control.GetRealPosition()}");
@@ -481,8 +486,8 @@ public class ServersideTesterAuto
             //the whole point of this test is that since the control does not move this should never be true unless something is wrong with the offsetting
             if (Vector3d.Magnitude(controlReal - control.GetRealPosition()) > 10)
             {
-                IOffsetScene<Scene> scene = universe.GetScene(test.gameObject.scene);
-                Debug.Log($"Desynchronized! Dist: {Vector3d.Magnitude(controlReal - control.GetRealPosition())} Merges: {i} Group: {control.gameObject.scene.ToHex()} Offset: {Mathd.UnityToReal(Vector3.zero, scene.GetOffset())} Unity Position: {control.transform.position} Real: {control.GetRealPosition()} Expected: {controlReal}");
+                IOffsetHandler<Scene> scene = universe.server.GetHandler(test.gameObject.scene);
+                Debug.Log($"Desynchronized! Dist: {Vector3d.Magnitude(controlReal - control.GetRealPosition())} Merges: {i} Group: {control.gameObject.scene.handle.ToHex()} Offset: {Mathd.UnityToReal(Vector3.zero, scene.GetOffset())} Unity Position: {control.transform.position} Real: {control.GetRealPosition()} Expected: {controlReal}");
                 desyncFrameCount++;
             }
             else
@@ -569,8 +574,7 @@ public class ServersideTesterAuto
         Debug.LogWarning("------- Starting test -------");
         SceneManager.LoadScene(TEST_SCENE_NAME);
 
-        yield return new WaitForSeconds(2);
-
+        yield return new WaitForSeconds(0.5f);
         Debug.Log("TEST: Finished loading test scene");
         var nm = UnityEngine.Object.FindObjectOfType<NetworkManager>();
 
@@ -590,6 +594,14 @@ public class ServersideTesterAuto
             yield return new WaitForFixedUpdate();
         }
         Debug.Log("TEST: Started client connection");
+
+        while (handler == null)
+        {
+            handler = UnityEngine.GameObject.Find("OffsetScene")?.GetComponent<OffsetSceneHandler>();
+            yield return new WaitForFixedUpdate();
+        }
+
+        universe = handler.universe;
 
         yield return Cleanup();
     }

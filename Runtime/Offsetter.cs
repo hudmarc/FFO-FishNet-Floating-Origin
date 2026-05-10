@@ -1,6 +1,4 @@
 using System.Collections.Generic;
-using FloatingOffset;
-using FloatingOffset.Runtime;
 using UnityEngine;
 
 namespace FloatingOffset.Runtime
