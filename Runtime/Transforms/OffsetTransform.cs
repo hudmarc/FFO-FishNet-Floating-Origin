@@ -8,7 +8,7 @@ namespace FloatingOffset.Runtime
     /// Has a real position. When an OffsetTransform is moved to the null scene, its real position will be cached. If the OffsetTransform's real position is in range of any merge area, it will be taken from the nullscene and moved to the local position relative to its real position.<br/><br/>
     /// If an OffsetTransform is set to act as a view, it will additionally be continuosly updated so that it never goes to the null scene.
     /// </summary>
-    public class OffsetTransform : OffsetBehaviour, IOffsetObject<Vector3, Scene>
+    public class OffsetTransform : OffsetBehaviour, IOffsetObject<Scene>
     {
         [field: SerializeField]
         [Tooltip("If checked, this transform can trigger rebases and will always be kept in a scene. If not, this object will be moved to the null scene if in an empty scene.")]
@@ -34,25 +34,25 @@ namespace FloatingOffset.Runtime
         }
         private Vector3d GetSceneOffset()
         {
-            return universe.server.GetOffset(gameObject.scene);
+            return universe.server.GetSceneOffset(gameObject.scene);
         }
 
         public Vector3d GetRealVelocity()
         {
             if (referenceFrame == null)
-                return universe.server.GetVelocity(gameObject.scene);
+                return universe.server.GetSceneVelocity(gameObject.scene);
 
-            return Mathd.UnityToReal(referenceFrame.velocity, universe.server.GetVelocity(gameObject.scene));
+            return Mathd.UnityToReal(referenceFrame.velocity, universe.server.GetSceneVelocity(gameObject.scene));
         }
 
-        public Vector3 GetEnginePosition()
+        public Vector3d GetEnginePosition()
         {
-            return transform.position;
+            return Mathd.toVector3d(transform.position);
         }
 
-        public Vector3 GetEngineVelocity()
+        public Vector3d GetEngineVelocity()
         {
-            return referenceFrame == null ? Vector3.zero : referenceFrame.velocity;
+            return Mathd.toVector3d(referenceFrame == null ? Vector3.zero : referenceFrame.velocity);
         }
 
         public Scene GetSceneKey()

@@ -461,7 +461,7 @@ public class ServersideTesterAuto
                 move = new Vector3(((i % 29) * OFFSET_DISTANCE) + i, ((i % 31) * OFFSET_DISTANCE) + i, ((i % 37) * OFFSET_DISTANCE) + i);
                 if (test.GetRealPosition() != Vector3d.zero)
                 {
-                    IOffsetScene<Vector3, Scene> scene = universe.GetScene(test.gameObject.scene);
+                    IOffsetScene<Scene> scene = universe.GetScene(test.gameObject.scene);
                     test.transform.position = Mathd.RealToUnity(Vector3d.zero, scene.GetOffset());
                 }
                 Debug.Log($"BEFORE Test: {test.transform.position} Control: {control.transform.position} Test Real: {test.GetRealPosition()} Control Real: {control.GetRealPosition()}");
@@ -477,7 +477,7 @@ public class ServersideTesterAuto
             //the whole point of this test is that since the control does not move this should never be true unless something is wrong with the offsetting
             if (Vector3d.Magnitude(controlReal - control.GetRealPosition()) > 10)
             {
-                IOffsetScene<Vector3, Scene> scene = universe.GetScene(test.gameObject.scene);
+                IOffsetScene<Scene> scene = universe.GetScene(test.gameObject.scene);
                 Debug.Log($"Desynchronized! Dist: {Vector3d.Magnitude(controlReal - control.GetRealPosition())} Merges: {i} Group: {control.gameObject.scene.ToHex()} Offset: {Mathd.UnityToReal(Vector3.zero, scene.GetOffset())} Unity Position: {control.transform.position} Real: {control.GetRealPosition()} Expected: {controlReal}");
                 desyncFrameCount++;
             }
