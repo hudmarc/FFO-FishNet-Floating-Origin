@@ -10,7 +10,7 @@ Implement:
 
 ### Management
 
-🔲 Thin OffsetSceneManager that is decoupled frOffset Manager the internal data representation of OffsetScenes
+🔲 Thin OffsetSceneManager that is decoupled from Offset Manager the internal data representation of OffsetScenes
 
 ✅ Thin OffsetManager (only bootstraps OffsetServer and adds reference to OffsetUniverse)
 
@@ -59,7 +59,7 @@ All OS's have a real velocity and a real position. The real velocity of an Offse
 If an OffsetScene has a non-zero root velocity, all root objects in the scene without an OffsetView component (including OT's) will be removed and the dev will have to handle accurate collision detection in that case. Perhaps sweep test helper methods can be provided to this end.
 
 Should not depend on OffsetManager.
-Update mode is settable (default Unity, but can also be updated frOffset Manager the OffsetManager)
+Update mode is settable (default Unity, but can also be updated from Offset Manager the OffsetManager)
 
 ## OffsetSceneManager
 
@@ -89,7 +89,7 @@ Default update mode is Unity, can also be Custom. There is also a derived class 
 
 should always be within the merge area of the nearest scene. If it is not in the merge area of any scene it will be moved to the null-scene where it will be disabled until needed.
 
-Has a real position. When an OT is moved to the null scene, its real position will be cached. If the OT's real position is in range of any merge area, it will be taken frOffset Manager the nullscene and moved to the local position relative to its real position.
+Has a real position. When an OT is moved to the null scene, its real position will be cached. If the OT's real position is in range of any merge area, it will be taken from Offset Manager the nullscene and moved to the local position relative to its real position.
 
 ## OffsetView
 
