@@ -10,7 +10,7 @@ Implement:
 
 ### Management
 
-🔲 Thin OffsetSceneHandler that is decoupled from the internal data representation of OffsetScenes
+✅ Thin OffsetSceneHandler that is decoupled from the internal data representation of OffsetScenes
 
 ✅ Thin OffsetManager (only bootstraps OffsetServer and adds reference to OffsetUniverse)
 
@@ -22,7 +22,7 @@ Implement:
 
 ✅ OffsetTransform (Formally FOObject, now also performs tasks of FOObserver)
 
-🔲 TODO: how to 're-discover' offset transforms after they have been moved to the null scene? hash grid? (or: keep a cap on the # of disabled offset transforms and just do an O(n) search on the few left over? could also be sped up with sweep and prune)
+🔲 TODO: how to 're-discover' offset transforms after they have been moved out of bounds? hash grid? (or: keep a cap on the # of disabled offset transforms and just do an O(n) search on the few left over? could also be sped up with sweep and prune)
 
 ✅ Deprecate FOObserver in favor of boolean on OffsetTransform
 
@@ -44,7 +44,7 @@ Implement:
 
 ### Testing
 
-🔲 Rewrite tests to work with new API
+✅ Rewrite tests to work with new API
 
 🔲 Maximize test coverage
 
