@@ -10,7 +10,7 @@ Implement:
 
 ### Management
 
-🔲 Thin OffsetSceneManager that is decoupled from the internal data representation of OffsetScenes
+🔲 Thin OffsetSceneHandler that is decoupled from the internal data representation of OffsetScenes
 
 ✅ Thin OffsetManager (only bootstraps OffsetServer and adds reference to OffsetUniverse)
 
@@ -63,7 +63,7 @@ If an OffsetScene has a non-zero root velocity, all root objects in the scene wi
 Should not depend on OffsetManager.
 Update mode is settable (default Unity, but can also be updated from Offset Manager the OffsetManager)
 
-## OffsetSceneManager
+## OffsetSceneHandler
 
 Implements Unity functions on behalf of the OffsetScene
 
