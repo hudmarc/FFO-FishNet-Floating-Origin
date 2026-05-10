@@ -48,6 +48,11 @@ namespace FloatingOffset.Runtime
             throw new NotImplementedException();
         }
 
+        public void UpdateOffset(Vector3d offset, Vector3d velocity, float delta = 0)
+        {
+            throw new NotImplementedException();
+        }
+
         // Add any other required interface methods here...
     }
 
@@ -90,6 +95,11 @@ namespace FloatingOffset.Runtime
         public int GetSceneKey() => _sceneKey;
 
         public void MoveTo(int scene)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void SetEnginePosition(Vector3d vector3d)
         {
             throw new NotImplementedException();
         }

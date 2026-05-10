@@ -92,23 +92,19 @@ namespace FloatingOffset.Runtime
                 }
             }
         }
-
-        public void UpdateOffset(OffsetScene<Scene> scene, float delta = 0)
-        {
-            Debug.Log($"Offset from {current_offset} to {scene.offset}");
-            Vector3d old_offset = current_offset;
-            current_offset = scene.offset;
-            current_velocity = scene.velocity;
-            offsetter.Offset(old_offset, current_offset);
-        }
         public void MoveAllTo(OffsetScene<Scene> scene)
         {
             var objects = gameObject.scene.GetRootGameObjects();
             foreach (GameObject gob in objects)
             {
                 var offset_transform = gob.GetComponent<OffsetTransform>();
+                Debug.Log($"Found game object {gob.name} has OT? {offset_transform != null}");
+
                 if (offset_transform != null)
+                {
                     MoveTo(offset_transform, scene);
+                }
+
             }
         }
         /// <summary>
@@ -118,7 +114,7 @@ namespace FloatingOffset.Runtime
         /// <param name="scene"></param>
         public void MoveTo(IOffsetObject<Scene> offsettable, OffsetScene<Scene> scene)
         {
-            offsettable.MoveTo(scene.key);
+            SceneManager.MoveGameObjectToScene(((OffsetBehaviour)offsettable).gameObject, scene.key);
             Debug.Log($"Transferred {((MonoBehaviour)offsettable).name} from {gameObject.scene.handle.ToHex()} to {scene.key.handle.ToHex()}");
         }
         public void RegisterOffsettable(IOffsettable offsettable)
@@ -142,6 +138,15 @@ namespace FloatingOffset.Runtime
         public Vector3d GetOffset()
         {
             return universe.server.GetSceneOffset(gameObject.scene);
+        }
+
+        public void UpdateOffset(Vector3d offset, Vector3d velocity, float delta = 0)
+        {
+            Debug.Log($"Offset from {current_offset} to {offset}");
+            Vector3d old_offset = current_offset;
+            current_offset = offset;
+            current_velocity = velocity;
+            offsetter.Offset(old_offset, current_offset);
         }
     }
 }

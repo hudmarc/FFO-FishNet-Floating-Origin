@@ -16,7 +16,9 @@ namespace FloatingOffset.Runtime
         }
         void OnDestroy()
         {
-            universe.server.GetHandler(gameObject.scene).UnregisterOffsettable(this);
+            var handler = universe.server.GetHandler(gameObject.scene);
+            if (handler != null)
+                handler.UnregisterOffsettable(this);
         }
 
         public void OnOffset(Vector3d old_offset, Vector3d new_offset)

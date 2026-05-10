@@ -11,7 +11,7 @@ namespace FloatingOffset.Runtime
     {
         void OnEnable()
         {
-            universe.server = new OffsetServer<Scene>(universe.RebaseCriteria, universe.SpeedLimitMs);
+            universe.server = new OffsetServer<Scene>(universe.RebaseCriteria, universe.SpeedLimitMs,universe.MaxScenes);
         }
         void LateUpdate()
         {

@@ -134,6 +134,11 @@ namespace FloatingOffset.Runtime
         public void RemoveViewAt(int scene_index)
         {
             scenes[scene_index].view_count--;
+            
+            if (scenes[scene_index].view_count < 1)
+            {
+                SetEmpty(scene_index);
+            }
         }
 
         /// <summary>
@@ -228,6 +233,10 @@ namespace FloatingOffset.Runtime
         {
             scenes[index].offset = offset;
         }
+        public void SetOffset(TSceneKey key, Vector3d offset)
+        {
+            scenes[scene_indexes[key]].offset = offset;
+        }
 
         public void SetVelocityAt(int index, Vector3d velocity)
         {
@@ -255,6 +264,29 @@ namespace FloatingOffset.Runtime
             }
         }
 
+        /// <summary>
+        /// Attempts to recycle a scene from the Empty Zone. 
+        /// Returns true and outputs the index if successful.
+        /// </summary>
+        public bool TryPopEmpty(out int recycledIndex)
+        {
+            // The Empty Zone exists strictly between the Active boundary and the Alive boundary.
+            // If activeCount == aliveCount, the Empty Zone is completely empty.
+            if (activeCount < aliveCount)
+            {
+                // 1. Grab the scene sitting exactly on the active boundary
+                recycledIndex = activeCount;
+
+                // 2. Expand the Active zone to officially pull this scene inside it
+                activeCount++;
+                return true;
+            }
+
+            // No empty scenes exist. The server must create a new one.
+            recycledIndex = -1;
+            return false;
+        }
+
         internal void AddViewsAt(int scene_index, int count)
         {
             scenes[scene_index].view_count += count;
@@ -264,6 +296,8 @@ namespace FloatingOffset.Runtime
         /// The current capacity of the underlying scenes array.
         /// </summary>
         public int Count { get => scenes.Length; }
+        public int ActiveCount { get => activeCount; }
+        public int EmptyCount { get => EmptyCount; }
     }
 
 }

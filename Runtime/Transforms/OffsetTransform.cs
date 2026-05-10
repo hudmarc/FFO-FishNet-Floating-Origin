@@ -16,14 +16,19 @@ namespace FloatingOffset.Runtime
         [SerializeField]
         [Tooltip("Optional: If added, this will be used to calculate the velocity of the OffsetTransform.")]
         private Rigidbody referenceFrame;
-        void Awake()
+        private bool registered = false;
+        void Start()
         {
-            if (isView)
+            if (enabled && isView)
+            {
                 universe.server.RegisterView(this);
+                registered = true;
+            }
+
         }
         void OnDestroy()
         {
-            if (isView)
+            if (isView && registered)
                 universe.server.UnregisterView(this);
         }
         public void SetRealPositionApproximate(Vector3d position)
@@ -66,14 +71,14 @@ namespace FloatingOffset.Runtime
         {
             return referenceFrame == null ? 0 : referenceFrame.velocity.sqrMagnitude;
         }
-        public void MoveTo(Scene scene)
-        {
-            SceneManager.MoveGameObjectToScene(gameObject, scene);
-        }
-
         public float GetEnginePositionSquareMagnitude()
         {
             return transform.position.sqrMagnitude;
+        }
+
+        public void SetEnginePosition(Vector3d vector3d)
+        {
+            transform.position = Mathd.toVector3(vector3d);
         }
     }
 }

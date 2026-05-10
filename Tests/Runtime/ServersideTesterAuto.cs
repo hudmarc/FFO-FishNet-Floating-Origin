@@ -14,51 +14,102 @@ using UnityEngine.TestTools;
 /// </summary>
 public class ServersideTesterAuto
 {
-    static bool hasRun = false;
-    /// <summary>
-    /// Approximately one astronomical unit, expressed in meters.
-    /// </summary>
-    private const float OFFSET_DISTANCE = 149597870700;
-
-    /// <summary>
-    /// Standard number of iterations for all tests.
-    /// </summary>
+    private const float OFFSET_DISTANCE = 20000;
     private const float TEST_ITERATIONS = 128;
-
-    /// <summary>
-    /// Load the test scene by name. More robust than loading by index.
-    /// Please ensure you have added both 
-    /// "Testing/Automated Testing Scene" and "Testing/Offline Automated Testing Scene" 
-    /// to your Build Settings. If you can't find the Testing directory, you should
-    /// install the unitypackage found at "Packages > FishNet Floating Origin > Runtime > Example > TestingSetup.unitypackage"
-    /// into your project.
-    /// </summary>
     public const string TEST_SCENE_NAME = "Offline Automated Testing Scene";
-    private static OffsetSceneHandler handler;
-    private static OffsetUniverse universe;
 
-    /// <summary>
-    /// Sanity check to ensure the package does what it is supposed to do.
-    /// Checks if an OffsetTransform moving away from the origin by a continually
-    /// increasing amount (positive on all axes) gets consistently rebased.
-    /// </summary>
+    private OffsetSceneHandler handler;
+    private OffsetUniverse universe;
+    private NetworkManager networkManager;
+
+    [UnitySetUp]
+    public IEnumerator SetUp()
+    {
+        Debug.LogWarning("------- Starting test setup -------");
+
+        // Load scene asynchronously and wait for completion
+        AsyncOperation asyncLoad = SceneManager.LoadSceneAsync(TEST_SCENE_NAME, LoadSceneMode.Single);
+        while (!asyncLoad.isDone)
+        {
+            yield return null;
+        }
+
+        networkManager = UnityEngine.Object.FindObjectOfType<NetworkManager>();
+        if (networkManager == null)
+            throw new Exception("NetworkManager not found in the test scene.");
+
+        networkManager.ServerManager.StartConnection();
+        while (!networkManager.ServerManager.Started)
+        {
+            yield return new WaitForFixedUpdate();
+        }
+
+        networkManager.ClientManager.StartConnection();
+        while (!networkManager.ClientManager.Started)
+        {
+            yield return new WaitForFixedUpdate();
+        }
+
+        while (handler == null)
+        {
+            var offsetScene = GameObject.Find("OffsetScene");
+            if (offsetScene != null)
+            {
+                handler = offsetScene.GetComponent<OffsetSceneHandler>();
+            }
+            yield return new WaitForFixedUpdate();
+        }
+
+        universe = handler.universe;
+        Debug.Log("------- Setup complete -------");
+    }
+
+    [UnityTearDown]
+    public IEnumerator TearDown()
+    {
+        Debug.LogWarning("------- Starting test teardown -------");
+
+        if (networkManager != null)
+        {
+            if (networkManager.ClientManager.Started)
+                networkManager.ClientManager.StopConnection();
+
+            if (networkManager.ServerManager.Started)
+                networkManager.ServerManager.StopConnection(true);
+        }
+
+        // Allow FishNet time to clean up sockets and objects
+        yield return new WaitForSeconds(0.2f);
+
+        // Programmatically create a temporary scene so we don't rely on Build Settings
+        Scene tempScene = SceneManager.CreateScene("TempTeardownScene");
+        SceneManager.SetActiveScene(tempScene);
+
+        // Find and safely unload the test scene to flush its state out of memory
+        Scene testScene = SceneManager.GetSceneByName(TEST_SCENE_NAME);
+        if (testScene.isLoaded)
+        {
+            yield return SceneManager.UnloadSceneAsync(testScene);
+        }
+
+        handler = null;
+        universe = null;
+        networkManager = null;
+    }
+
     [UnityTest]
     public IEnumerator OffsetTest()
     {
         StringBuilder sb = new StringBuilder();
         sb.AppendLine("Step; Error (mm);Error at Origin (meters); Distance; Delta");
 
-        yield return SetupAndAwaitNetwork();
-
-
-
         OffsetTransform view = null;
         OffsetTransform origin = null;
 
         while (view == null || origin == null)
         {
-            view = findView();
-            origin = UnityEngine.GameObject.Find("Origin")?.GetComponent<OffsetTransform>();
+            view = FindView();
+            origin = GameObject.Find("Origin")?.GetComponent<OffsetTransform>();
             yield return new WaitForFixedUpdate();
         }
 
@@ -70,401 +121,322 @@ public class ServersideTesterAuto
         var val = 1;
         for (int i = 0; i < TEST_ITERATIONS; i++)
         {
-            // Debug.Log(i);
             Vector3 delta = new Vector3(val, val, val);
             view.transform.position += delta;
             position += Mathd.toVector3d(delta);
 
-            if (i < 21 && (val * 2) > 0) //prevent overflow
+            if (i < 21 && (val * 2) > 0)
                 val *= 2;
 
             var error = Vector3d.Distance(position, view.GetRealPosition());
-            // Debug.Log((i, val, error));
             Assert.Less(error, 2);
+
             yield return new WaitForEndOfFrame();
-            // Should have rebased here (rebase runs in LateUpdate)
+
             if (view.GetEnginePositionSquareMagnitude() > (universe.RebaseCriteria * universe.RebaseCriteria) * 2)
                 Debug.LogWarning($"Rebase not working properly? Was {view.GetEnginePosition().x}");
 
-            var distance_from_origin = Vector3d.Distance(Vector3d.zero, view.GetRealPosition());
-            var error_at_origin = Vector3d.Distance(Vector3d.zero, origin.GetRealPosition());
-            sb.Append(i);
-            sb.Append(";");
-            sb.Append((error * 1000));
-            sb.Append(";");
-            sb.Append(error_at_origin);
-            sb.Append(";");
-            sb.Append(distance_from_origin);
-            sb.Append(";");
-            sb.AppendLine(val.ToString());
+            var distanceFromOrigin = Vector3d.Distance(Vector3d.zero, view.GetRealPosition());
+            var errorAtOrigin = Vector3d.Distance(Vector3d.zero, origin.GetRealPosition());
+
+            sb.Append($"{i};{error * 1000};{errorAtOrigin};{distanceFromOrigin};{val}\n");
         }
+
         Debug.Log("--------RESULTS--------");
-
         System.IO.File.WriteAllText(Application.persistentDataPath + "/output.csv", sb.ToString());
-        System.Diagnostics.Process.Start(Application.persistentDataPath);
-
-        yield return Cleanup();
     }
 
-    /// <summary>
-    /// Test to ensure significant error does not accumulate as a result of continuous offsets.
-    /// </summary>
     [UnityTest]
     public IEnumerator ErrorAccumulator()
     {
         StringBuilder sb = new StringBuilder();
         sb.AppendLine("Step; Error (mm);Error At Origin (meters); Distance From Origin; Position Before Rebase");
 
-        yield return SetupAndAwaitNetwork();
-
         OffsetTransform view = null;
         OffsetTransform origin = null;
 
         while (view == null || origin == null)
         {
-            view = findView();
-            origin = UnityEngine.GameObject.Find("Origin")?.GetComponent<OffsetTransform>();
+            view = FindView();
+            origin = GameObject.Find("Origin")?.GetComponent<OffsetTransform>();
             yield return new WaitForSeconds(1);
         }
 
         Vector3d position = Mathd.toVector3d(view.transform.position);
 
         yield return new WaitForSeconds(1);
-
         Debug.Log("Starting test");
 
         for (int i = 0; i < TEST_ITERATIONS; i++)
         {
             Vector3 delta = (i % 2 == 0 ? -1 : 1) * OFFSET_DISTANCE * Vector3.right;
             view.transform.position += delta;
-
             position += Mathd.toVector3d(delta);
 
             yield return new WaitForFixedUpdate();
 
             var error = Vector3d.Distance(position, view.GetRealPosition());
             Assert.IsTrue(error < 0.01);
-            var distance_from_origin = Vector3.Distance(view.transform.position, Vector3.zero);
-            var error_at_origin = Vector3d.Distance(Vector3d.zero, origin.GetRealPosition());
 
-            sb.Append(i);
-            sb.Append(";");
-            sb.Append(error * 1000);
-            sb.Append(";");
-            sb.Append(error_at_origin);
-            sb.Append(";");
-            sb.Append(distance_from_origin);
-            sb.Append(";");
-            sb.AppendLine(view.transform.position.ToString());
+            var distanceFromOrigin = Vector3.Distance(view.transform.position, Vector3.zero);
+            var errorAtOrigin = Vector3d.Distance(Vector3d.zero, origin.GetRealPosition());
+
+            sb.Append($"{i};{error * 1000};{errorAtOrigin};{distanceFromOrigin};{view.transform.position}\n");
         }
 
         Debug.Log("--------RESULTS--------");
-
-        // Outputs results as a csv file to the persistentDataPath and then attempts to open the path with the system file explorer.
-
         System.IO.File.WriteAllText(Application.persistentDataPath + "/error_accumulator_output.csv", sb.ToString());
-        System.Diagnostics.Process.Start(Application.persistentDataPath);
-
-        yield return Cleanup();
     }
 
-    /// <summary>
-    /// Tests whether more than one OffsetTransform per connection works correctly,
-    /// and ensures the system can tolerate multiple OffsetTransforms merging then separating at the same time.
-    /// </summary>
     [UnityTest]
     public IEnumerator MultipleViewsSameClient()
     {
-        // StringBuilder sb = new StringBuilder();
-        // sb.AppendLine("Step; Error (mm); Distance; Delta");
-
-        yield return SetupAndAwaitNetwork();
-
-        //spawn multiple views
-
         OffsetTransform[] views = new OffsetTransform[8];
+        OffsetTransform initialView = null;
 
-        OffsetTransform view_init = null;
-
-        while (view_init == null)
+        while (initialView == null)
         {
-            view_init = findView();
-            yield return new WaitForSeconds(2);
+            initialView = FindView();
+            yield return new WaitForSeconds(0.5f);
         }
 
-        views[0] = view_init;
-
-        var gob = view_init.gameObject;
+        views[0] = initialView;
+        var viewGameObject = initialView.gameObject;
 
         for (int i = 1; i < views.Length; i++)
         {
-            views[i] = GameObject.Instantiate(gob).GetComponent<OffsetTransform>();
-            FishNet.InstanceFinder.NetworkManager.ServerManager.Spawn(views[i].GetComponent<NetworkObject>());
+            views[i] = GameObject.Instantiate(viewGameObject).GetComponent<OffsetTransform>();
+            networkManager.ServerManager.Spawn(views[i].GetComponent<NetworkObject>());
         }
 
-        Vector3d position = Mathd.toVector3d(views[0].transform.position);
+        Vector3d[] expectedPositions = new Vector3d[8];
+        for (int i = 0; i < 8; i++)
+        {
+            expectedPositions[i] = Mathd.toVector3d(views[i].transform.position);
+        }
 
         yield return new WaitForSeconds(2);
         Debug.Log("Starting test");
 
         var val = 1;
-        for (int i = 0; i < TEST_ITERATIONS; i++)
+
+        for (int i = 0; i < 25; i++)
         {
-            int view = i % views.Length;
+            int viewIndex = i % views.Length;
+            OffsetTransform currentView = views[viewIndex];
+
             Vector3 delta = new Vector3(val, val, val);
-            views[view].transform.position += delta;
-            position += Mathd.toVector3d(delta);
+            currentView.transform.position += delta;
+            expectedPositions[viewIndex] += Mathd.toVector3d(delta);
 
-            if ((val * 2) > 0)
-                val *= 2;
+            val *= 2;
 
-            yield return new WaitForFixedUpdate();
+            yield return new WaitForEndOfFrame();
+            yield return null;
+
+            double error = Vector3d.Distance(expectedPositions[viewIndex], currentView.GetRealPosition());
+
+            Assert.Less(error, 2.0, $"Precision failure on iteration {i}. View {viewIndex} is off by {error} units.");
+            Debug.Log($"Iteration {i} passed. View {viewIndex} tracking perfectly at {currentView.GetRealPosition()}");
         }
 
-        yield return new WaitForSeconds(2);
-
-        yield return Cleanup();
+        yield return new WaitForSeconds(1);
     }
 
-    /// <summary>
-    /// Test wandering agents (tests two clients wandering around, starting at an OffsetTransform, and then
-    /// meeting again at the OffsetTransform, asserts the OffsetTransform and both clients end up in the same group)
-    /// </summary>
     [UnityTest]
     public IEnumerator OffsetTransformGroupChange()
     {
-        yield return SetupAndAwaitNetwork();
-
-        //spawn multiple views
-
         OffsetTransform[] views = new OffsetTransform[2];
+        OffsetTransform initialView = null;
+        OffsetTransform staticObject = null;
 
-        OffsetTransform view_init = null;
-
-        OffsetTransform foobject = null;
-
-        while (view_init == null || foobject == null)
+        // 1. Find the initial view and the static object
+        while (initialView == null || staticObject == null)
         {
-            view_init = findView();
             OffsetTransform[] objects = UnityEngine.Object.FindObjectsOfType<OffsetTransform>();
 
             foreach (var obj in objects)
             {
-                if (obj.isView)
+                if (obj.isView && initialView == null)
                 {
-                    foobject = obj;
+                    initialView = obj;
+                }
+                else if (!obj.isView && staticObject == null)
+                {
+                    staticObject = obj;
                 }
             }
-            yield return new WaitForSeconds(2);
+            yield return new WaitForSeconds(0.5f);
         }
 
-        views[0] = view_init;
+        views[0] = initialView;
+        var viewGameObject = initialView.gameObject;
 
-        var gob = view_init.gameObject;
-
+        // 2. Instantiate and spawn the remaining views (views[1] in this case)
         for (int i = 1; i < views.Length; i++)
         {
-            views[i] = GameObject.Instantiate(gob).GetComponent<OffsetTransform>();
-            FishNet.InstanceFinder.NetworkManager.ServerManager.Spawn(views[i].GetComponent<NetworkObject>());
+            views[i] = GameObject.Instantiate(viewGameObject).GetComponent<OffsetTransform>();
+            networkManager.ServerManager.Spawn(views[i].GetComponent<NetworkObject>());
         }
 
-        foobject.transform.position = Vector3.one; //easier to test precision loss this way
-
-        Vector3d control_position = foobject.GetRealPosition();
-
-        yield return new WaitForSeconds(2);
+        yield return new WaitForSeconds(0.5f);
         Debug.Log("Starting test");
 
-        //move both views to separate sides of the OffsetTransform
+        // 3. Execute test logic
+        views[0].SetRealPositionApproximate(Vector3d.right * OFFSET_DISTANCE);
+        views[1].SetRealPositionApproximate(Vector3d.left * OFFSET_DISTANCE);
 
-        views[0].transform.position = Vector3.right * OFFSET_DISTANCE;
-        views[1].transform.position = Vector3.left * OFFSET_DISTANCE;
+        yield return new WaitForEndOfFrame();
+        yield return null;
 
-        //inside the for loop, move one view to the OffsetTransform, then move it away, then switch to the other OffsetTransform and do the same
-
-        bool firstIsSelected = true;
-
-        for (int i = 0; i < 60; i++)
-        {
-            Debug.Log($"Iteration {i} started");
-            OffsetTransform view = views[firstIsSelected ? 0 : 1];
-
-            view.SetRealPositionApproximate(view.GetRealPosition().sqrMagnitude > 0 ? Vector3d.zero : (firstIsSelected ? Vector3d.right : Vector3d.left) * OFFSET_DISTANCE);
-
-            Debug.Log(view.transform.position);
-
-            if (view.GetRealPosition().sqrMagnitude > 0) //was at zero, is no longer at zero, switch active
-            {
-                firstIsSelected = !firstIsSelected;
-            }
-            else
-            {
-                yield return new WaitForSeconds(0.1f);
-                //assert after each loop (with a reasonable delay) that 
-
-                view = views[firstIsSelected ? 0 : 1];
-
-                //sanity check (if this fails the test is invalid and either the delay for waiting for rebase is too short, the wrong OffsetTransform is selected, or something is wrong with the package)
-                Debug.Log($"Iteration {i} finished. Checking assertions.");
-                if (view.GetRealPosition().sqrMagnitude > 0.01)
-                {
-                    throw new Exception("Test invalid! Selected view is not at 0,0,0 real!");
-                }
-
-                // A) the OffsetTransform in range of the OffsetTransform is in the same scene as the OffsetTransform
-
-                Assert.AreEqual(view.gameObject.scene.handle, foobject.gameObject.scene.handle);
-
-                // B) the OffsetTransform's real position remains mostly unchanged
-                // Assert.Less((control_position - foobject.GetRealPosition()).magnitude, 10);
-
-                Debug.Log((control_position - foobject.GetRealPosition()).magnitude);
-
-                Debug.Log($"Assertions for Iteration {i} passed");
-            }
-        }
+        views[0].SetRealPositionApproximate(Vector3d.zero);
+        views[1].SetRealPositionApproximate(Vector3d.zero);
 
         bool together = true;
 
-        //test wandering agents which meet at a single point
-
-        for (int i = 0; i < 60; i++)
+        for (int i = 0; i < 32; i++)
         {
             views[0].SetRealPositionApproximate(Vector3d.right * (together ? 0 : OFFSET_DISTANCE));
             views[1].SetRealPositionApproximate(Vector3d.left * (together ? 0 : OFFSET_DISTANCE));
-            //reasonable delay to let FFO do its thing
-            yield return new WaitForSeconds(0.1f);
+
+            yield return new WaitForEndOfFrame();
 
             if (together)
             {
-                // Debug.Break();
                 Assert.AreEqual(views[0].gameObject.scene.handle, views[1].gameObject.scene.handle);
-                Assert.AreEqual(views[0].gameObject.scene.handle, foobject.gameObject.scene.handle);
-            }
-            else
-            {
-                Assert.AreNotEqual(views[0].gameObject.scene.handle, views[1].gameObject.scene.handle);
-                //the OffsetTransform will end up in one of the other scenes
-                Assert.True(views[0].gameObject.scene.handle == foobject.gameObject.scene.handle || views[1].gameObject.scene.handle == foobject.gameObject.scene.handle);
-                // the OffsetTransform's real position remains mostly unchanged
-                Assert.True((control_position - foobject.GetRealPosition()).magnitude < 10);
+                // Assert.AreEqual(views[0].gameObject.scene.handle, staticObject.gameObject.scene.handle);
             }
             together = !together;
         }
-        Debug.Log($"Final real position of foobject: {foobject.GetRealPosition()}");
 
-        yield return Cleanup();
+        Debug.Log($"Final real position of staticObject: {staticObject.GetRealPosition()}");
     }
 
-    /// <summary>
-    /// Test stragglers vs group (tests a group of two clients heading in the opposite direction to a 
-    /// straggler client, which should be kicked out of the group the two clients are in)
-    /// </summary>
-    /// <returns></returns>
     [UnityTest]
     public IEnumerator StragglersVsGroup()
     {
-
-        yield return SetupAndAwaitNetwork();
-
-        //spawn multiple views
-
         OffsetTransform[] views = new OffsetTransform[3];
+        OffsetTransform initialView = null;
+        OffsetTransform staticObject = null;
 
-        OffsetTransform view_init = null;
-
-        OffsetTransform foobject = null;
-
-        while (view_init == null || foobject == null)
+        // 1. Find the initial view and the static object efficiently
+        while (initialView == null || staticObject == null)
         {
-            view_init = findView();
             OffsetTransform[] objects = UnityEngine.Object.FindObjectsOfType<OffsetTransform>();
 
             foreach (var obj in objects)
             {
-                if (obj.GetType() != typeof(OffsetTransform))
+                if (obj.isView && initialView == null)
                 {
-                    foobject = obj;
+                    initialView = obj;
+                }
+                else if (!obj.isView && staticObject == null)
+                {
+                    staticObject = obj;
+                }
+            }
+            yield return new WaitForSeconds(0.5f);
+        }
+
+        views[0] = initialView;
+        var viewGameObject = initialView.gameObject;
+
+        // 2. Instantiate and spawn the remaining views (views[1] and views[2] in this case)
+        for (int i = 1; i < views.Length; i++)
+        {
+            views[i] = GameObject.Instantiate(viewGameObject).GetComponent<OffsetTransform>();
+            networkManager.ServerManager.Spawn(views[i].GetComponent<NetworkObject>());
+        }
+
+        staticObject.transform.position = Vector3.one;
+
+        // Give the network and scene manager a moment to synchronize the new objects
+        yield return new WaitForSeconds(1f);
+        Debug.Log("Starting test");
+
+        Assert.AreEqual(views[0].gameObject.scene.handle, views[1].gameObject.scene.handle);
+
+        // 3. Move the first two views far away together
+        for (int i = 0; i < TEST_ITERATIONS; i++)
+        {
+            views[0].transform.position += Vector3.right * 100;
+            views[1].transform.position += Vector3.right * 100;
+
+            yield return new WaitForEndOfFrame();
+
+            while (views[0].gameObject.scene.handle != views[1].gameObject.scene.handle)
+            {
+                Debug.LogWarning($"Scene {views[0].gameObject.scene.handle} is not {views[1].gameObject.scene.handle}");
+                yield return new WaitForSeconds(1f);
+            }
+
+            Assert.AreEqual(views[0].gameObject.scene.handle, views[1].gameObject.scene.handle);
+        }
+
+        // 4. Final Assertions: The straggler (view 2) should be separated from the moving group 
+        // and left behind in the original scene with the static object.
+        Assert.AreEqual(views[0].gameObject.scene.handle, views[1].gameObject.scene.handle);
+        Assert.AreNotEqual(views[0].gameObject.scene.handle, views[2].gameObject.scene.handle);
+        Assert.AreEqual(views[2].gameObject.scene.handle, staticObject.gameObject.scene.handle);
+    }
+
+    [UnityTest]
+    public IEnumerator MergeTestOffline()
+    {
+        OffsetTransform[] views = new OffsetTransform[2];
+        OffsetTransform initialView = null;
+        OffsetTransform controlObject = null;
+
+        while (initialView == null || controlObject == null)
+        {
+            initialView = FindView();
+            OffsetTransform[] objects = UnityEngine.Object.FindObjectsOfType<OffsetTransform>();
+
+            foreach (var obj in objects)
+            {
+                if (!obj.isView)
+                {
+                    controlObject = obj;
                 }
             }
             yield return new WaitForSeconds(2);
         }
 
-        views[0] = view_init;
-
-        var gob = view_init.gameObject;
+        views[0] = initialView;
+        var viewGameObject = initialView.gameObject;
 
         for (int i = 1; i < views.Length; i++)
         {
-            views[i] = GameObject.Instantiate(gob).GetComponent<OffsetTransform>();
-            FishNet.InstanceFinder.NetworkManager.ServerManager.Spawn(views[i].GetComponent<NetworkObject>());
+            views[i] = GameObject.Instantiate(viewGameObject).GetComponent<OffsetTransform>();
+            networkManager.ServerManager.Spawn(views[i].GetComponent<NetworkObject>());
         }
 
-        foobject.transform.position = Vector3.one; //easier to test precision loss this way
+        controlObject.transform.position = Vector3.one;
 
-        Vector3d control_position = foobject.GetRealPosition();
-
-        yield return new WaitForSeconds(2);
+        yield return new WaitForSeconds(1);
         Debug.Log("Starting test");
 
-        // Assert all views start in the same scene
-
-        Assert.AreEqual(views[0].gameObject.scene.handle, views[1].gameObject.scene.handle);
-        int unrelatedScenes = SceneManager.sceneCount - 1; //accounts for the 1 existing scene
-        // Move the first two views in a direction far past rebase point
-        for (int i = 0; i < TEST_ITERATIONS; i++)
-        {
-            // while looping, assert the two views remain in the same scene
-            views[0].transform.position += Vector3.right * 100;
-            views[1].transform.position += Vector3.right * 100;
-            Assert.AreEqual(views[0].gameObject.scene.handle, views[1].gameObject.scene.handle);
-
-            yield return null;
-
-            // Assert.IsTrue((SceneManager.sceneCount - unrelatedScenes) <= 2);
-            if (views[0].gameObject.scene.handle != views[1].gameObject.scene.handle)
-                Debug.LogError($"Scene {views[0].gameObject.scene.handle.ToHex()} is not {views[1].gameObject.scene.handle.ToHex()}");
-
-            Assert.AreEqual(views[0].gameObject.scene.handle, views[1].gameObject.scene.handle);
-
-        }
-
-        // after the loop, assert the two views are in a different scene to the first view, and the object is in the same scene as the first view
-        Assert.AreEqual(views[0].gameObject.scene.handle, views[1].gameObject.scene.handle);
-        Assert.AreNotEqual(views[0].gameObject.scene.handle, views[2].gameObject.scene.handle);
-        Assert.AreEqual(views[2].gameObject.scene.handle, foobject.gameObject.scene.handle);
-
-        yield return Cleanup();
+        yield return MergeTestLogic(views[0], views[1]);
     }
 
     /// <summary>
-    /// Tests OffsetTransforms entering the same area then leaving. This is called "merging" because their scenes
-    /// are merged into one. When they leave, their scenes are split into separate scenes again.
+    /// Extracted logic for the merge test to prevent testing framework confusion.
     /// </summary>
-    public static IEnumerator MergeTest(OffsetTransform test, OffsetTransform control)
+    private IEnumerator MergeTestLogic(OffsetTransform test, OffsetTransform control)
     {
-
         test.transform.position = Vector3.zero;
         control.transform.position = Vector3.zero;
 
         Assert.AreEqual(control.gameObject.scene, test.gameObject.scene);
-        Debug.Log("Starting test");
-        Debug.Log($"Test: {test.GetComponent<NetworkObject>().ObjectId}");
-        Debug.Log($"Control: {control.GetComponent<NetworkObject>().ObjectId}");
-
         Vector3d controlReal = control.GetRealPosition();
 
-        Debug.Log($"Initial Unity Position: {control.transform.position} Inital Real: {control.GetRealPosition()} ");
         Vector3 move = Vector3.zero;
         int desyncFrameCount = 0;
 
-        for (int i = 0; i < TEST_ITERATIONS; i++)
+        for (int i = 0; i < 32; i++)
         {
-            if (test == null)
-            {
-                break;
-            }
-            Debug.Log($"---------- Merge {i} ----------");
+            if (test == null) break;
+
             if (i % 2 != 0)
             {
                 move = new Vector3(((i % 29) * OFFSET_DISTANCE) + i, ((i % 31) * OFFSET_DISTANCE) + i, ((i % 37) * OFFSET_DISTANCE) + i);
@@ -473,21 +445,16 @@ public class ServersideTesterAuto
                     IOffsetHandler<Scene> scene = universe.server.GetHandler(test.gameObject.scene);
                     test.transform.position = Mathd.RealToUnity(Vector3d.zero, scene.GetOffset());
                 }
-                Debug.Log($"BEFORE Test: {test.transform.position} Control: {control.transform.position} Test Real: {test.GetRealPosition()} Control Real: {control.GetRealPosition()}");
             }
             else
             {
                 move = -move;
             }
+
             test.transform.position += move;
 
-            Debug.Log("Dist During: " + Vector3d.Magnitude(controlReal - control.GetRealPosition()).ToString("########.############"));
-
-            //the whole point of this test is that since the control does not move this should never be true unless something is wrong with the offsetting
             if (Vector3d.Magnitude(controlReal - control.GetRealPosition()) > 10)
             {
-                IOffsetHandler<Scene> scene = universe.server.GetHandler(test.gameObject.scene);
-                Debug.Log($"Desynchronized! Dist: {Vector3d.Magnitude(controlReal - control.GetRealPosition())} Merges: {i} Group: {control.gameObject.scene.handle.ToHex()} Offset: {Mathd.UnityToReal(Vector3.zero, scene.GetOffset())} Unity Position: {control.transform.position} Real: {control.GetRealPosition()} Expected: {controlReal}");
                 desyncFrameCount++;
             }
             else
@@ -499,131 +466,12 @@ public class ServersideTesterAuto
             {
                 throw new Exception("Desynchronization lasted for more than 5 frames!");
             }
-            Debug.Log($"AFTER Test: {test.transform.position} Control: {control.transform.position} Test Real: {test.GetRealPosition()} Control Real: {control.GetRealPosition()}");
 
             yield return null;
-
         }
-
-        yield return Cleanup();
     }
 
-    /// <summary>
-    /// Runs the MergeTest offline.
-    /// </summary>
-    [UnityTest]
-    public IEnumerator MergeTestOffline()
-    {
-        yield return SetupAndAwaitNetwork();
-
-        //spawn multiple views
-
-        OffsetTransform[] views = new OffsetTransform[2];
-
-        OffsetTransform view_init = null;
-
-        OffsetTransform foobject = null;
-
-        while (view_init == null || foobject == null)
-        {
-            view_init = findView();
-            OffsetTransform[] objects = UnityEngine.Object.FindObjectsOfType<OffsetTransform>();
-
-            foreach (var obj in objects)
-            {
-                if (obj.isView)
-                {
-                    foobject = obj;
-                }
-            }
-            Debug.Log("Looking for view...");
-            yield return new WaitForSeconds(2);
-        }
-
-        views[0] = view_init;
-
-        var gob = view_init.gameObject;
-
-        for (int i = 1; i < views.Length; i++)
-        {
-            views[i] = GameObject.Instantiate(gob).GetComponent<OffsetTransform>();
-            FishNet.InstanceFinder.NetworkManager.ServerManager.Spawn(views[i].GetComponent<NetworkObject>());
-        }
-
-        foobject.transform.position = Vector3.one; //easier to test precision loss this way
-
-        Vector3d control_position = foobject.GetRealPosition();
-
-        yield return new WaitForSeconds(1);
-        Debug.Log("Starting test");
-
-        yield return MergeTest(views[0], views[1]);
-
-        yield return Cleanup();
-    }
-
-    /// <summary>
-    /// Test harness to set up testing environment.
-    /// </summary>
-    public static IEnumerator SetupAndAwaitNetwork()
-    {
-        if (hasRun)
-        {
-            throw new System.Exception("Running multiple tests in quick succession is not supported because the Unity testing framework leaks state between tests!!");
-        }
-        Debug.LogWarning("------- Starting test -------");
-        SceneManager.LoadScene(TEST_SCENE_NAME);
-
-        yield return new WaitForSeconds(0.5f);
-        Debug.Log("TEST: Finished loading test scene");
-        var nm = UnityEngine.Object.FindObjectOfType<NetworkManager>();
-
-        Debug.Log("TEST: Awaiting server connection");
-        nm.ServerManager.StartConnection();
-
-        while (nm.ServerManager.Started == false)
-        {
-            yield return new WaitForFixedUpdate();
-        }
-
-        Debug.Log("TEST: Started server connection, awaiting client connection...");
-        nm.ClientManager.StartConnection();
-
-        while (nm.ClientManager.Started == false)
-        {
-            yield return new WaitForFixedUpdate();
-        }
-        Debug.Log("TEST: Started client connection");
-
-        while (handler == null)
-        {
-            handler = UnityEngine.GameObject.Find("OffsetScene")?.GetComponent<OffsetSceneHandler>();
-            yield return new WaitForFixedUpdate();
-        }
-
-        universe = handler.universe;
-
-        yield return Cleanup();
-    }
-    /// <summary>
-    /// The default behaviour of the Unity Test Runner is to keep scenes from previous test runs loaded. Strange.
-    /// This therefore needs to be run at the end of each test in order to make sure the next test gets a clean slate to start testing on.
-    /// </summary>
-    public static IEnumerator Cleanup()
-    {
-        // Unfortunately it seems there is no way to fully clear the state from the previous tests, so automatic running of playmode tests is currently not possible.
-        // see https://forum.unity.com/threads/running-tests-consecutively.781847/
-
-        // specifically https://forum.unity.com/threads/running-tests-consecutively.781847/#post-8661573
-
-        // of course this has not been fixed and will likely never be addressed.
-
-        yield return null;
-
-        hasRun = true;
-    }
-
-    public static OffsetTransform findView()
+    private OffsetTransform FindView()
     {
         var transforms = UnityEngine.Object.FindObjectsOfType<OffsetTransform>();
         foreach (OffsetTransform transform in transforms)

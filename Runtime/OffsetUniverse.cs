@@ -19,5 +19,7 @@ namespace FloatingOffset.Runtime
 
         [field: SerializeField]
         public float SpeedLimitMs { get; private set; } = 1000f;
+        [field: SerializeField]
+        public int MaxScenes { get; private set; } = 200;
     }
 }

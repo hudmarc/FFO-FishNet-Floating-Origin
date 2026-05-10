@@ -23,11 +23,11 @@ namespace FloatingOffset.Runtime
         }
         void Start()
         {
-            universe.GetScene(gameObject.scene).RegisterOffsettable(this);
+            universe.server.GetHandler(gameObject.scene).RegisterOffsettable(this);
         }
         void OnDestroy()
         {
-            universe.GetScene(gameObject.scene).UnregisterOffsettable(this);
+            universe.server.GetHandler(gameObject.scene).UnregisterOffsettable(this);
         }
         public void Offset(Vector3 offset)
         {
