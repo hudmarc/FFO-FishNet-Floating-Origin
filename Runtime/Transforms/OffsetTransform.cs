@@ -8,36 +8,21 @@ namespace FloatingOffset.Runtime
     /// Has a real position. When an OffsetTransform is moved to the null scene, its real position will be cached. If the OffsetTransform's real position is in range of any merge area, it will be taken from the nullscene and moved to the local position relative to its real position.<br/><br/>
     /// If an OffsetTransform is set to act as a view, it will additionally be continuosly updated so that it never goes to the null scene.
     /// </summary>
-    public class OffsetTransform : MonoBehaviour, IOffsetObject<Vector3, Scene>
+    public class OffsetTransform : OffsetBehaviour, IOffsetObject<Vector3, Scene>
     {
-        [SerializeField]
-        private OffsetUniverse universe;
-        [SerializeField]
+        [field: SerializeField]
         [Tooltip("If checked, this transform can trigger rebases and will always be kept in a scene. If not, this object will be moved to the null scene if in an empty scene.")]
-        private bool isView;
+        public bool isView { get; private set; }
         [SerializeField]
-        private Rigidbody reference_frame;
+        [Tooltip("Optional: If added, this will be used to calculate the velocity of the OffsetTransform.")]
+        private Rigidbody referenceFrame;
         void Awake()
         {
-            if (isView)
-            {
-                universe.GetScene(gameObject.scene).RegisterTransform(this);
-            }
-            else
-            {
-                universe.server.RegisterView(this);
-            }
+            universe.Register(this);
         }
         void OnDestroy()
         {
-            if (isView)
-            {
-                universe.GetScene(gameObject.scene).UnregisterTransform(this);
-            }
-            else
-            {
-                universe.server.UnregisterView(this);
-            }
+            universe.Unregister(this);
         }
         public void SetRealPositionApproximate(Vector3d position)
         {
@@ -47,28 +32,17 @@ namespace FloatingOffset.Runtime
         {
             return Mathd.UnityToReal(transform.position, GetSceneOffset());
         }
-        public Vector3d GetUnityPosition()
-        {
-            return Mathd.UnityToReal(transform.position, GetSceneOffset());
-        }
-
-        public int getID()
-        {
-            throw new System.NotImplementedException();
-        }
-
-        public Vector3d GetSceneOffset()
+        private Vector3d GetSceneOffset()
         {
             return universe.server.GetOffset(gameObject.scene);
-        }
-        public float squaredUnityVelocityMagnitude()
-        {
-            return reference_frame.velocity.sqrMagnitude;
         }
 
         public Vector3d GetRealVelocity()
         {
-            return Mathd.UnityToReal(reference_frame.velocity, universe.server.GetVelocity(gameObject.scene));
+            if (referenceFrame == null)
+                return universe.server.GetVelocity(gameObject.scene);
+
+            return Mathd.UnityToReal(referenceFrame.velocity, universe.server.GetVelocity(gameObject.scene));
         }
 
         public Vector3 GetEnginePosition()
@@ -78,7 +52,7 @@ namespace FloatingOffset.Runtime
 
         public Vector3 GetEngineVelocity()
         {
-            return reference_frame.velocity;
+            return referenceFrame == null ? Vector3.zero : referenceFrame.velocity;
         }
 
         public Scene GetSceneKey()
@@ -86,9 +60,9 @@ namespace FloatingOffset.Runtime
             return gameObject.scene;
         }
 
-        public float SquaredEngineVelocityMagnitude()
+        public float EngineVelocitySquaredMagnitude()
         {
-            throw new System.NotImplementedException();
+            return referenceFrame == null ? 0 : referenceFrame.velocity.sqrMagnitude;
         }
 
         public GameObject GetObject()
@@ -99,6 +73,11 @@ namespace FloatingOffset.Runtime
         public void MoveTo(Scene scene)
         {
             SceneManager.MoveGameObjectToScene(gameObject, scene);
+        }
+
+        public float GetEnginePositionSquareMagnitude()
+        {
+            return transform.position.sqrMagnitude;
         }
     }
 }

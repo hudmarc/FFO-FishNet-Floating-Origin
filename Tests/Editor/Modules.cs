@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using FloatingOffset.Runtime;
-using FloatingOffset.Runtime;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;

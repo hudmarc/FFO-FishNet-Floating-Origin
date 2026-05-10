@@ -9,20 +9,44 @@ namespace FloatingOffset.Runtime
     /// The offset scene handles its own offset and responds to offset requests from the OffsetServer.
     /// </summary>
     [RequireComponent(typeof(Offsetter))]
-    public class OffsetScene : MonoBehaviour, IOffsetScene<Vector3, Scene>
+    public class OffsetScene : OffsetBehaviour, IOffsetScene<Vector3, Scene>
     {
         [SerializeField]
         private Offsetter offsetter;
-        private Vector3d offset;
-        private Vector3d velocity;
+        private Vector3d universe_offset;
+        private Vector3d universe_velocity;
         private bool isEmpty;
-        private HashSet<IOffsetObject<Vector3, Scene>> offsettables = new HashSet<IOffsetObject<Vector3, Scene>>();
+        private HashSet<IOffsetObject<Vector3, Scene>> offset_transforms = new HashSet<IOffsetObject<Vector3, Scene>>();
 
         private readonly LoadSceneParameters parameters = new LoadSceneParameters(LoadSceneMode.Additive, LocalPhysicsMode.Physics3D);
-        void Start()
+        void Awake()
         {
             if (offsetter == null)
                 offsetter = GetComponent<Offsetter>();
+            universe.RegisterScene(this);
+        }
+#if UNITY_EDITOR
+        protected override void Reset()
+        {
+            // Fires when the component is first added to a GameObject
+            base.Reset();
+            InitializeOffsetter();
+        }
+
+        protected override void OnValidate()
+        {
+            // Fires when the inspector updates. Acts as a safety net.
+            base.OnValidate();
+            InitializeOffsetter();
+        }
+#endif
+        private void InitializeOffsetter()
+        {
+            // Only search for the asset if the field is currently empty
+            if (offsetter == null)
+            {
+                offsetter = GetComponent<Offsetter>();
+            }
         }
 
         public void Clone(Action<(IOffsetScene<Vector3, Scene> scene, float delta)> onSceneReady)
@@ -55,8 +79,7 @@ namespace FloatingOffset.Runtime
             // 2. Iterate through the roots and search their children
             foreach (GameObject root in rootObjects)
             {
-                // The 'true' parameter ensures it also finds disabled GameObjects/Components
-                offsetScene = root.GetComponentInChildren<OffsetScene>(true);
+                offsetScene = root.GetComponent<OffsetScene>();
 
                 if (offsetScene != null)
                 {
@@ -94,14 +117,14 @@ namespace FloatingOffset.Runtime
             }
         }
 
-        public int CountViews()
+        public int ViewCount()
         {
-            return offsettables.Count;
+            return offset_transforms.Count;
         }
 
         public Vector3d GetOffset()
         {
-            return offset;
+            return universe_offset;
         }
 
         public Scene GetSceneKey()
@@ -111,7 +134,7 @@ namespace FloatingOffset.Runtime
 
         public Vector3d GetVelocity()
         {
-            return velocity;
+            return universe_velocity;
         }
 
         public bool IsEmpty()
@@ -131,7 +154,7 @@ namespace FloatingOffset.Runtime
 
         public void SetOffset(Vector3d offset)
         {
-            Offset(offset, velocity, Time.deltaTime);
+            Offset(offset, universe_velocity, Time.deltaTime);
         }
 
         public void SetOffset(Vector3d offset, Vector3d velocity, float delta)
@@ -140,14 +163,15 @@ namespace FloatingOffset.Runtime
         }
         private void Offset(Vector3d offset, Vector3d velocity, float delta)
         {
-            Vector3d old_offset = this.offset;
-            this.offset = offset + velocity * delta;
-            this.velocity = velocity;
-            offsetter.Offset(old_offset, this.offset);
+            Debug.Log($"Offset from {this.universe_offset} to {offset}");
+            Vector3d old_offset = this.universe_offset;
+            this.universe_offset = offset + velocity * delta;
+            this.universe_velocity = velocity;
+            offsetter.Offset(old_offset, this.universe_offset);
         }
         public void TransferAllTo(IOffsetScene<Vector3, Scene> scene)
         {
-            foreach (IOffsetObject<Vector3, Scene> offsettable in offsettables)
+            foreach (IOffsetObject<Vector3, Scene> offsettable in offset_transforms)
             {
                 TransferTo(offsettable, scene);
             }
@@ -162,39 +186,47 @@ namespace FloatingOffset.Runtime
             if (offsettable.GetSceneKey() != gameObject.scene)
                 throw new Exception($"Offsettable not found on scene {gameObject.scene.ToHex()}");
             offsettable.MoveTo(scene.GetSceneKey());
-            offsettables.Remove(offsettable);
+            Debug.Log("Transferred and unregistered transform");
+            offset_transforms.Remove(offsettable);
         }
 
 
-        private (Vector3d position, Vector3d velocity) CalculateAverages()
+        private (Vector3d position, Vector3d velocity) CalculateAverageLocalOffset()
         {
+            if (offset_transforms.Count == 0)
+            {
+                return (Vector3d.zero, Vector3d.zero);
+            }
             Vector3d position_sum = Vector3d.zero;
             Vector3d velocity_sum = Vector3d.zero;
 
-            foreach (IOffsetObject<Vector3, Scene> offsetable in offsettables)
+            foreach (IOffsetObject<Vector3, Scene> offsetable in offset_transforms)
             {
-                position_sum += offsetable.GetRealPosition();
-                velocity_sum += offsetable.GetRealVelocity();
+                position_sum += Mathd.toVector3d(offsetable.GetEnginePosition());
+                Debug.Log($"id {((MonoBehaviour)offsetable).name} pos {offsetable.GetEnginePosition()} sum {position_sum}");
+                velocity_sum += Mathd.toVector3d(offsetable.GetEngineVelocity());
             }
-
-            double inverse = 1 / ((double)offsettables.Count);
+            double inverse = 1 / ((double)offset_transforms.Count);
 
             return (position_sum * inverse, velocity_sum * inverse);
         }
         public void ProcessOffsets()
         {
-            var (position, velocity) = CalculateAverages();
-            SetOffset(position, velocity);
+            var (position_offset, velocity_offset) = CalculateAverageLocalOffset();
+            Debug.Log($"Calculated average position offset:{position_offset}");
+            SetOffset(universe_offset + position_offset, universe_velocity + velocity_offset);
         }
 
         public void RegisterTransform(OffsetTransform offsetTransform)
         {
-            offsettables.Add(offsetTransform);
+            Debug.Log("Added transform");
+            offset_transforms.Add(offsetTransform);
         }
 
         public void UnregisterTransform(OffsetTransform offsetTransform)
         {
-            offsettables.Remove(offsetTransform);
+            Debug.Log("Unregistered transform");
+            offset_transforms.Remove(offsetTransform);
         }
         public void RegisterOffsettable(IOffsettable offsettable)
         {

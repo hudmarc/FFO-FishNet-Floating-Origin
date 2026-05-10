@@ -5,10 +5,8 @@ namespace FloatingOffset.Runtime
 {
     // Loosely based on the Unity Wiki FloatingOrigin script by Peter Stirling
     // URL: http://wiki.unity3d.com/index.php/Floating_Origin
-    public class EffectOffsetter : MonoBehaviour, IOffsettable
+    public class EffectOffsetter : OffsetBehaviour, IOffsettable
     {
-        [SerializeField]
-        private OffsetUniverse universe;
         private ParticleSystem[] worldSpaceParticles;
         private LineRenderer[] worldSpaceLines;
         private TrailRenderer[] trails;

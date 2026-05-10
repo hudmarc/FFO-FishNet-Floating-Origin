@@ -10,8 +10,8 @@ public class Functional
     public void TestZeroPositiveUnity()
     {
         Vector3 unityPosition = new Vector3(10000, 10000, 10000);
-        Vector3d offset = ((Vector3d)Vector3.zero);
-        Vector3d realPosition = ((Vector3d)unityPosition) + offset;
+        Vector3d offset = (Mathd.toVector3d(Vector3.zero));
+        Vector3d realPosition = Mathd.toVector3d(unityPosition) + offset;
 
         Assert.AreEqual(realPosition, Mathd.UnityToReal(unityPosition, offset));
         Assert.AreNotEqual(realPosition, offset);
@@ -37,8 +37,8 @@ public class Functional
     public void TestZeroNegativeUnity()
     {
         Vector3 unityPosition = new Vector3(-10000, -10000, -10000);
-        Vector3d offset = ((Vector3d)Vector3.zero);
-        Vector3d realPosition = ((Vector3d)unityPosition) + offset;
+        Vector3d offset = Mathd.toVector3d(Vector3.zero);
+        Vector3d realPosition = Mathd.toVector3d(unityPosition) + offset;
 
         Assert.AreEqual(realPosition, Mathd.UnityToReal(unityPosition, offset));
         Assert.AreNotEqual(realPosition, offset);
@@ -48,8 +48,8 @@ public class Functional
     public void TestMaxPositiveUnity()
     {
         Vector3 unityPosition = new Vector3(10000, 10000, 10000);
-        Vector3d offset = ((Vector3d)new Vector3(HUGE_NUMBER, HUGE_NUMBER, HUGE_NUMBER));
-        Vector3d realPosition = ((Vector3d)unityPosition) + offset;
+        Vector3d offset = Mathd.toVector3d(new Vector3(HUGE_NUMBER, HUGE_NUMBER, HUGE_NUMBER));
+        Vector3d realPosition = Mathd.toVector3d(unityPosition) + offset;
 
         Assert.AreEqual(realPosition, Mathd.UnityToReal(unityPosition, offset));
         Assert.AreNotEqual(realPosition, offset);
@@ -59,8 +59,8 @@ public class Functional
     public void TestMaxNegativeUnity()
     {
         Vector3 unityPosition = new Vector3(-10000, -10000, -10000);
-        Vector3d offset = ((Vector3d)new Vector3(HUGE_NUMBER, HUGE_NUMBER, HUGE_NUMBER));
-        Vector3d realPosition = ((Vector3d)unityPosition) + offset;
+        Vector3d offset = Mathd.toVector3d(new Vector3(HUGE_NUMBER, HUGE_NUMBER, HUGE_NUMBER));
+        Vector3d realPosition = Mathd.toVector3d(unityPosition) + offset;
 
         Assert.AreEqual(realPosition, Mathd.UnityToReal(unityPosition, offset));
         Assert.AreNotEqual(realPosition, offset);
@@ -70,8 +70,8 @@ public class Functional
     public void TestMinPositiveUnity()
     {
         Vector3 unityPosition = new Vector3(10000, 10000, 10000);
-        Vector3d offset = ((Vector3d)new Vector3(-HUGE_NUMBER, -HUGE_NUMBER, -HUGE_NUMBER));
-        Vector3d realPosition = ((Vector3d)unityPosition) + offset;
+        Vector3d offset = Mathd.toVector3d(new Vector3(-HUGE_NUMBER, -HUGE_NUMBER, -HUGE_NUMBER));
+        Vector3d realPosition = Mathd.toVector3d(unityPosition) + offset;
 
         Assert.AreEqual(realPosition, Mathd.UnityToReal(unityPosition, offset));
         Assert.AreNotEqual(realPosition, offset);
@@ -81,8 +81,8 @@ public class Functional
     public void TestMinNegativeUnity()
     {
         Vector3 unityPosition = new Vector3(-10000, -10000, -10000);
-        Vector3d offset = ((Vector3d)new Vector3(-HUGE_NUMBER, -HUGE_NUMBER, -HUGE_NUMBER));
-        Vector3d realPosition = ((Vector3d)unityPosition) + offset;
+        Vector3d offset = Mathd.toVector3d(new Vector3(-HUGE_NUMBER, -HUGE_NUMBER, -HUGE_NUMBER));
+        Vector3d realPosition = Mathd.toVector3d(unityPosition) + offset;
 
         Assert.AreEqual(realPosition, Mathd.UnityToReal(unityPosition, offset));
         Assert.AreNotEqual(realPosition, offset);
@@ -94,8 +94,8 @@ public class Functional
     public void TestZeroPositiveUnityRealToUnity()
     {
         Vector3 unityPosition = new Vector3(10000, 10000, 10000);
-        Vector3d offset = ((Vector3d)Vector3.zero);
-        Vector3d realPosition = ((Vector3d)unityPosition) + offset;
+        Vector3d offset = Mathd.toVector3d(Vector3.zero);
+        Vector3d realPosition = Mathd.toVector3d(unityPosition) + offset;
 
         Assert.AreEqual(unityPosition, Mathd.RealToUnity(realPosition, offset));
         Assert.AreNotEqual(realPosition, offset);
@@ -105,8 +105,8 @@ public class Functional
     public void TestZeroNegativeUnityRealToUnity()
     {
         Vector3 unityPosition = new Vector3(-10000, -10000, -10000);
-        Vector3d offset = ((Vector3d)Vector3.zero);
-        Vector3d realPosition = ((Vector3d)unityPosition) + offset;
+        Vector3d offset = Mathd.toVector3d(Vector3.zero);
+        Vector3d realPosition = Mathd.toVector3d(unityPosition) + offset;
 
         Assert.AreEqual(unityPosition, Mathd.RealToUnity(realPosition, offset));
         Assert.AreNotEqual(realPosition, offset);
@@ -116,8 +116,8 @@ public class Functional
     public void TestMaxPositiveUnityRealToUnity()
     {
         Vector3 unityPosition = new Vector3(10000, 10000, 10000);
-        Vector3d offset = ((Vector3d)new Vector3(HUGE_NUMBER, HUGE_NUMBER, HUGE_NUMBER));
-        Vector3d realPosition = ((Vector3d)unityPosition) + offset;
+        Vector3d offset = Mathd.toVector3d(new Vector3(HUGE_NUMBER, HUGE_NUMBER, HUGE_NUMBER));
+        Vector3d realPosition = Mathd.toVector3d(unityPosition) + offset;
 
         Assert.AreEqual(unityPosition, Mathd.RealToUnity(realPosition, offset));
         Assert.AreNotEqual(realPosition, offset);
@@ -127,8 +127,8 @@ public class Functional
     public void TestMaxNegativeUnityRealToUnity()
     {
         Vector3 unityPosition = new Vector3(-10000, -10000, -10000);
-        Vector3d offset = ((Vector3d)new Vector3(HUGE_NUMBER, HUGE_NUMBER, HUGE_NUMBER));
-        Vector3d realPosition = ((Vector3d)unityPosition) + offset;
+        Vector3d offset = Mathd.toVector3d(new Vector3(HUGE_NUMBER, HUGE_NUMBER, HUGE_NUMBER));
+        Vector3d realPosition = Mathd.toVector3d(unityPosition) + offset;
 
         Assert.AreEqual(unityPosition, Mathd.RealToUnity(realPosition, offset));
         Assert.AreNotEqual(realPosition, offset);
@@ -138,8 +138,8 @@ public class Functional
     public void TestMinPositiveUnityRealToUnity()
     {
         Vector3 unityPosition = new Vector3(10000, 10000, 10000);
-        Vector3d offset = ((Vector3d)new Vector3(-HUGE_NUMBER, -HUGE_NUMBER, -HUGE_NUMBER));
-        Vector3d realPosition = ((Vector3d)unityPosition) + offset;
+        Vector3d offset = Mathd.toVector3d(new Vector3(-HUGE_NUMBER, -HUGE_NUMBER, -HUGE_NUMBER));
+        Vector3d realPosition = Mathd.toVector3d(unityPosition) + offset;
 
         Assert.AreEqual(unityPosition, Mathd.RealToUnity(realPosition, offset));
         Assert.AreNotEqual(realPosition, offset);
@@ -149,8 +149,8 @@ public class Functional
     public void TestMinNegativeUnityRealToUnity()
     {
         Vector3 unityPosition = new Vector3(-10000, -10000, -10000);
-        Vector3d offset = ((Vector3d)new Vector3(-HUGE_NUMBER, -HUGE_NUMBER, -HUGE_NUMBER));
-        Vector3d realPosition = ((Vector3d)unityPosition) + offset;
+        Vector3d offset = Mathd.toVector3d(new Vector3(-HUGE_NUMBER, -HUGE_NUMBER, -HUGE_NUMBER));
+        Vector3d realPosition = Mathd.toVector3d(unityPosition) + offset;
 
         Assert.AreEqual(unityPosition, Mathd.RealToUnity(realPosition, offset));
         Assert.AreNotEqual(realPosition, offset);

@@ -6,10 +6,8 @@ namespace FloatingOffset.Runtime
     /// Offset Anchors ensure that the object they are attached to is always at the exact position specified in the OffsetAnchor's target position.<br/>
     /// This also means that they may exist in more than one scene at a time on the server.
     /// </summary>
-    public class OffsetAnchor : MonoBehaviour, IOffsettable
+    public class OffsetAnchor : OffsetBehaviour, IOffsettable
     {
-        [SerializeField]
-        private OffsetUniverse universe;
         [SerializeField]
         private Vector3d realPosition;
         void Start()

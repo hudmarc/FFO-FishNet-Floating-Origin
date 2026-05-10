@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace FloatingOffset.Runtime
 {
@@ -86,7 +87,7 @@ namespace FloatingOffset.Runtime
         /// <returns></returns>
         public Vector3d GetOffset(TSceneKey scene)
         {
-            throw new NotImplementedException();
+            return registry.GetScene(scene).GetOffset();
         }
         /// <summary>
         /// Gets the velocity for the given scene.
@@ -95,7 +96,7 @@ namespace FloatingOffset.Runtime
         /// <returns></returns>
         public Vector3d GetVelocity(TSceneKey scene)
         {
-            throw new NotImplementedException();
+            return registry.GetScene(scene).GetVelocity();
         }
         /// <summary>
         /// Registers the given offset offsettable as a view.
@@ -139,7 +140,6 @@ namespace FloatingOffset.Runtime
                     switch (pending_actions[view])
                     {
                         case OffsetActions.PendingTransfer:
-
                             RequestScene(view, view.GetRealPosition(), view.GetRealVelocity());
                             pending_actions.Remove(view);
                             break;
@@ -153,12 +153,22 @@ namespace FloatingOffset.Runtime
                 // 2) What marks you as pending transfer?
                 // If you are not in the bounds of the offset scene you are supposed to be in.
                 // 2)a)
-                if (Mathd.MaxLengthScalar(view.GetRealPosition()) > RebaseCriteria)
+                float distance_squared = view.GetEnginePositionSquareMagnitude();
+                IOffsetScene<TVector, TSceneKey> scene = registry.GetScene(view.GetSceneKey());
+
+                if (scene.ViewCount() > 1 && distance_squared > TransferCriteriaSquared)
                 {
+                    Debug.Log($"Aded {view.GetHashCode()} to pending transfers");
                     pending_actions.Add(view, OffsetActions.PendingTransfer);
                 }
+                // Otherwise, if you are less than the transfer criteria away but more than the rebase criteria this triggers a rebase of your scene.
+                else if (distance_squared > RebaseCriteriaSquared)
+                {
+                    Debug.Log($"Processing offset for view {view.GetHashCode()} in scene {scene.GetHashCode()}");
+                    scene.ProcessOffsets();
+                }
                 // 2)b)
-                if (view.SquaredEngineVelocityMagnitude() > SpeedLimitMsSquared)
+                if (view.EngineVelocitySquaredMagnitude() > SpeedLimitMsSquared)
                 {
                     pending_actions.Add(view, OffsetActions.PendingTransfer);
                 }
@@ -180,7 +190,7 @@ namespace FloatingOffset.Runtime
                     IOffsetScene<TVector, TSceneKey> other = scenes[j];
                     if ((scene.GetOffset() - other.GetOffset()).sqrMagnitude < MergeCriteriaSquared)
                     {
-                        if (scene.CountViews() > other.CountViews())
+                        if (scene.ViewCount() > other.ViewCount())
                         {
                             MergeBintoA(scene, other);
                         }
@@ -265,26 +275,25 @@ namespace FloatingOffset.Runtime
     }
     public interface IOffsetObject<TVector, TScene>
     {
-        public int getID();
         public Vector3d GetRealPosition();
         public TVector GetEnginePosition();
         public Vector3d GetRealVelocity();
         public TVector GetEngineVelocity();
         public TScene GetSceneKey();
         public void MoveTo(TScene scene);
-        public float SquaredEngineVelocityMagnitude();
-
+        public float EngineVelocitySquaredMagnitude();
+        public float GetEnginePositionSquareMagnitude();
     }
     public interface IOffsettable
     {
-        public void OnOffset(Vector3d old_offset,Vector3d new_offset);
+        public void OnOffset(Vector3d old_offset, Vector3d new_offset);
     }
     public interface IOffsetScene<TVector, TSceneKey>
     {
         public TSceneKey GetSceneKey();
         public Vector3d GetOffset();
         public Vector3d GetVelocity();
-        public int CountViews();
+        public int ViewCount();
         public bool IsEmpty();
         public void SetEmpty(bool empty);
         public void SetOffset(Vector3d offset, Vector3d velocity, float delta);
@@ -297,6 +306,7 @@ namespace FloatingOffset.Runtime
         public void UnregisterTransform(OffsetTransform offsetTransform);
         public void RegisterOffsettable(IOffsettable offsettable);
         public void UnregisterOffsettable(IOffsettable offsettable);
+        public void ProcessOffsets();
     }
     public interface IOffsetSceneRegistry<TVector, TSceneKey>
     {

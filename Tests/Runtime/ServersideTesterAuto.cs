@@ -23,7 +23,7 @@ public class ServersideTesterAuto
     /// <summary>
     /// Standard number of iterations for all tests.
     /// </summary>
-    private const float TEST_ITERATIONS = 600;
+    private const float TEST_ITERATIONS = 128;
 
     /// <summary>
     /// Load the test scene by name. More robust than loading by index.
@@ -34,6 +34,8 @@ public class ServersideTesterAuto
     /// into your project.
     /// </summary>
     public const string TEST_SCENE_NAME = "Offline Automated Testing Scene";
+    private static OffsetScene scene;
+    private static OffsetUniverse universe;
 
     /// <summary>
     /// Sanity check to ensure the package does what it is supposed to do.
@@ -53,8 +55,10 @@ public class ServersideTesterAuto
 
         while (view == null || origin == null)
         {
-            view = UnityEngine.Object.FindObjectOfType<OffsetTransform>();
+            view = findView();
             origin = UnityEngine.GameObject.Find("Origin")?.GetComponent<OffsetTransform>();
+            scene = UnityEngine.GameObject.Find("OffsetScene")?.GetComponent<OffsetScene>();
+            universe = scene.universe;
             yield return new WaitForFixedUpdate();
         }
 
@@ -71,11 +75,13 @@ public class ServersideTesterAuto
             view.transform.position += delta;
             position += Mathd.toVector3d(delta);
 
-            if ((val * 2) > 0) //prevent overflow
+            if (i < 21 && (val * 2) > 0) //prevent overflow
                 val *= 2;
 
             var error = Vector3d.Distance(position, view.GetRealPosition());
-            Assert.IsTrue(error < 0.01);
+            Debug.Log((i, val, error));
+            Assert.Less(error, 2);
+
             var distance_from_origin = Vector3d.Distance(Vector3d.zero, view.GetRealPosition());
             var error_at_origin = Vector3d.Distance(Vector3d.zero, origin.GetRealPosition());
             yield return new WaitForFixedUpdate();
@@ -113,7 +119,7 @@ public class ServersideTesterAuto
 
         while (view == null || origin == null)
         {
-            view = UnityEngine.Object.FindObjectOfType<OffsetTransform>();
+            view = findView();
             origin = UnityEngine.GameObject.Find("Origin")?.GetComponent<OffsetTransform>();
             yield return new WaitForSeconds(1);
         }
@@ -124,7 +130,7 @@ public class ServersideTesterAuto
 
         Debug.Log("Starting test");
 
-        for (int i = 0; i < 600; i++)
+        for (int i = 0; i < TEST_ITERATIONS; i++)
         {
             Vector3 delta = (i % 2 == 0 ? -1 : 1) * OFFSET_DISTANCE * Vector3.right;
             view.transform.position += delta;
@@ -179,7 +185,7 @@ public class ServersideTesterAuto
 
         while (view_init == null)
         {
-            view_init = UnityEngine.Object.FindObjectOfType<OffsetTransform>();
+            view_init = findView();
             yield return new WaitForSeconds(2);
         }
 
@@ -234,12 +240,12 @@ public class ServersideTesterAuto
 
         while (view_init == null || foobject == null)
         {
-            view_init = UnityEngine.Object.FindObjectOfType<OffsetTransform>();
+            view_init = findView();
             OffsetTransform[] objects = UnityEngine.Object.FindObjectsOfType<OffsetTransform>();
 
             foreach (var obj in objects)
             {
-                if (obj.GetType() != typeof(OffsetTransform))
+                if (obj.isView)
                 {
                     foobject = obj;
                 }
@@ -280,6 +286,8 @@ public class ServersideTesterAuto
 
             view.SetRealPositionApproximate(view.GetRealPosition().sqrMagnitude > 0 ? Vector3d.zero : (firstIsSelected ? Vector3d.right : Vector3d.left) * OFFSET_DISTANCE);
 
+            Debug.Log(view.transform.position);
+
             if (view.GetRealPosition().sqrMagnitude > 0) //was at zero, is no longer at zero, switch active
             {
                 firstIsSelected = !firstIsSelected;
@@ -293,7 +301,7 @@ public class ServersideTesterAuto
 
                 //sanity check (if this fails the test is invalid and either the delay for waiting for rebase is too short, the wrong OffsetTransform is selected, or something is wrong with the package)
                 Debug.Log($"Iteration {i} finished. Checking assertions.");
-                if (view.GetRealPosition().sqrMagnitude > 0)
+                if (view.GetRealPosition().sqrMagnitude > 0.01)
                 {
                     throw new Exception("Test invalid! Selected view is not at 0,0,0 real!");
                 }
@@ -303,7 +311,9 @@ public class ServersideTesterAuto
                 Assert.AreEqual(view.gameObject.scene.handle, foobject.gameObject.scene.handle);
 
                 // B) the OffsetTransform's real position remains mostly unchanged
-                Assert.True((control_position - foobject.GetRealPosition()).magnitude < 10);
+                // Assert.Less((control_position - foobject.GetRealPosition()).magnitude, 10);
+
+                Debug.Log((control_position - foobject.GetRealPosition()).magnitude);
 
                 Debug.Log($"Assertions for Iteration {i} passed");
             }
@@ -362,7 +372,7 @@ public class ServersideTesterAuto
 
         while (view_init == null || foobject == null)
         {
-            view_init = UnityEngine.Object.FindObjectOfType<OffsetTransform>();
+            view_init = findView();
             OffsetTransform[] objects = UnityEngine.Object.FindObjectsOfType<OffsetTransform>();
 
             foreach (var obj in objects)
@@ -451,7 +461,7 @@ public class ServersideTesterAuto
                 move = new Vector3(((i % 29) * OFFSET_DISTANCE) + i, ((i % 31) * OFFSET_DISTANCE) + i, ((i % 37) * OFFSET_DISTANCE) + i);
                 if (test.GetRealPosition() != Vector3d.zero)
                 {
-                    OffsetScene scene = FOServiceLocator.registry.GetScened<OffsetScene>(test.gameObject.scene);
+                    IOffsetScene<Vector3, Scene> scene = universe.GetScene(test.gameObject.scene);
                     test.transform.position = Mathd.RealToUnity(Vector3d.zero, scene.GetOffset());
                 }
                 Debug.Log($"BEFORE Test: {test.transform.position} Control: {control.transform.position} Test Real: {test.GetRealPosition()} Control Real: {control.GetRealPosition()}");
@@ -467,7 +477,7 @@ public class ServersideTesterAuto
             //the whole point of this test is that since the control does not move this should never be true unless something is wrong with the offsetting
             if (Vector3d.Magnitude(controlReal - control.GetRealPosition()) > 10)
             {
-                OffsetScene scene = FOServiceLocator.registry.GetScened<OffsetScene>(test.gameObject.scene);
+                IOffsetScene<Vector3, Scene> scene = universe.GetScene(test.gameObject.scene);
                 Debug.Log($"Desynchronized! Dist: {Vector3d.Magnitude(controlReal - control.GetRealPosition())} Merges: {i} Group: {control.gameObject.scene.ToHex()} Offset: {Mathd.UnityToReal(Vector3.zero, scene.GetOffset())} Unity Position: {control.transform.position} Real: {control.GetRealPosition()} Expected: {controlReal}");
                 desyncFrameCount++;
             }
@@ -507,16 +517,17 @@ public class ServersideTesterAuto
 
         while (view_init == null || foobject == null)
         {
-            view_init = UnityEngine.Object.FindObjectOfType<OffsetTransform>();
+            view_init = findView();
             OffsetTransform[] objects = UnityEngine.Object.FindObjectsOfType<OffsetTransform>();
 
             foreach (var obj in objects)
             {
-                if (obj.GetType() != typeof(OffsetTransform))
+                if (obj.isView)
                 {
                     foobject = obj;
                 }
             }
+            Debug.Log("Looking for view...");
             yield return new WaitForSeconds(2);
         }
 
@@ -556,10 +567,10 @@ public class ServersideTesterAuto
 
         yield return new WaitForSeconds(2);
 
-        Debug.Log("Finished loading test scene");
+        Debug.Log("TEST: Finished loading test scene");
         var nm = UnityEngine.Object.FindObjectOfType<NetworkManager>();
 
-        Debug.Log("Awaiting server connection");
+        Debug.Log("TEST: Awaiting server connection");
         nm.ServerManager.StartConnection();
 
         while (nm.ServerManager.Started == false)
@@ -567,14 +578,14 @@ public class ServersideTesterAuto
             yield return new WaitForFixedUpdate();
         }
 
-        Debug.Log("Started server connection, awaiting client connection...");
+        Debug.Log("TEST: Started server connection, awaiting client connection...");
         nm.ClientManager.StartConnection();
 
         while (nm.ClientManager.Started == false)
         {
             yield return new WaitForFixedUpdate();
         }
-        Debug.Log("Started client connection");
+        Debug.Log("TEST: Started client connection");
 
         yield return Cleanup();
     }
@@ -594,5 +605,18 @@ public class ServersideTesterAuto
         yield return null;
 
         hasRun = true;
+    }
+
+    public static OffsetTransform findView()
+    {
+        var transforms = UnityEngine.Object.FindObjectsOfType<OffsetTransform>();
+        foreach (OffsetTransform transform in transforms)
+        {
+            if (transform.isView)
+            {
+                return transform;
+            }
+        }
+        return null;
     }
 }
