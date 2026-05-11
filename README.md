@@ -2,7 +2,11 @@
 
 ### 2.0.0-dev TODO list
 
-Implement:
+### Networking
+
+🔲 Test offset syncing to clients
+
+🔲 Implement and test OffsetCondition for hiding objects not in your offset scene
 
 ### Preferences
 
@@ -10,7 +14,7 @@ Implement:
 
 ### Management
 
-🔲 Thin OffsetSceneHandler that is decoupled from the internal data representation of OffsetScenes
+✅ Thin OffsetSceneHandler that is decoupled from the internal data representation of OffsetScenes
 
 ✅ Thin OffsetManager (only bootstraps OffsetServer and adds reference to OffsetUniverse)
 
@@ -22,7 +26,7 @@ Implement:
 
 ✅ OffsetTransform (Formally FOObject, now also performs tasks of FOObserver)
 
-🔲 TODO: how to 're-discover' offset transforms after they have been moved to the null scene? hash grid? (or: keep a cap on the # of disabled offset transforms and just do an O(n) search on the few left over? could also be sped up with sweep and prune)
+🔲 TODO: how to 're-discover' offset transforms after they have been moved out of bounds? hash grid? (or: keep a cap on the # of disabled offset transforms and just do an O(n) search on the few left over? could also be sped up with sweep and prune)
 
 ✅ Deprecate FOObserver in favor of boolean on OffsetTransform
 
@@ -44,9 +48,13 @@ Implement:
 
 ### Testing
 
-🔲 Rewrite tests to work with new API
+✅ Rewrite tests to work with new API
 
 🔲 Maximize test coverage
+
+
+<img width="565" height="783" alt="Screenshot 2026-05-10 at 21 01 03" src="https://github.com/user-attachments/assets/9ef42314-9c9f-4df8-b65b-e619bb8d05a2" />
+<img width="309" height="223" alt="Screenshot 2026-05-10 at 21 00 31" src="https://github.com/user-attachments/assets/00ba01c7-183e-4c16-b5af-229625b91048" />
 
 ---
 
