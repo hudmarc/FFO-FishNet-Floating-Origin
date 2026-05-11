@@ -1,4 +1,4 @@
-> This branch is not currently in a working state and is definitely not ready for production use. The branch is here to track progress when work on this project resumes.
+> This branch currently passes all the unit tests. Whether they are good unit tests is a different matter. Not tested in multiplayer yet.
 
 ### 2.0.0-dev TODO list
 
@@ -14,7 +14,7 @@
 
 ### Management
 
-✅ Thin OffsetSceneHandler that is decoupled from the internal data representation of OffsetScenes
+✅ ~~Thin OffsetSceneHandler that is decoupled from the internal data representation of OffsetScenes~~ It was so thin that functionality was moved into OffsetManager, `OffsetSceneBootstrapper` only handles registration of scenes now.
 
 ✅ Thin OffsetManager (only bootstraps OffsetServer and adds reference to OffsetUniverse)
 
@@ -26,7 +26,7 @@
 
 ✅ OffsetTransform (Formally FOObject, now also performs tasks of FOObserver)
 
-🔲 TODO: how to 're-discover' offset transforms after they have been moved out of bounds? hash grid? (or: keep a cap on the # of disabled offset transforms and just do an O(n) search on the few left over? could also be sped up with sweep and prune)
+🔲 ~~TODO: how to 're-discover' offset transforms after they have been moved out of bounds? hash grid? (or: keep a cap on the # of disabled offset transforms and just do an O(n) search on the few left over? could also be sped up with sweep and prune)~~ Changed: Offset Transforms are now destroyed if out of range. If you are being pursued by NPC's they will be offset with you, but if they are out of range they will be despawned. If you need to support Offset Transform persistence the best solution would probably be building your own spawning/persistence system with OffsetAnchors.
 
 ✅ Deprecate FOObserver in favor of boolean on OffsetTransform
 
@@ -52,6 +52,17 @@
 
 🔲 Maximize test coverage
 
+🔲 Review tests and make sure they are actually testing what they say they are
+
+### Code Quality
+
+🔲 Make sure access modifiers are as restrictive as possible
+
+🔲 Remove var keyword where unnecessary
+
+🔲 Documentation
+
+🔲 Lint everything
 
 <img width="565" height="783" alt="Screenshot 2026-05-10 at 21 01 03" src="https://github.com/user-attachments/assets/9ef42314-9c9f-4df8-b65b-e619bb8d05a2" />
 <img width="309" height="223" alt="Screenshot 2026-05-10 at 21 00 31" src="https://github.com/user-attachments/assets/00ba01c7-183e-4c16-b5af-229625b91048" />
