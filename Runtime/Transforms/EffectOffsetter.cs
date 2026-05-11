@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using FloatingOffset.Runtime.Types;
 using UnityEngine;
 
 namespace FloatingOffset.Runtime
@@ -23,11 +24,7 @@ namespace FloatingOffset.Runtime
         }
         void Start()
         {
-            universe.server.GetHandler(gameObject.scene).RegisterOffsettable(this);
-        }
-        void OnDestroy()
-        {
-            universe.server.GetHandler(gameObject.scene).UnregisterOffsettable(this);
+            universe.server.handler.RegisterOffsettable(this, gameObject.scene);
         }
         public void Offset(Vector3 offset)
         {

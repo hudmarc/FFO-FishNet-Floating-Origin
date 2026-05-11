@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using FloatingOffset.Runtime.Types;
 
 namespace FloatingOffset.Runtime
 {
@@ -62,26 +63,6 @@ namespace FloatingOffset.Runtime
         }
 
         /// <summary>
-        /// Gets the current velocity of the scene at the specified array index.
-        /// </summary>
-        /// <param name="scene_index">The array index of the scene.</param>
-        /// <returns>The 64-bit vector representing the scene's velocity.</returns>
-        public Vector3d GetVelocityAt(int scene_index)
-        {
-            return scenes[scene_index].velocity;
-        }
-
-        /// <summary>
-        /// Gets the current velocity of the specified scene key.
-        /// </summary>
-        /// <param name="scene">The unique key identifying the scene.</param>
-        /// <returns>The 64-bit vector representing the scene's velocity.</returns>
-        public Vector3d GetVelocity(TSceneKey scene)
-        {
-            return GetVelocityAt(scene_indexes[scene]);
-        }
-
-        /// <summary>
         /// Gets the total number of registered views (e.g., players, cameras) currently in the scene at the specified array index.
         /// </summary>
         /// <param name="scene_index">The array index of the scene.</param>
@@ -105,26 +86,19 @@ namespace FloatingOffset.Runtime
             return GetViewCountAt(scene_indexes[scene]);
         }
 
-        /// <summary>
-        /// Retrieves the component responsible for shifting the physics and root transforms of the scene at the specified array index.
-        /// </summary>
-        /// <param name="scene_index">The array index of the scene.</param>
-        /// <returns>The scene's offset handler.</returns>
-        public IOffsetHandler<TSceneKey> GetHandlerAt(int scene_index)
+
+        public bool IsValid(int scene_index)
         {
-            return scenes[scene_index].handler;
+            if (scene_index >= scenes.Length)
+                return false;
+            return scenes[scene_index].valid;
         }
 
-        /// <summary>
-        /// Retrieves the component responsible for shifting the physics and root transforms of the specified scene.
-        /// </summary>
-        /// <param name="scene">The unique key identifying the scene.</param>
-        /// <returns>The scene's offset handler.</returns>
-        public IOffsetHandler<TSceneKey> GetHandler(TSceneKey scene)
+        public bool IsValid(TSceneKey scene_index)
         {
-            if (!scene_indexes.ContainsKey(scene))
-                return null;
-            return GetHandlerAt(scene_indexes[scene]);
+            if (!scene_indexes.ContainsKey(scene_index))
+                return false;
+            return IsValid(scene_indexes[scene_index]);
         }
 
         /// <summary>
@@ -134,7 +108,7 @@ namespace FloatingOffset.Runtime
         public void RemoveViewAt(int scene_index)
         {
             scenes[scene_index].view_count--;
-            
+
             if (scenes[scene_index].view_count < 1)
             {
                 SetEmpty(scene_index);
@@ -147,9 +121,18 @@ namespace FloatingOffset.Runtime
         /// <param name="view">The offset object being removed.</param>
         public void RemoveView(IOffsetObject<TSceneKey> view)
         {
-            if (scene_indexes.ContainsKey(view.GetSceneKey()))
+            RemoveView(view.GetSceneKey());
+        }
+
+        /// <summary>
+        /// Removes a tracked view from its associated scene, decrementing that scene's view count.
+        /// </summary>
+        /// <param name="view">The offset object being removed.</param>
+        public void RemoveView(TSceneKey scene)
+        {
+            if (scene_indexes.ContainsKey(scene))
             {
-                RemoveViewAt(scene_indexes[view.GetSceneKey()]);
+                RemoveViewAt(scene_indexes[scene]);
             }
         }
 
@@ -160,6 +143,13 @@ namespace FloatingOffset.Runtime
         private void AddViewAt(int scene_index)
         {
             scenes[scene_index].view_count++;
+
+            // If this is the first view, upgrade the scene from the Empty zone to the Active zone
+            if (scenes[scene_index].view_count == 1 && scene_index >= activeCount)
+            {
+                Swap(scene_index, activeCount);
+                activeCount++;
+            }
         }
 
         /// <summary>
@@ -181,7 +171,7 @@ namespace FloatingOffset.Runtime
             return scenes[scene_index].key;
         }
 
-        public void Register(TSceneKey sceneKey, IOffsetHandler<TSceneKey> handler)
+        public void Register(TSceneKey sceneKey)
         {
             // If our alive boundary hits the end of the array, we are out of space.
             if (aliveCount >= scenes.Length)
@@ -192,7 +182,7 @@ namespace FloatingOffset.Runtime
             int newIndex = aliveCount;
 
             OffsetScene<TSceneKey> scene = new OffsetScene<TSceneKey>();
-            scene.handler = handler;
+            scene.valid = true;
             scene.key = sceneKey;
             scene.view_count = 0; // Starts in the 'Empty' zone
 
@@ -218,31 +208,32 @@ namespace FloatingOffset.Runtime
             Swap(index, aliveCount);
 
             // 3. Clear the data and erase from dictionary
-            scenes[aliveCount].handler = null;
+            scenes[aliveCount].valid = false;
             scene_indexes.Remove(scene);
-        }
-        public bool HasHandlerAt(int scene_index)
-        {
-            return scenes[scene_index].handler != null;
         }
         public bool HasScene(TSceneKey scene)
         {
             return scene_indexes.ContainsKey(scene);
         }
-        public void SetOffsetAt(int index, Vector3d offset)
+        /// <summary>
+        /// Sets the offset of the given OffsetGroup. Remember to call handler.UpdateOffset after!
+        /// </summary>
+        /// <param name="index"></param>
+        /// <param name="offset"></param>
+        public OffsetScene<TSceneKey> OffsetAt(int index, Vector3d offset)
         {
             scenes[index].offset = offset;
+            return scenes[index];
         }
-        public void SetOffset(TSceneKey key, Vector3d offset)
+        /// <summary>
+        /// Sets the offset of the given OffsetGroup. Remember to call handler.UpdateOffset after!
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="offset"></param>
+        public OffsetScene<TSceneKey> Offset(TSceneKey key, Vector3d offset)
         {
-            scenes[scene_indexes[key]].offset = offset;
+            return OffsetAt(scene_indexes[key], offset);
         }
-
-        public void SetVelocityAt(int index, Vector3d velocity)
-        {
-            scenes[index].velocity = velocity;
-        }
-
         public OffsetScene<TSceneKey> GetSceneAt(int index)
         {
             return scenes[index];
@@ -289,15 +280,24 @@ namespace FloatingOffset.Runtime
 
         internal void AddViewsAt(int scene_index, int count)
         {
+            bool wasEmpty = scenes[scene_index].view_count == 0;
             scenes[scene_index].view_count += count;
+
+            // Upgrade the scene if it just gained its first views
+            if (wasEmpty && scenes[scene_index].view_count > 0 && scene_index >= activeCount)
+            {
+                Swap(scene_index, activeCount);
+                activeCount++;
+            }
         }
+        internal bool SameLayer(int i, int j) => scenes[i].layer == scenes[j].layer;
 
         /// <summary>
         /// The current capacity of the underlying scenes array.
         /// </summary>
         public int Count { get => scenes.Length; }
         public int ActiveCount { get => activeCount; }
-        public int EmptyCount { get => EmptyCount; }
+        public int EmptyCount { get => aliveCount - activeCount; }
     }
 
 }

@@ -1,3 +1,4 @@
+using FloatingOffset.Runtime.Types;
 using UnityEngine;
 
 namespace FloatingOffset.Runtime
@@ -12,15 +13,8 @@ namespace FloatingOffset.Runtime
         private Vector3d realPosition;
         void Start()
         {
-            universe.server.GetHandler(gameObject.scene).RegisterOffsettable(this);
+            universe.server.handler.RegisterOffsettable(this, gameObject.scene);
         }
-        void OnDestroy()
-        {
-            var handler = universe.server.GetHandler(gameObject.scene);
-            if (handler != null)
-                handler.UnregisterOffsettable(this);
-        }
-
         public void OnOffset(Vector3d old_offset, Vector3d new_offset)
         {
             transform.position = Mathd.RealToUnity(realPosition, new_offset);

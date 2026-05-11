@@ -1,3 +1,4 @@
+using FloatingOffset.Runtime.Types;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -13,9 +14,6 @@ namespace FloatingOffset.Runtime
         [field: SerializeField]
         [Tooltip("If checked, this transform can trigger rebases and will always be kept in a scene. If not, this object will be moved to the null scene if in an empty scene.")]
         public bool isView { get; private set; }
-        [SerializeField]
-        [Tooltip("Optional: If added, this will be used to calculate the velocity of the OffsetTransform.")]
-        private Rigidbody referenceFrame;
         private bool registered = false;
         void Start()
         {
@@ -31,54 +29,14 @@ namespace FloatingOffset.Runtime
             if (isView && registered)
                 universe.server.UnregisterView(this);
         }
-        public void SetRealPositionApproximate(Vector3d position)
-        {
-            transform.position = Mathd.RealToUnity(position, GetSceneOffset());
-        }
-        public Vector3d GetRealPosition()
-        {
-            return Mathd.UnityToReal(transform.position, GetSceneOffset());
-        }
-        private Vector3d GetSceneOffset()
-        {
-            return universe.server.GetSceneOffset(gameObject.scene);
-        }
+        public void SetRealPositionApproximate(Vector3d position) => transform.position = Mathd.RealToUnity(position, GetSceneOffset());
 
-        public Vector3d GetRealVelocity()
-        {
-            if (referenceFrame == null)
-                return universe.server.GetSceneVelocity(gameObject.scene);
-
-            return Mathd.UnityToReal(referenceFrame.velocity, universe.server.GetSceneVelocity(gameObject.scene));
-        }
-
-        public Vector3d GetEnginePosition()
-        {
-            return Mathd.toVector3d(transform.position);
-        }
-
-        public Vector3d GetEngineVelocity()
-        {
-            return Mathd.toVector3d(referenceFrame == null ? Vector3.zero : referenceFrame.velocity);
-        }
-
-        public Scene GetSceneKey()
-        {
-            return gameObject.scene;
-        }
-
-        public float EngineVelocitySquaredMagnitude()
-        {
-            return referenceFrame == null ? 0 : referenceFrame.velocity.sqrMagnitude;
-        }
-        public float GetEnginePositionSquareMagnitude()
-        {
-            return transform.position.sqrMagnitude;
-        }
-
-        public void SetEnginePosition(Vector3d vector3d)
-        {
-            transform.position = Mathd.toVector3(vector3d);
-        }
+        public Vector3d GetRealPosition() => Mathd.UnityToReal(transform.position, GetSceneOffset());
+        private Vector3d GetSceneOffset() => universe.server.GetSceneOffset(gameObject.scene);
+        public Vector3d GetEnginePosition() => Mathd.toVector3d(transform.position);
+        public Scene GetSceneKey() => gameObject.scene;
+        public float GetEnginePositionSquareMagnitude() => transform.position.sqrMagnitude;
+        public void SetEnginePosition(Vector3d vector3d) => transform.position = Mathd.toVector3(vector3d);
+        public bool IsView() => isView;
     }
 }

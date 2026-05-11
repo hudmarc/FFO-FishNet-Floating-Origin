@@ -1,6 +1,5 @@
+using FloatingOffset.Runtime.Types;
 using NUnit.Framework;
-using FloatingOffset.Runtime;
-using UnityEngine;
 using System;
 
 namespace FloatingOffset.Runtime
@@ -23,12 +22,12 @@ namespace FloatingOffset.Runtime
 
         public int GetSceneKey() => _sceneKey;
 
-        public void MoveAllTo(OffsetScene<int> scene)
+        public void TransferAllTo(OffsetScene<int> scene)
         {
             throw new NotImplementedException();
         }
 
-        public void MoveTo(IOffsetObject<int> offsettable, OffsetScene<int> scene)
+        public void TransferTo(IOffsetObject<int> offsettable, OffsetScene<int> scene)
         {
             throw new NotImplementedException();
         }
@@ -48,7 +47,42 @@ namespace FloatingOffset.Runtime
             throw new NotImplementedException();
         }
 
-        public void UpdateOffset(Vector3d offset, Vector3d velocity, float delta = 0)
+        public void UpdateOffset(Vector3d offset)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void UpdateOffset(int scene, Vector3d offset)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void TransferTo(IOffsetObject<int> offsettable, OffsetScene<int> from, OffsetScene<int> to)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void TransferAllTo(OffsetScene<int> from, OffsetScene<int> to)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Clone(int scene, Action<(int scene, float delta)> onSceneReady)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void RegisterOffsettable(IOffsettable offsettable, int scene)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void UpdateOffset(OffsetScene<int> scene)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void TransferTo(IOffsetObject<int> offsettable, OffsetScene<int> from, OffsetScene<int> to, bool reposition = false)
         {
             throw new NotImplementedException();
         }
@@ -62,11 +96,6 @@ namespace FloatingOffset.Runtime
         private int _sceneKey;
         public MockOffsetObject(int sceneKey) => _sceneKey = sceneKey;
 
-        public float EngineVelocitySquaredMagnitude()
-        {
-            throw new NotImplementedException();
-        }
-
         public Vector3d GetEnginePosition()
         {
             throw new NotImplementedException();
@@ -77,22 +106,17 @@ namespace FloatingOffset.Runtime
             throw new NotImplementedException();
         }
 
-        public Vector3d GetEngineVelocity()
-        {
-            throw new NotImplementedException();
-        }
-
         public Vector3d GetRealPosition()
         {
             throw new NotImplementedException();
         }
 
-        public Vector3d GetRealVelocity()
+        public int GetSceneKey() => _sceneKey;
+
+        public bool IsView()
         {
             throw new NotImplementedException();
         }
-
-        public int GetSceneKey() => _sceneKey;
 
         public void MoveTo(int scene)
         {
@@ -118,7 +142,7 @@ namespace FloatingOffset.Runtime
             // Runs before every single test to guarantee a clean, isolated state
             _initialHandler = new MockOffsetHandler(INITIAL_SCENE_KEY);
             _collection = new OffsetSceneCollection<int>();
-            _collection.Register(INITIAL_SCENE_KEY, _initialHandler);
+            _collection.Register(INITIAL_SCENE_KEY);
         }
 
         [TearDown]
@@ -127,39 +151,6 @@ namespace FloatingOffset.Runtime
             // Clean up any loose references if necessary
             _collection = null;
         }
-
-        #region Registration & Unregistration
-
-        [Test]
-        public void AddSceneHandler_WhenValidHandler_AddsToCollectionAndReturnsIndex()
-        {
-            // Arrange
-            var newHandler = new MockOffsetHandler(101);
-
-            // Act
-            _collection.Register(101, newHandler);
-
-            // Assert
-            Assert.AreEqual(2, _collection.Count, "Collection should have expanded to hold the new scene.");
-            Assert.AreEqual(newHandler, _collection.GetHandler(101), "The handler retrieved should match the one added.");
-        }
-
-        [Test]
-        public void UnregisterHandler_WhenSceneExists_MovesToDeadZoneAndClearsData()
-        {
-            // Arrange
-            // (Setup is already done, INITIAL_SCENE_KEY exists)
-
-            // Act
-            _collection.Unregister(INITIAL_SCENE_KEY);
-
-            // Assert
-            Assert.IsNull(_collection.GetHandler(0), "Handler should be null after being unregistered.");
-            // Add assertion here to verify active/alive counts if you expose them for testing
-        }
-
-        #endregion
-
         #region View Management
 
         [Test]
@@ -222,19 +213,6 @@ namespace FloatingOffset.Runtime
             Assert.AreEqual(expectedOffset, actualOffset);
         }
 
-        [Test]
-        public void GetVelocity_WhenRequested_ReturnsCorrectVector3d()
-        {
-            // Arrange
-            Vector3d expectedVelocity = Vector3d.zero;
-
-            // Act
-            Vector3d actualVelocity = _collection.GetVelocity(INITIAL_SCENE_KEY);
-
-            // Assert
-            Assert.AreEqual(expectedVelocity, actualVelocity);
-        }
-
         #endregion
         
         #region Array Resizing
@@ -249,7 +227,7 @@ namespace FloatingOffset.Runtime
             // Force the collection to double in size
             for (int i = 0; i < initialCapacity + 1; i++)
             {
-                _collection.Register(200 + i, new MockOffsetHandler(200 + i));
+                _collection.Register(200 + i);
             }
 
             // Assert

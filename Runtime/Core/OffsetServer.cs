@@ -1,5 +1,5 @@
-using System;
 using System.Collections.Generic;
+using FloatingOffset.Runtime.Types;
 using UnityEngine;
 
 namespace FloatingOffset.Runtime
@@ -36,7 +36,7 @@ namespace FloatingOffset.Runtime
         /// <summary>
         /// The sum of positions on the given scene, if applicable.
         /// </summary>
-        private Dictionary<TSceneKey, Vector3d> positions_summed = new Dictionary<TSceneKey, Vector3d>();
+        private Dictionary<TSceneKey, (Vector3d position, double count)> positions_summed = new Dictionary<TSceneKey, (Vector3d position, double count)>();
 
         /// <summary>
         /// This is the minimum distance a view must be from the origin before it triggers a rebase.
@@ -58,12 +58,11 @@ namespace FloatingOffset.Runtime
 
         private readonly int MaxScenes;
 
-        public readonly float SpeedLimitMs;
-        public readonly float SpeedLimitMsSquared;
+        public IOffsetHandler<TSceneKey> handler { get; private set; }
 
         // Passing the base values as parameters with default values gives you the 
         // exact same out-of-the-box behavior, but allows for injection later if needed.
-        public OffsetServer(int baseRebaseCriteria = 2048, float speedLimitMs = 1000f, int maxScenes = 200)
+        public OffsetServer(IOffsetHandler<TSceneKey> handler, int baseRebaseCriteria = 2048, int maxScenes = 200)
         {
             RebaseCriteria = baseRebaseCriteria;
             RebaseCriteriaSquared = RebaseCriteria * RebaseCriteria;
@@ -74,9 +73,9 @@ namespace FloatingOffset.Runtime
             TransferCriteria = MergeCriteria * 2;
             TransferCriteriaSquared = TransferCriteria * TransferCriteria;
 
-            SpeedLimitMs = speedLimitMs;
-            SpeedLimitMsSquared = SpeedLimitMs * SpeedLimitMs;
             MaxScenes = maxScenes;
+
+            this.handler = handler;
         }
         /// <summary>
         /// Gets the offset for the given scene.
@@ -87,14 +86,13 @@ namespace FloatingOffset.Runtime
         {
             return scenes.GetOffset(scene);
         }
-        /// <summary>
-        /// Gets the velocity for the given scene.
-        /// </summary>
-        /// <param name="scene"></param>
-        /// <returns></returns>
-        public Vector3d GetSceneVelocity(TSceneKey scene)
+        public OffsetActions GetState(IOffsetObject<TSceneKey> offsettable)
         {
-            return scenes.GetVelocity(scene);
+            if (pending_actions.ContainsKey(offsettable))
+            {
+                return pending_actions[offsettable];
+            }
+            return OffsetActions.None;
         }
         /// <summary>
         /// Gets the number of views in the given scene.
@@ -104,10 +102,6 @@ namespace FloatingOffset.Runtime
         public int GetSceneViewCount(TSceneKey scene)
         {
             return scenes.GetViewCount(scene);
-        }
-        public IOffsetHandler<TSceneKey> GetHandler(TSceneKey scene)
-        {
-            return scenes.GetHandler(scene);
         }
         /// <summary>
         /// Registers the given offset offsettable as a view.
@@ -153,7 +147,7 @@ namespace FloatingOffset.Runtime
                     switch (pending_actions[view])
                     {
                         case OffsetActions.PendingTransfer:
-                            RequestScene(view, view.GetRealPosition(), view.GetRealVelocity()); //MissingReferenceException: The object of type 'OffsetTransform' has been destroyed but you are still trying to access it. Your script should either check if it is null or you should not destroy the object.
+                            RequestScene(view, view.GetRealPosition()); //MissingReferenceException: The object of type 'OffsetTransform' has been destroyed but you are still trying to access it. Your script should either check if it is null or you should not destroy the object.
                             break;
 
                         case OffsetActions.RemoveView:
@@ -164,6 +158,7 @@ namespace FloatingOffset.Runtime
                         default:
                             break;
                     }
+                    Debug.Log($"Processed action for {view.GetHashCode().ToHex()}");
                     continue;
                 }
 
@@ -184,52 +179,47 @@ namespace FloatingOffset.Runtime
                     // Debug.Log($"Processing offset for view {view.GetHashCode()} in scene {key}");
                     if (positions_summed.ContainsKey(key))
                     {
-                        positions_summed[key] += view.GetEnginePosition();
+                        positions_summed[key] = (positions_summed[key].position + view.GetEnginePosition(), positions_summed[key].count + 1);
                     }
                     else
                     {
-                        positions_summed.Add(key, view.GetEnginePosition());
+                        positions_summed.Add(key, (view.GetEnginePosition(), 1));
                     }
                 }
-                // 2)b)
-                if (view.EngineVelocitySquaredMagnitude() > SpeedLimitMsSquared)
-                {
-                    pending_actions.Add(view, OffsetActions.PendingTransfer);
-                }
             }
-
+            // Debug.Log($"Active scenes: {scenes.ActiveCount}");
             for (int i = 0; i < scenes.ActiveCount; i++)
             {
                 // ignore/continue if scene is empty or otherwise not ready to process
                 if (scenes.GetViewCountAt(i) < 1)
                 {
+                    // Debug.Log($"Skipping {i}");
                     continue;
                 }
 
                 var key = scenes.GetKeyAt(i);
 
+                // Debug.Log($"Processing scene {key.GetHashCode().ToHex()}");
+
                 // if sum and count includes the offset of the scene being processed...
                 if (positions_summed.ContainsKey(key))
                 {
-                    Vector3d average = positions_summed[key] / ((double)scenes.GetViewCount(key));
-                    Debug.Log($"Offsetting {key} by {average}");
+                    Vector3d average = positions_summed[key].position / positions_summed[key].count;
+                    // Debug.Log($"Offsetting {key} by {average}");
                     Vector3d offset = scenes.GetOffsetAt(i) + average;
-                    scenes.SetOffsetAt(i, offset);
-                    // scenes.SetVelocityAt(i, scenes.GetVelocityAt(i) + average);
-
-                    scenes.GetHandlerAt(i).UpdateOffset(offset, Vector3d.zero);
+                    handler.UpdateOffset(scenes.OffsetAt(i, offset));
                     positions_summed.Remove(key);
                 }
 
                 // 3) What causes offset scenes to merge?
                 // If their origins are within bounds of one another, the scene with the most views absorbs the one with less views.
                 // O(n^2) but the assumption is that there will not be more than 100 scenes active at once per runtime ()
-                if (scenes.Count > 1 && i + 1 < scenes.ActiveCount)
+                if (scenes.Count > 1 && i + 1 < scenes.ActiveCount && scenes.IsValid(i))
+                {
+                    Vector3d offset = scenes.GetOffsetAt(i);
                     for (int j = i + 1; j < scenes.ActiveCount; j++)
                     {
-                        if ((scenes.GetOffsetAt(i) - scenes.GetOffsetAt(j)).sqrMagnitude < MergeCriteriaSquared
-                            && scenes.GetHandlerAt(i) != null
-                            && scenes.GetHandlerAt(j) != null)
+                        if ((offset - scenes.GetOffsetAt(j)).sqrMagnitude < MergeCriteriaSquared && scenes.IsValid(j) && scenes.SameLayer(i, j))
                         {
                             if (scenes.GetViewCountAt(i) > scenes.GetViewCountAt(j))
                             {
@@ -249,12 +239,8 @@ namespace FloatingOffset.Runtime
                             }
                         }
                     }
+                }
             }
-        }
-
-        internal void RegisterOffsetHandler(IOffsetHandler<TSceneKey> handler)
-        {
-            scenes.Register(handler.GetSceneKey(), handler);
         }
 
         /// <summary>
@@ -262,29 +248,18 @@ namespace FloatingOffset.Runtime
         /// </summary>
         /// <param name="offsettable"></param>
         /// <param name="handler"></param>
-        private void Transfer(IOffsetObject<TSceneKey> offsettable, IOffsetHandler<TSceneKey> handler)
+        private void TransferWithRepositioning(IOffsetObject<TSceneKey> offsettable, OffsetScene<TSceneKey> from, OffsetScene<TSceneKey> to)
         {
-            TSceneKey from = offsettable.GetSceneKey();
-            TSceneKey to = handler.GetSceneKey();
-
             if (from.Equals(to))
                 return;
 
-            // 1. Capture exact 64-bit mathematical truth BEFORE modifying anything
-            Vector3d exactRealPosition = offsettable.GetRealPosition();
+            handler.TransferTo(offsettable, from, to, true);
 
+            // Update the logical scene registry after the transfer is complete.
             scenes.RemoveView(offsettable);
+            scenes.AddView(to.key);
 
-
-            Debug.Log($"TRANSFER: {offsettable.GetHashCode()} moved to {to.GetHashCode()} now has {scenes.GetViewCount(to)} views");
-
-            // 2. Move the Unity object to the new Unity Scene
-            scenes.GetHandler(from).MoveTo(offsettable, scenes.GetScene(to));
-
-            scenes.AddView(to);
-
-            Vector3d targetSceneOffset = scenes.GetOffset(to);
-            offsettable.SetEnginePosition(exactRealPosition - targetSceneOffset);
+            Debug.Log($"TRANSFER: {offsettable.GetHashCode()} moved to {to.GetHashCode()} now has {to.view_count} views");
         }
         /// <summary>
         /// Moves contents of scene b into scene a.
@@ -297,37 +272,37 @@ namespace FloatingOffset.Runtime
 
             Vector3d a_offset = scenes.GetOffsetAt(a);
 
+
             // Rebase scene B to match scene A
-            scenes.SetOffsetAt(b, a_offset);
-            scenes.GetHandlerAt(b).UpdateOffset(a_offset, Vector3d.zero);
+            var scene_b = scenes.OffsetAt(b, a_offset);
+            handler.UpdateOffset(scene_b);
 
-            // Move the contents of scene B into scene A
-            scenes.GetHandlerAt(b).MoveAllTo(scenes.GetSceneAt(a));
-
-
-            scenes.AddViewsAt(a, scenes.GetViewCountAt(b));
+            // Move the contents of scene B into scene A. Need to call GetSceneAt again to get updated offset.
+            handler.TransferAllTo(scene_b, scenes.GetSceneAt(a));
+            scenes.AddViewsAt(a, scene_b.view_count);
 
             // Add scene B to the empty scenes
             scenes.SetEmpty(b);
         }
 
         /// <summary>
-        /// Fetch a scene from the empty scenes and set its position and velocity, or create a scene from the given scene at position + (velocity * time delta)
+        /// Fetch a scene from the empty scenes and set its position.
         /// </summary>
         /// <param name="offsettable"></param>
         /// <param name="offset"></param>
-        /// <param name="velocity"></param>
-        private void RequestScene(IOffsetObject<TSceneKey> offsettable, Vector3d offset, Vector3d velocity)
+        private void RequestScene(IOffsetObject<TSceneKey> offsettable, Vector3d offset)
         {
             // 1. Check for empty scenes
-            if (scenes.TryPopEmpty(out int index))
+            if (scenes.TryPopEmpty(out int empty_index))
             {
-                IOffsetHandler<TSceneKey> handler = scenes.GetHandlerAt(index);
-                scenes.SetOffsetAt(index, offset);
-                scenes.SetVelocityAt(index, velocity);
-                handler.UpdateOffset(offset, Vector3d.zero);
+                Debug.LogWarning("Popped empty");
 
-                Transfer(offsettable, handler);
+                var empty_scene = scenes.OffsetAt(empty_index, offset);
+                handler.UpdateOffset(empty_scene);
+
+                //Handles adding the view to the destination scene
+                TransferWithRepositioning(offsettable, scenes.GetScene(offsettable.GetSceneKey()), empty_scene);
+
                 pending_actions.Remove(offsettable);
             }
             else
@@ -341,61 +316,21 @@ namespace FloatingOffset.Runtime
                 }
                 pending_actions.Add(offsettable, OffsetActions.AwaitingScene);
 
-                IOffsetHandler<TSceneKey> source = GetHandler(offsettable.GetSceneKey());
-                source.Clone(result =>
+                handler.Clone(offsettable.GetSceneKey(), result =>
                 {
                     pending_actions.Remove(offsettable);
                 });
             }
         }
 
-        internal void UnregisterOffsetHandler(IOffsetHandler<TSceneKey> handler)
+        public bool HasScene(TSceneKey scene)
         {
-            scenes.Unregister(handler.GetSceneKey());
+            return scenes.HasScene(scene);
         }
-    }
-    /// <summary>
-    /// Handles the scene and offset.
-    /// </summary>
-    /// <typeparam name="TSceneKey"></typeparam>
-    public struct OffsetScene<TSceneKey>
-    {
-        public Vector3d offset;
-        public Vector3d velocity;
-        public int view_count;
-        public TSceneKey key;
-        public IOffsetHandler<TSceneKey> handler;
-    }
-    public interface IOffsetObject<TScene>
-    {
-        public Vector3d GetRealPosition();
-        public Vector3d GetEnginePosition();
-        public Vector3d GetRealVelocity();
-        public Vector3d GetEngineVelocity();
-        public TScene GetSceneKey();
-        public float EngineVelocitySquaredMagnitude();
-        public float GetEnginePositionSquareMagnitude();
-        public void SetEnginePosition(Vector3d vector3d);
-    }
-    public interface IOffsettable
-    {
-        public void OnOffset(Vector3d old_offset, Vector3d new_offset);
-    }
-    public interface IOffsetHandler<TSceneKey>
-    {
-        public void UpdateOffset(Vector3d offset, Vector3d velocity, float delta = 0);
-        public void MoveTo(IOffsetObject<TSceneKey> offsettable, OffsetScene<TSceneKey> scene);
-        public void MoveAllTo(OffsetScene<TSceneKey> scene);
-        public void Clone(Action<(TSceneKey scene, float delta)> onSceneReady);
-        public void RegisterOffsettable(IOffsettable offsettable);
-        public void UnregisterOffsettable(IOffsettable offsettable);
-        public TSceneKey GetSceneKey();
-        public Vector3d GetOffset();
-    }
-    public enum OffsetActions
-    {
-        RemoveView,
-        PendingTransfer,
-        AwaitingScene
+
+        internal void RegisterScene(TSceneKey scene)
+        {
+            scenes.Register(scene);
+        }
     }
 }

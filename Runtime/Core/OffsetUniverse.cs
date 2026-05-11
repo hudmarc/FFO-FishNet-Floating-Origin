@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -16,10 +17,9 @@ namespace FloatingOffset.Runtime
         public OffsetServer<Scene> server { internal set; get; }
         [field: SerializeField]
         public int RebaseCriteria { get; private set; } = 2048;
-
-        [field: SerializeField]
-        public float SpeedLimitMs { get; private set; } = 1000f;
         [field: SerializeField]
         public int MaxScenes { get; private set; } = 200;
+
+        internal Queue<Scene> queued_scenes;
     }
 }
