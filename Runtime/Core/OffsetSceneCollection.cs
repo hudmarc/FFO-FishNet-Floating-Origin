@@ -86,14 +86,22 @@ namespace FloatingOffset.Runtime
             return GetViewCountAt(scene_indexes[scene]);
         }
 
-
+        /// <summary>
+        /// Is this a valid scene? i.e. is it associated with an active world scene.
+        /// </summary>
+        /// <param name="scene_index"></param>
+        /// <returns></returns>
         public bool IsValid(int scene_index)
         {
             if (scene_index >= scenes.Length)
                 return false;
             return scenes[scene_index].valid;
         }
-
+        /// <summary>
+        /// Is this a valid scene? i.e. is it associated with an active world scene.
+        /// </summary>
+        /// <param name="scene_index"></param>
+        /// <returns></returns>
         public bool IsValid(TSceneKey scene_index)
         {
             if (!scene_indexes.ContainsKey(scene_index))
@@ -160,17 +168,27 @@ namespace FloatingOffset.Runtime
         {
             AddViewAt(scene_indexes[view.GetSceneKey()]);
         }
-
+        /// <summary>
+        /// Registers a tracked view to its associated scene, incrementing that scene's view count.
+        /// </summary>
+        /// <param name="view">The offset object being added.</param>
         public void AddView(TSceneKey scene)
         {
             AddViewAt(scene_indexes[scene]);
         }
-
+        /// <summary>
+        /// Gets the scene key from the given internal scene index.
+        /// </summary>
+        /// <param name="scene_index"></param>
+        /// <returns></returns>
         public TSceneKey GetKeyAt(int scene_index)
         {
             return scenes[scene_index].key;
         }
-
+        /// <summary>
+        /// Register a Scene with this offset scene collection.
+        /// </summary>
+        /// <param name="sceneKey"></param>
         public void Register(TSceneKey sceneKey)
         {
             // If our alive boundary hits the end of the array, we are out of space.
@@ -191,6 +209,10 @@ namespace FloatingOffset.Runtime
 
             aliveCount++;
         }
+        /// <summary>
+        /// Unregister a scene from this offset scene collection (please do this if you manually unload scenes!)
+        /// </summary>
+        /// <param name="scene"></param>
         public void Unregister(TSceneKey scene)
         {
             if (!scene_indexes.TryGetValue(scene, out int index)) return;
@@ -211,6 +233,11 @@ namespace FloatingOffset.Runtime
             scenes[aliveCount].valid = false;
             scene_indexes.Remove(scene);
         }
+        /// <summary>
+        /// Does this scene collection have a scene matching this key?
+        /// </summary>
+        /// <param name="scene"></param>
+        /// <returns></returns>
         public bool HasScene(TSceneKey scene)
         {
             return scene_indexes.ContainsKey(scene);
@@ -234,15 +261,29 @@ namespace FloatingOffset.Runtime
         {
             return OffsetAt(scene_indexes[key], offset);
         }
+        /// <summary>
+        /// Gets the Offset Scene at the given index.
+        /// </summary>
+        /// <param name="index"></param>
+        /// <returns></returns>
         public OffsetScene<TSceneKey> GetSceneAt(int index)
         {
             return scenes[index];
         }
+        /// <summary>
+        /// Gets the Offset Scene with the given key.
+        /// </summary>
+        /// <param name="index"></param>
+        /// <returns></returns>ƒ
         public OffsetScene<TSceneKey> GetScene(TSceneKey key)
         {
             return scenes[scene_indexes[key]];
         }
-
+        /// <summary>
+        /// Empties the given scene.
+        /// </summary>
+        /// <param name="index"></param>
+        /// <returns></returns>
         public void SetEmpty(int scene_index)
         {
             scenes[scene_index].view_count = 0;
@@ -277,7 +318,11 @@ namespace FloatingOffset.Runtime
             recycledIndex = -1;
             return false;
         }
-
+        /// <summary>
+        /// Adds views to the given scene.
+        /// </summary>
+        /// <param name="scene_index">The internal index of the scene.</param>
+        /// <param name="count">The views to add.</param>
         internal void AddViewsAt(int scene_index, int count)
         {
             bool wasEmpty = scenes[scene_index].view_count == 0;
@@ -290,13 +335,25 @@ namespace FloatingOffset.Runtime
                 activeCount++;
             }
         }
+        /// <summary>
+        /// Are the two scenes on the same layer?
+        /// </summary>
+        /// <param name="i">Scene 1</param>
+        /// <param name="j">Scene 2</param>
+        /// <returns></returns>
         internal bool SameLayer(int i, int j) => scenes[i].layer == scenes[j].layer;
 
         /// <summary>
-        /// The current capacity of the underlying scenes array.
+        /// The current total capacity of the underlying scenes array.
         /// </summary>
-        public int Count { get => scenes.Length; }
-        public int ActiveCount { get => activeCount; }
+        public int Capacity { get => scenes.Length; }
+        /// <summary>
+        /// Count of active scenes on the scenes array.
+        /// </summary>
+        public int Count { get => activeCount; }
+        /// <summary>
+        /// Count of empty scenes on the scenes array.
+        /// </summary>
         public int EmptyCount { get => aliveCount - activeCount; }
     }
 

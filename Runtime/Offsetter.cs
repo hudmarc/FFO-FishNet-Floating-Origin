@@ -9,7 +9,6 @@ namespace FloatingOffset.Runtime
     // URL: http://wiki.unity3d.com/index.php/Floating_Origin
     public class Offsetter : MonoBehaviour, IOffsetter<Scene>
     {
-        HashSet<IOffsettable> pending_removal = new HashSet<IOffsettable>();
         private void MoveRootTransforms(Vector3 offset, Scene scene)
         {
             // Debug.Log($"Moving by {offset}");
@@ -20,23 +19,15 @@ namespace FloatingOffset.Runtime
             }
         }
 
-        // private void MoveOffsettables(Vector3d old_offset, Vector3d new_offset)
-        // {
-        //     for (int i = 0; i < offsettables.Count; i++)
-        //     {
-        //         if (pending_removal.Count > 0 && pending_removal.Contains(offsettables[i]))
-        //         {
-        //             int lastIndex = offsettables.Count - 1;
-        //             offsettables[i] = offsettables[lastIndex];
-        //             offsettables.RemoveAt(lastIndex);
-        //             i--;
-        //             continue;
-        //         }
-        //         offsettables[i].OnOffset(old_offset, new_offset);
-        //     }
-        // }
+        private void MoveOffsettables(IOffsettable[] offsettables, Vector3d old_offset, Vector3d new_offset)
+        {
+            for (int i = 0; i < offsettables.Length; i++)
+            {
+                offsettables[i].OnOffset(old_offset, new_offset);
+            }
+        }
 
-        public void Offset(Vector3d old_offset, Vector3d new_offset, Scene scene)
+        public void Offset(Vector3d old_offset, Vector3d new_offset, Scene scene, IOffsettable[] offsettables = null)
         {
 
             Vector3d real_difference = old_offset - new_offset;
@@ -49,7 +40,8 @@ namespace FloatingOffset.Runtime
             if (remainder.sqrMagnitude > 0.0f)
                 MoveRootTransforms(remainder, scene);
 
-            // MoveOffsettables(old_offset, new_offset);
+            if (offsettables != null)
+                MoveOffsettables(offsettables, old_offset, new_offset);
         }
     }
 }

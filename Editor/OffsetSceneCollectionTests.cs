@@ -10,63 +10,6 @@ namespace FloatingOffset.Runtime
         private int _sceneKey;
         public MockOffsetHandler(int sceneKey) => _sceneKey = sceneKey;
 
-        public void Clone(Action<(int scene, float delta)> onSceneReady)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Vector3d GetOffset()
-        {
-            throw new NotImplementedException();
-        }
-
-        public int GetSceneKey() => _sceneKey;
-
-        public void TransferAllTo(OffsetScene<int> scene)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void TransferTo(IOffsetObject<int> offsettable, OffsetScene<int> scene)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void RegisterOffsettable(IOffsettable offsettable)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void UnregisterOffsettable(IOffsettable offsettable)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void UpdateOffset(OffsetScene<int> scene, float delta = 0)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void UpdateOffset(Vector3d offset)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void UpdateOffset(int scene, Vector3d offset)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void TransferTo(IOffsetObject<int> offsettable, OffsetScene<int> from, OffsetScene<int> to)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void TransferAllTo(OffsetScene<int> from, OffsetScene<int> to)
-        {
-            throw new NotImplementedException();
-        }
-
         public void Clone(int scene, Action<(int scene, float delta)> onSceneReady)
         {
             throw new NotImplementedException();
@@ -77,7 +20,7 @@ namespace FloatingOffset.Runtime
             throw new NotImplementedException();
         }
 
-        public void UpdateOffset(OffsetScene<int> scene)
+        public void TransferAllTo(OffsetScene<int> from, OffsetScene<int> to)
         {
             throw new NotImplementedException();
         }
@@ -87,7 +30,10 @@ namespace FloatingOffset.Runtime
             throw new NotImplementedException();
         }
 
-        // Add any other required interface methods here...
+        public void ApplyOffset(OffsetScene<int> scene)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     // A simple mock object to satisfy the IOffsetObject interface
@@ -221,7 +167,7 @@ namespace FloatingOffset.Runtime
         public void RegisterHandler_WhenCapacityExceeded_SuccessfullyResizesArray()
         {
             // Arrange
-            int initialCapacity = _collection.Count;
+            int initialCapacity = _collection.Capacity;
             
             // Act
             // Force the collection to double in size
@@ -231,7 +177,7 @@ namespace FloatingOffset.Runtime
             }
 
             // Assert
-            Assert.Greater(_collection.Count, initialCapacity, "The array should have doubled in size to accommodate new elements.");
+            Assert.Greater(_collection.Capacity, initialCapacity, "The array should have doubled in size to accommodate new elements.");
         }
 
         #endregion

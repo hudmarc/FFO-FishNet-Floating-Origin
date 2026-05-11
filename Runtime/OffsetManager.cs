@@ -51,6 +51,11 @@ namespace FloatingOffset.Runtime
         {
             universe.server.Process();
         }
+        /// <summary>
+        /// Clone the given scene. Calls the callback when done.
+        /// </summary>
+        /// <param name="scene"></param>
+        /// <param name="onSceneReady"></param>
         public void Clone(Scene scene, Action<(Scene scene, float delta)> onSceneReady)
         {
             float start_time = Time.time;
@@ -58,7 +63,7 @@ namespace FloatingOffset.Runtime
             // this is called twice if the editor is unfocused. seems to be a Unity bug.
             SceneManager.LoadSceneAsync(scene.buildIndex, parameters).completed += (arg) => SetupScene(onSceneReady, start_time, ref completed);
         }
-
+        // Runs some setup code on the scene and calls the callback.
         private void SetupScene(Action<(Scene scene, float delta)> onSceneReady, float start_time, ref bool completed)
         {
             //fixes a bizarre Unity bug where the "completed" callback from LoadSceneAsync gets called twice under certain circumstances.
@@ -77,7 +82,7 @@ namespace FloatingOffset.Runtime
 
             CullFOObjects(scene);
         }
-
+        // culls scened FOObjects from any scenes that are duplicates of an existing scene.
         private void CullFOObjects(Scene scene)
         {
             Debug.Log($"Culling objects from scene {scene.handle.ToHex()}");
@@ -149,8 +154,11 @@ namespace FloatingOffset.Runtime
 
             Debug.Log($"Transferred {((MonoBehaviour)offsetTransform).name} from {from.key.handle.ToHex()} to {to.key.handle.ToHex()}");
         }
-
-        public void UpdateOffset(OffsetScene<Scene> scene)
+        /// <summary>
+        /// Applies the offset for the given scene.
+        /// </summary>
+        /// <param name="scene"></param>
+        public void ApplyOffset(OffsetScene<Scene> scene)
         {
             var key = scene.key;
             if (!offsets.ContainsKey(key))
@@ -160,7 +168,14 @@ namespace FloatingOffset.Runtime
             Debug.Log($"Offset from {offsets[key]} to {scene.offset}");
             Vector3d old_offset = offsets[key];
             offsets[key] = scene.offset;
-            offsetter.Offset(old_offset, offsets[key], scene.key);
+            if (offsettables.TryGetValue(scene.key, out List<IOffsettable> list))
+            {
+                offsetter.Offset(old_offset, offsets[key], scene.key, list.ToArray());
+            }
+            else
+            {
+                offsetter.Offset(old_offset, offsets[key], scene.key);
+            }
         }
 
         public void RegisterOffsettable(IOffsettable offsettable, Scene scene)

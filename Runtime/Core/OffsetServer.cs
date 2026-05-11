@@ -41,20 +41,20 @@ namespace FloatingOffset.Runtime
         /// <summary>
         /// This is the minimum distance a view must be from the origin before it triggers a rebase.
         /// </summary>
-        public readonly int RebaseCriteria;
-        public readonly int RebaseCriteriaSquared;
+        private readonly int RebaseCriteria;
+        private readonly int RebaseCriteriaSquared;
 
         /// <summary>
         /// This is the minimum distance between two scenes before they merge.
         /// </summary>
-        public readonly int MergeCriteria;
-        public readonly int MergeCriteriaSquared;
+        private readonly int MergeCriteria;
+        private readonly int MergeCriteriaSquared;
 
         /// <summary>
         /// This is the minimum distance a view must be from the scene it was in before it is moved to another scene.
         /// </summary>
-        public readonly int TransferCriteria;
-        public readonly int TransferCriteriaSquared;
+        private readonly int TransferCriteria;
+        private readonly int TransferCriteriaSquared;
 
         private readonly int MaxScenes;
 
@@ -86,6 +86,11 @@ namespace FloatingOffset.Runtime
         {
             return scenes.GetOffset(scene);
         }
+        /// <summary>
+        /// Gets the pending action state of the given offsettable.
+        /// </summary>
+        /// <param name="offsettable"></param>
+        /// <returns></returns>
         public OffsetActions GetState(IOffsetObject<TSceneKey> offsettable)
         {
             if (pending_actions.ContainsKey(offsettable))
@@ -188,7 +193,7 @@ namespace FloatingOffset.Runtime
                 }
             }
             // Debug.Log($"Active scenes: {scenes.ActiveCount}");
-            for (int i = 0; i < scenes.ActiveCount; i++)
+            for (int i = 0; i < scenes.Count; i++)
             {
                 // ignore/continue if scene is empty or otherwise not ready to process
                 if (scenes.GetViewCountAt(i) < 1)
@@ -207,17 +212,17 @@ namespace FloatingOffset.Runtime
                     Vector3d average = positions_summed[key].position / positions_summed[key].count;
                     // Debug.Log($"Offsetting {key} by {average}");
                     Vector3d offset = scenes.GetOffsetAt(i) + average;
-                    handler.UpdateOffset(scenes.OffsetAt(i, offset));
+                    handler.ApplyOffset(scenes.OffsetAt(i, offset));
                     positions_summed.Remove(key);
                 }
 
                 // 3) What causes offset scenes to merge?
                 // If their origins are within bounds of one another, the scene with the most views absorbs the one with less views.
                 // O(n^2) but the assumption is that there will not be more than 100 scenes active at once per runtime ()
-                if (scenes.Count > 1 && i + 1 < scenes.ActiveCount && scenes.IsValid(i))
+                if (scenes.Capacity > 1 && i + 1 < scenes.Count && scenes.IsValid(i))
                 {
                     Vector3d offset = scenes.GetOffsetAt(i);
-                    for (int j = i + 1; j < scenes.ActiveCount; j++)
+                    for (int j = i + 1; j < scenes.Count; j++)
                     {
                         if ((offset - scenes.GetOffsetAt(j)).sqrMagnitude < MergeCriteriaSquared && scenes.IsValid(j) && scenes.SameLayer(i, j))
                         {
@@ -253,6 +258,7 @@ namespace FloatingOffset.Runtime
             if (from.Equals(to))
                 return;
 
+            // Note the 'true'! This repositions the handler when it arrives at the target scene.
             handler.TransferTo(offsettable, from, to, true);
 
             // Update the logical scene registry after the transfer is complete.
@@ -275,7 +281,7 @@ namespace FloatingOffset.Runtime
 
             // Rebase scene B to match scene A
             var scene_b = scenes.OffsetAt(b, a_offset);
-            handler.UpdateOffset(scene_b);
+            handler.ApplyOffset(scene_b);
 
             // Move the contents of scene B into scene A. Need to call GetSceneAt again to get updated offset.
             handler.TransferAllTo(scene_b, scenes.GetSceneAt(a));
@@ -298,7 +304,7 @@ namespace FloatingOffset.Runtime
                 Debug.LogWarning("Popped empty");
 
                 var empty_scene = scenes.OffsetAt(empty_index, offset);
-                handler.UpdateOffset(empty_scene);
+                handler.ApplyOffset(empty_scene);
 
                 //Handles adding the view to the destination scene
                 TransferWithRepositioning(offsettable, scenes.GetScene(offsettable.GetSceneKey()), empty_scene);
@@ -309,7 +315,7 @@ namespace FloatingOffset.Runtime
             {
                 pending_actions.Remove(offsettable);
                 // 2. Prevent infinite clone crashing
-                if (scenes.Count >= MaxScenes)
+                if (scenes.Capacity >= MaxScenes)
                 {
                     Debug.LogError("Exceeded maximum number of active Offset Scenes!");
                     return;
@@ -322,12 +328,19 @@ namespace FloatingOffset.Runtime
                 });
             }
         }
-
+        /// <summary>
+        /// Is the given scene tracked by this offset server?
+        /// </summary>
+        /// <param name="scene"></param>
+        /// <returns></returns>
         public bool HasScene(TSceneKey scene)
         {
             return scenes.HasScene(scene);
         }
-
+        /// <summary>
+        /// Register a scene with this offset server.
+        /// </summary>
+        /// <param name="scene"></param>
         internal void RegisterScene(TSceneKey scene)
         {
             scenes.Register(scene);

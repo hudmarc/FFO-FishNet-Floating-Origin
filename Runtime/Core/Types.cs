@@ -12,7 +12,7 @@ namespace FloatingOffset.Runtime
         /// 
         public interface IOffsetter<TSceneKey>
         {
-            public void Offset(Vector3d old_offset, Vector3d new_offset,TSceneKey scene);
+            public void Offset(Vector3d old_offset, Vector3d new_offset, TSceneKey scene, IOffsettable[] offsettables = null);
         }
         /// <summary>
         /// Handles the scene and offset.
@@ -76,10 +76,36 @@ namespace FloatingOffset.Runtime
         }
         public interface IOffsetHandler<TSceneKey>
         {
-            public void UpdateOffset(OffsetScene<TSceneKey> scene);
+            /// <summary>
+            /// Applies the offset for the given scene.
+            /// </summary>
+            /// <param name="scene"></param>
+            public void ApplyOffset(OffsetScene<TSceneKey> scene);
+            /// <summary>
+            /// Transfer the given OffsetTransform from the 'from' scene to the 'to' scene. If reposition is true, the position of the transform will be changed too to match the target scene's offset.
+            /// </summary>
+            /// <param name="offsettable"></param>
+            /// <param name="from"></param>
+            /// <param name="to"></param>
+            /// <param name="reposition"></param>
             public void TransferTo(IOffsetObject<TSceneKey> offsettable, OffsetScene<TSceneKey> from, OffsetScene<TSceneKey> to, bool reposition = false);
+            /// <summary>
+            /// Transfer all OffsetTransforms from 'from' to 'to'.
+            /// </summary>
+            /// <param name="from"></param>
+            /// <param name="to"></param>
             public void TransferAllTo(OffsetScene<TSceneKey> from, OffsetScene<TSceneKey> to);
+            /// <summary>
+            /// Clone the given scene. Calls the callback when done.
+            /// </summary>
+            /// <param name="scene"></param>
+            /// <param name="onSceneReady"></param>
             public void Clone(TSceneKey scene, Action<(TSceneKey scene, float delta)> onSceneReady);
+            /// <summary>
+            /// Register the given Offsettable with this offset handler.
+            /// </summary>
+            /// <param name="offsettable"></param>
+            /// <param name="scene"></param>
             public void RegisterOffsettable(IOffsettable offsettable, TSceneKey scene);
         }
         public enum OffsetActions
