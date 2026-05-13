@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using FloatingOffset.Runtime.Types;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -7,9 +6,13 @@ namespace FloatingOffset.Runtime
 {
     // Loosely based on the Unity Wiki FloatingOrigin script by Peter Stirling
     // URL: http://wiki.unity3d.com/index.php/Floating_Origin
-    public class Offsetter : MonoBehaviour, IOffsetter<Scene>
+    public class Offsetter : MonoBehaviour
     {
-        private void MoveRootTransforms(Vector3 offset, Scene scene)
+        internal void Offset(Vector3d old_offset, Vector3d new_offset, Scene scene, IOffsettable<Scene>[] offsettables = null)
+        {
+            OnOffset(old_offset, new_offset, scene, offsettables);
+        }
+        protected virtual void MoveRootTransforms(Vector3 offset, Scene scene)
         {
             // Debug.Log($"Moving by {offset}");
             var objects = scene.GetRootGameObjects();
@@ -19,17 +22,15 @@ namespace FloatingOffset.Runtime
             }
         }
 
-        private void MoveOffsettables(IOffsettable[] offsettables, Vector3d old_offset, Vector3d new_offset)
+        protected virtual void MoveOffsettables(IOffsettable<Scene>[] offsettables, Vector3d old_offset, Vector3d new_offset)
         {
             for (int i = 0; i < offsettables.Length; i++)
             {
                 offsettables[i].OnOffset(old_offset, new_offset);
             }
         }
-
-        public void Offset(Vector3d old_offset, Vector3d new_offset, Scene scene, IOffsettable[] offsettables = null)
+        protected virtual void OnOffset(Vector3d old_offset, Vector3d new_offset, Scene scene, IOffsettable<Scene>[] offsettables)
         {
-
             Vector3d real_difference = old_offset - new_offset;
             Vector3 difference = Mathd.toVector3(real_difference);
 

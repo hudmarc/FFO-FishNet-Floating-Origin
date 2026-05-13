@@ -127,15 +127,6 @@ namespace FloatingOffset.Runtime
         /// Removes a tracked view from its associated scene, decrementing that scene's view count.
         /// </summary>
         /// <param name="view">The offset object being removed.</param>
-        public void RemoveView(IOffsetObject<TSceneKey> view)
-        {
-            RemoveView(view.GetSceneKey());
-        }
-
-        /// <summary>
-        /// Removes a tracked view from its associated scene, decrementing that scene's view count.
-        /// </summary>
-        /// <param name="view">The offset object being removed.</param>
         public void RemoveView(TSceneKey scene)
         {
             if (scene_indexes.ContainsKey(scene))
@@ -159,15 +150,6 @@ namespace FloatingOffset.Runtime
                 activeCount++;
             }
         }
-
-        /// <summary>
-        /// Registers a tracked view to its associated scene, incrementing that scene's view count.
-        /// </summary>
-        /// <param name="view">The offset object being added.</param>
-        public void AddView(IOffsetObject<TSceneKey> view)
-        {
-            AddViewAt(scene_indexes[view.GetSceneKey()]);
-        }
         /// <summary>
         /// Registers a tracked view to its associated scene, incrementing that scene's view count.
         /// </summary>
@@ -177,7 +159,7 @@ namespace FloatingOffset.Runtime
             AddViewAt(scene_indexes[scene]);
         }
         /// <summary>
-        /// Gets the scene key from the given internal scene index.
+        /// Gets the scene key from the given public scene index.
         /// </summary>
         /// <param name="scene_index"></param>
         /// <returns></returns>
@@ -321,9 +303,9 @@ namespace FloatingOffset.Runtime
         /// <summary>
         /// Adds views to the given scene.
         /// </summary>
-        /// <param name="scene_index">The internal index of the scene.</param>
+        /// <param name="scene_index">The public index of the scene.</param>
         /// <param name="count">The views to add.</param>
-        internal void AddViewsAt(int scene_index, int count)
+        public void AddViewsAt(int scene_index, int count)
         {
             bool wasEmpty = scenes[scene_index].view_count == 0;
             scenes[scene_index].view_count += count;
@@ -341,7 +323,23 @@ namespace FloatingOffset.Runtime
         /// <param name="i">Scene 1</param>
         /// <param name="j">Scene 2</param>
         /// <returns></returns>
-        internal bool SameLayer(int i, int j) => scenes[i].layer == scenes[j].layer;
+        public bool SameLayer(int i, int j) => scenes[i].layer == scenes[j].layer;
+
+        public void SetMergeTarget(TSceneKey scene, TSceneKey target)
+        {
+            int from_scene = scene_indexes[scene];
+            int to_scene = scene_indexes[target];
+            SetMergeTarget(scene, target);
+        }
+        public void SetMergeTargetAt(int scene, int target)
+        {
+            scenes[scene].merge_target = target;
+        }
+
+        public int IndexOf(TSceneKey sceneKey)
+        {
+            return scene_indexes[sceneKey];
+        }
 
         /// <summary>
         /// The current total capacity of the underlying scenes array.

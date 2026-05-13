@@ -15,7 +15,12 @@ namespace FloatingOffset.Runtime
             throw new NotImplementedException();
         }
 
-        public void RegisterOffsettable(IOffsettable offsettable, int scene)
+        public void Clone(int scene, Action<int> onSceneReady)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void RegisterOffsettable(IOffsettable<int> offsettable, int scene)
         {
             throw new NotImplementedException();
         }
@@ -30,7 +35,7 @@ namespace FloatingOffset.Runtime
             throw new NotImplementedException();
         }
 
-        public void ApplyOffset(OffsetScene<int> scene)
+        public void UpdateOffset(OffsetScene<int> scene)
         {
             throw new NotImplementedException();
         }
@@ -58,6 +63,11 @@ namespace FloatingOffset.Runtime
         }
 
         public int GetSceneKey() => _sceneKey;
+
+        public bool IsValid()
+        {
+            throw new NotImplementedException();
+        }
 
         public bool IsView()
         {
@@ -107,7 +117,7 @@ namespace FloatingOffset.Runtime
             int initialCount = _collection.GetViewCount(INITIAL_SCENE_KEY);
 
             // Act
-            _collection.AddView(view);
+            _collection.AddView(view.GetSceneKey());
 
             // Assert
             Assert.AreEqual(initialCount + 1, _collection.GetViewCount(INITIAL_SCENE_KEY));
@@ -118,11 +128,11 @@ namespace FloatingOffset.Runtime
         {
             // Arrange
             var view = new MockOffsetObject(INITIAL_SCENE_KEY);
-            _collection.AddView(view); // Add it first
+            _collection.AddView(view.GetSceneKey()); // Add it first
             int countAfterAdd = _collection.GetViewCount(INITIAL_SCENE_KEY);
 
             // Act
-            _collection.RemoveView(view);
+            _collection.RemoveView(view.GetSceneKey());
 
             // Assert
             Assert.AreEqual(countAfterAdd - 1, _collection.GetViewCount(INITIAL_SCENE_KEY));
@@ -133,8 +143,8 @@ namespace FloatingOffset.Runtime
         {
             // Arrange
             var view = new MockOffsetObject(INITIAL_SCENE_KEY);
-            _collection.AddView(view); // Force it to be active
-            
+            _collection.AddView(view.GetSceneKey()); // Force it to be active
+
             // Act
             _collection.SetEmpty(0); // Assuming it's at index 0
 
@@ -150,7 +160,7 @@ namespace FloatingOffset.Runtime
         public void GetOffset_WhenRequested_ReturnsCorrectVector3d()
         {
             // Arrange (Requires a way to set the offset first, assume it defaults to zero)
-            Vector3d expectedOffset = Vector3d.zero; 
+            Vector3d expectedOffset = Vector3d.zero;
 
             // Act
             Vector3d actualOffset = _collection.GetOffset(INITIAL_SCENE_KEY);
@@ -160,7 +170,7 @@ namespace FloatingOffset.Runtime
         }
 
         #endregion
-        
+
         #region Array Resizing
 
         [Test]
@@ -168,7 +178,7 @@ namespace FloatingOffset.Runtime
         {
             // Arrange
             int initialCapacity = _collection.Capacity;
-            
+
             // Act
             // Force the collection to double in size
             for (int i = 0; i < initialCapacity + 1; i++)

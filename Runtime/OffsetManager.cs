@@ -17,7 +17,7 @@ namespace FloatingOffset.Runtime
         private Offsetter offsetter;
         private Dictionary<Scene, Vector3d> offsets = new Dictionary<Scene, Vector3d>();
         private Dictionary<Scene, Vector3d> velocities = new Dictionary<Scene, Vector3d>();
-        private Dictionary<Scene, List<IOffsettable>> offsettables = new Dictionary<Scene, List<IOffsettable>>();
+        private Dictionary<Scene, List<IOffsettable<Scene>>> offsettables = new Dictionary<Scene, List<IOffsettable<Scene>>>();
 
         private void Awake()
         {
@@ -56,7 +56,7 @@ namespace FloatingOffset.Runtime
         /// </summary>
         /// <param name="scene"></param>
         /// <param name="onSceneReady"></param>
-        public void Clone(Scene scene, Action<(Scene scene, float delta)> onSceneReady)
+        public void Clone(Scene scene, Action<Scene> onSceneReady)
         {
             float start_time = Time.time;
             bool completed = false;
@@ -64,7 +64,7 @@ namespace FloatingOffset.Runtime
             SceneManager.LoadSceneAsync(scene.buildIndex, parameters).completed += (arg) => SetupScene(onSceneReady, start_time, ref completed);
         }
         // Runs some setup code on the scene and calls the callback.
-        private void SetupScene(Action<(Scene scene, float delta)> onSceneReady, float start_time, ref bool completed)
+        private void SetupScene(Action<Scene> onSceneReady, float start_time, ref bool completed)
         {
             //fixes a bizarre Unity bug where the "completed" callback from LoadSceneAsync gets called twice under certain circumstances.
             // offsetGroups.ContainsKey(SceneManager.GetSceneAt(SceneManager.sceneCount - 1)) is causing scenes to NEVER be registered!
@@ -78,7 +78,7 @@ namespace FloatingOffset.Runtime
 
             Scene scene = SceneManager.GetSceneAt(SceneManager.sceneCount - 1);
 
-            onSceneReady?.Invoke((scene, Time.time - start_time));
+            onSceneReady?.Invoke(scene);
 
             CullFOObjects(scene);
         }
@@ -100,27 +100,6 @@ namespace FloatingOffset.Runtime
             }
         }
         /// <summary>
-        /// Transfer all offsettables to the given offset scene. Removes them from the offset scene this was called on.<br>
-        /// Offsets the transform so that it matches the offset of the target scene.
-        /// </summary>
-        /// <param name="offsettable"></param>
-        /// <param name="scene"></param>
-        public void TransferAllTo(OffsetScene<Scene> from, OffsetScene<Scene> to)
-        {
-            var objects = from.key.GetRootGameObjects();
-            foreach (GameObject gob in objects)
-            {
-                var offset_transform = gob.GetComponent<OffsetTransform>();
-                Debug.Log($"Found game object {gob.name} has OT? {offset_transform != null}");
-
-                if (offset_transform != null)
-                {
-                    TransferTo(offset_transform, from, to);
-                }
-
-            }
-        }
-        /// <summary>
         /// Transfer the given offsettable to the given offset scene. Removes it from the offset scene this was called on.<br>
         /// Offsets the transform so that it matches the offset of the target scene.
         /// </summary>
@@ -128,7 +107,7 @@ namespace FloatingOffset.Runtime
         /// <param name="scene"></param>
         public void TransferTo(IOffsetObject<Scene> offsetTransform, OffsetScene<Scene> from, OffsetScene<Scene> to, bool reposition = false)
         {
-            if (!offsetTransform.IsView() && (to.offset - offsetTransform.GetRealPosition()).sqrMagnitude > universe.RebaseCriteria * universe.RebaseCriteria)
+            if (!offsetTransform.IsView() && (to.offset - (from.offset + offsetTransform.GetEnginePosition())).sqrMagnitude > universe.RebaseCriteria * universe.RebaseCriteria)
             {
                 MonoBehaviour off = (MonoBehaviour)offsetTransform;
                 Debug.Log($"Destroyed out of range Offset Transform {off.name}");
@@ -138,7 +117,7 @@ namespace FloatingOffset.Runtime
 
             Transform trf = ((OffsetBehaviour)offsetTransform).transform;
 
-            Vector3d absoluteRealPos = offsetTransform.GetRealPosition();
+            Vector3d absoluteRealPos = from.offset + offsetTransform.GetEnginePosition();
 
             SceneManager.MoveGameObjectToScene(trf.gameObject, to.key);
 
@@ -155,11 +134,14 @@ namespace FloatingOffset.Runtime
             Debug.Log($"Transferred {((MonoBehaviour)offsetTransform).name} from {from.key.handle.ToHex()} to {to.key.handle.ToHex()}");
         }
         /// <summary>
-        /// Applies the offset for the given scene.
+        /// Updates the offset for the given scene.
         /// </summary>
         /// <param name="scene"></param>
-        public void ApplyOffset(OffsetScene<Scene> scene)
+        public void UpdateOffset(OffsetScene<Scene> scene)
         {
+            if (scene.offset == offsets[scene.key])
+                return;
+
             var key = scene.key;
             if (!offsets.ContainsKey(key))
             {
@@ -168,7 +150,7 @@ namespace FloatingOffset.Runtime
             Debug.Log($"Offset from {offsets[key]} to {scene.offset}");
             Vector3d old_offset = offsets[key];
             offsets[key] = scene.offset;
-            if (offsettables.TryGetValue(scene.key, out List<IOffsettable> list))
+            if (offsettables.TryGetValue(scene.key, out List<IOffsettable<Scene>> list))
             {
                 offsetter.Offset(old_offset, offsets[key], scene.key, list.ToArray());
             }
@@ -178,10 +160,10 @@ namespace FloatingOffset.Runtime
             }
         }
 
-        public void RegisterOffsettable(IOffsettable offsettable, Scene scene)
+        public void RegisterOffsettable(IOffsettable<Scene> offsettable, Scene scene)
         {
             if (!offsettables.ContainsKey(scene))
-                offsettables.Add(scene, new List<IOffsettable> { offsettable });
+                offsettables.Add(scene, new List<IOffsettable<Scene>> { offsettable });
             else
                 offsettables[scene].Add(offsettable);
         }

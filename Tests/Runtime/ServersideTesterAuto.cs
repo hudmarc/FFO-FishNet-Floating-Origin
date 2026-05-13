@@ -127,9 +127,9 @@ public class ServersideTesterAuto
 
             yield return new WaitForEndOfFrame();
 
-            if (view.GetEnginePosition().x > universe.RebaseCriteria)
+            if (view.transform.position.x > universe.RebaseCriteria)
             {
-                Debug.LogWarning($"Rebase not working properly? Was {view.GetEnginePosition().x}");
+                Debug.LogWarning($"Rebase not working properly? Was {view.transform.position.x}");
                 yield return new WaitForEndOfFrame();
             }
 

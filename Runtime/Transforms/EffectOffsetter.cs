@@ -1,12 +1,13 @@
 using System.Collections.Generic;
 using FloatingOffset.Runtime.Types;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace FloatingOffset.Runtime
 {
     // Loosely based on the Unity Wiki FloatingOrigin script by Peter Stirling
     // URL: http://wiki.unity3d.com/index.php/Floating_Origin
-    public class EffectOffsetter : OffsetBehaviour, IOffsettable
+    public class EffectOffsetter : OffsetBehaviour, IOffsettable<Scene>
     {
         private ParticleSystem[] worldSpaceParticles;
         private LineRenderer[] worldSpaceLines;
@@ -15,12 +16,14 @@ namespace FloatingOffset.Runtime
         // A shared, reusable buffer to prevent memory allocations during the hot path.
         // It will automatically grow if a trail or line has more vertices than its current size.
         private static Vector3[] vertexBuffer = new Vector3[2048];
+        private Scene scene = default;
 
         private void Awake()
         {
             CacheWorldSpaceParticles();
             CacheWorldSpaceLines();
             CacheTrails();
+            scene = gameObject.scene;
         }
         void Start()
         {
@@ -33,8 +36,6 @@ namespace FloatingOffset.Runtime
             if (worldSpaceLines.Length > 0) ShiftLines(offset);
             if (trails.Length > 0) ShiftTrails(offset);
         }
-
-        #region Component Caching (Initialization Phase)
 
         private void CacheWorldSpaceParticles()
         {
@@ -68,13 +69,9 @@ namespace FloatingOffset.Runtime
 
         private void CacheTrails()
         {
-            // TrailRenderers inherently live in world space, so we need all of them.
+            // TrailRenderers live in world space, so we need all of them.
             trails = GetComponentsInChildren<TrailRenderer>(true);
         }
-
-        #endregion
-
-        #region Offsetting Logic (Execution Phase)
 
         private void ShiftWorldParticles(Vector3 offset)
         {
@@ -133,7 +130,7 @@ namespace FloatingOffset.Runtime
             }
         }
 
-        // Ensures our static array is large enough to hold the vertices without allocating every frame
+        // Ensures the static array is large enough to hold the vertices without allocating every frame
         private void EnsureBufferSize(int requiredSize)
         {
             if (vertexBuffer.Length < requiredSize)
@@ -153,6 +150,9 @@ namespace FloatingOffset.Runtime
             Offset(Mathd.toVector3(old_offset - new_offset));
         }
 
-        #endregion
+        public Scene GetSceneKey()
+        {
+            return scene;
+        }
     }
 }

@@ -34,14 +34,8 @@ namespace FloatingOffset.Editor
                             offsetTransform.transform.position = Mathd.RealToUnity(new Vector3d(x, y, z), offset);
                         }
 
-                        if(offsetTransform.GetType() == typeof(OffsetTransform))
-                        {
-                            EditorGUILayout.LabelField($"State: {offsetTransform.universe.server.GetState((OffsetTransform)offsetTransform).ToString()}");
-                        }
-
                         EditorGUILayout.EndHorizontal();
                         EditorGUILayout.BeginHorizontal("box");
-                        // EditorGUILayout.LabelField(FOManager.instance.GetDebugText(offsetTransform));
                         EditorGUILayout.EndHorizontal();
                     }
                     else

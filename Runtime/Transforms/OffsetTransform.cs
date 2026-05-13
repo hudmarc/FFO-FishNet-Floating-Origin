@@ -15,6 +15,7 @@ namespace FloatingOffset.Runtime
         [Tooltip("If checked, this transform can trigger rebases and will always be kept in a scene. If not, this object will be moved to the null scene if in an empty scene.")]
         public bool isView { get; private set; }
         private bool registered = false;
+        private bool isValid = false;
         void Start()
         {
             if (enabled && isView)
@@ -22,21 +23,25 @@ namespace FloatingOffset.Runtime
                 universe.server.RegisterView(this);
                 registered = true;
             }
+            isValid = true;
 
         }
         void OnDestroy()
         {
             if (isView && registered)
                 universe.server.UnregisterView(this);
+            isValid = false;
         }
         public void SetRealPositionApproximate(Vector3d position) => transform.position = Mathd.RealToUnity(position, GetSceneOffset());
 
         public Vector3d GetRealPosition() => Mathd.UnityToReal(transform.position, GetSceneOffset());
         private Vector3d GetSceneOffset() => universe.server.GetSceneOffset(gameObject.scene);
-        public Vector3d GetEnginePosition() => Mathd.toVector3d(transform.position);
-        public Scene GetSceneKey() => gameObject.scene;
-        public float GetEnginePositionSquareMagnitude() => transform.position.sqrMagnitude;
-        public void SetEnginePosition(Vector3d vector3d) => transform.position = Mathd.toVector3(vector3d);
-        public bool IsView() => isView;
+
+
+        Vector3d IOffsetObject<Scene>.GetEnginePosition() => Mathd.toVector3d(transform.position);
+        Scene IOffsetObject<Scene>.GetSceneKey() => gameObject.scene;
+        bool IOffsetObject<Scene>.IsView() => isView;
+        bool IOffsetObject<Scene>.IsValid() => isValid;
+
     }
 }
