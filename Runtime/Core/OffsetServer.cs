@@ -54,7 +54,7 @@ namespace FloatingOffset.Runtime
 
         public IOffsetHandler<TSceneKey> handler { get; private set; }
 
-        private HashGrid<int> view_grid;
+        private HashGrid view_grid;
 
         // Passing the base values as parameters with default values gives you the 
         // exact same out-of-the-box behavior, but allows for injection later if needed.
@@ -72,7 +72,7 @@ namespace FloatingOffset.Runtime
             this.MaxScenes = MaxScenes;
 
             this.handler = handler;
-            this.view_grid = new HashGrid<int>(RebaseCriteria);
+            this.view_grid = new HashGrid(64, 64, RebaseCriteria);
         }
         /// <summary>
         /// Gets the offset for the given scene.
@@ -115,9 +115,16 @@ namespace FloatingOffset.Runtime
         }
 
         private Vector3d[] view_positions = new Vector3d[8];
-        private int[] parent = new int[8]; // For Union-Find
+        private int[] union_reps = new int[8]; // For Union-Find
         private int[] root_counts = new int[8];
         private Vector3d[] root_sums = new Vector3d[8];
+        int[] neighborsBuffer = new int[8];
+
+        // Key: (Union Representative, Scene), Value: Count
+        private Dictionary<(int rep, TSceneKey scene), int> sceneCounts = new Dictionary<(int rep, TSceneKey scene), int>();
+
+        // Key: Union Representative, Value: (Best Scene, Highest Count)
+        private Dictionary<int, (TSceneKey scene, int count)> bestScenes = new Dictionary<int, (TSceneKey scene, int count)>();
 
         private void EnsureCapacity(int count)
         {
@@ -125,7 +132,7 @@ namespace FloatingOffset.Runtime
             {
                 int newSize = Mathf.NextPowerOfTwo(count);
                 Array.Resize(ref view_positions, newSize);
-                Array.Resize(ref parent, newSize);
+                Array.Resize(ref union_reps, newSize);
                 Array.Resize(ref root_counts, newSize);
                 Array.Resize(ref root_sums, newSize);
             }
@@ -135,15 +142,15 @@ namespace FloatingOffset.Runtime
         {
             int root = i;
             // Find the root
-            while (root != parent[root])
-                root = parent[root];
+            while (root != union_reps[root])
+                root = union_reps[root];
 
             // Path compression: make all nodes on the path point directly to root
             int curr = i;
             while (curr != root)
             {
-                int nxt = parent[curr];
-                parent[curr] = root;
+                int nxt = union_reps[curr];
+                union_reps[curr] = root;
                 curr = nxt;
             }
             return root;
@@ -155,12 +162,11 @@ namespace FloatingOffset.Runtime
             int rootJ = Find(j);
             if (rootI != rootJ)
             {
-                parent[rootJ] = rootI; // Attach J's tree to I
+                union_reps[rootJ] = rootI; // Attach J's tree to I
             }
         }
         public void Process()
         {
-            EnsureCapacity(views.Count);
             // prune views scheduled for removal
             for (int i = 0; i < views.Count; i++)
             {
@@ -176,88 +182,65 @@ namespace FloatingOffset.Runtime
 
             int view_count = views.Count;
 
-            // Cache for real view positions
-            Vector3d[] view_positions = new Vector3d[view_count];
+            EnsureCapacity(views.Count);
+
+            // Cache real view positions
+            view_positions = new Vector3d[view_count];
 
             view_grid.Clear();
 
-            // Populate hashgrid
             for (int i = 0; i < view_count; i++)
             {
+                // Get positions
                 IOffsetObject<TSceneKey> view = views[i];
                 Vector3d position = view_positions[i] = GetSceneOffset(view.GetSceneKey()) + view.GetEnginePosition();
+                view_positions[i] = position;
 
+                // Populate hashgrid
                 view_grid.Add(position, i);
+
+                // Initialize union-find
+                union_reps[i] = i;
+
+                // Reset caches
+                root_counts[i] = 0;
+                root_sums[i] = Vector3d.zero;
             }
-
-            Member[] unions = new Member[view_count];
-
-            // Initialize union-find
-            for (int i = 0; i < view_count; i++)
-            {
-                unions[i] = new()
-                {
-                    representative = i,
-                    summed_offsets = view_positions[i],
-                    count = 1
-                };
-            }
-
-            int union_count = view_count;
 
             // Populate union-find, compute offsets for unions
-            for (int search_index = 0; search_index < view_count; search_index++)
+            for (int i = 0; i < view_count; i++)
             {
-                if (unions[search_index].representative != search_index)
-                    continue; //skip members that are not represented by themselves
+                view_grid.FindNeighbors(view_positions[i], view_positions, ref neighborsBuffer, out int resultCount);
 
-                int[] found_result = view_grid.FindInBoundingBox(view_positions[search_index], MinimumJoinDistance);
-
-                if (found_result.Length > 1)
+                for (int j = 0; j < resultCount; j++)
                 {
-                    for (int found_index = 0; found_index < found_result.Length; found_index++)
+                    int neighborIndex = neighborsBuffer[j];
+
+                    if (neighborsBuffer[j] != i)
                     {
-                        if (found_result[found_index] != search_index)
-                        {
-                            //Mutate the parent of the union
-                            unions[search_index] = new()
-                            {
-                                representative = search_index,
-                                summed_offsets = unions[search_index].summed_offsets + unions[found_index].summed_offsets,
-                                count = unions[search_index].count + unions[found_index].count
-                            };
-
-                            // subordinate found index to search index (apparently this overwrites some data?)
-                            unions[found_result[found_index]] = new()
-                            {
-                                representative = search_index,
-                                summed_offsets = Vector3d.zero,
-                                count = 0
-                            };
-
-                            found_index--;
-                            union_count--;
-                            continue;
-                        }
+                        Union(i, neighborIndex);
                     }
                 }
             }
 
+            // Aggregate data for each union
+            for (int i = 0; i < view_count; i++)
+            {
+                int root = Find(i);
+                root_counts[root]++;
+                root_sums[root] += view_positions[i];
+            }
 
-            // Initialize scene assignments
-            // Key: (Union Representative, Scene), Value: Count
-            var sceneCounts = new Dictionary<(int rep, TSceneKey scene), int>();
+            sceneCounts.Clear();
+            bestScenes.Clear();
 
-            // Key: Union Representative, Value: (Best Scene, Highest Count)
-            var bestScenes = new Dictionary<int, (TSceneKey scene, int count)>();
-
-            // assign scenes to unions
+            // Assign scenes to unions
             for (int i = 0; i < view_count; i++)
             {
                 TSceneKey scene = views[i].GetSceneKey();
-                int rep = unions[i].representative;
+                int rep = Find(i);
 
-                (int rep, TSceneKey scene) key = (rep, scene);
+                var key = (rep, scene);
 
                 // Increment the count for this specific scene within this specific union
                 sceneCounts.TryGetValue(key, out int currentCount);
@@ -274,22 +257,24 @@ namespace FloatingOffset.Runtime
 
             TSceneKey source = scenes.GetSceneAt(0).key;
 
-            bool[] valid_scene = new bool[view_count];
-
-            // transfer all views that are not in the right scene && compute merges
+            // Transfer all views that are not in the right scene && compute merges
             for (int i = 0; i < view_count; i++)
             {
-                if (bestScenes.ContainsKey(unions[i].representative))
+                int rep = Find(i);
+                TSceneKey current_scene = views[i].GetSceneKey();
+
+                if (bestScenes.TryGetValue(rep, out var best))
                 {
-                    if (views[i].GetSceneKey().Equals(bestScenes[unions[i].representative].scene))
+                    if (!current_scene.Equals(best.scene))
                     {
-                        // do nothing, this view is already in the correct scene
-                        valid_scene[i] = true;
-                        continue;
+                        // transfer the view to the scene
+                        TransferWithRepositioning(views[i], current_scene, best.scene);
                     }
-                    valid_scene[i] = true;
-                    // transfer the view to the scene
-                    TransferWithRepositioning(views[i], scenes.GetScene(views[i].GetSceneKey()), scenes.GetScene(bestScenes[unions[i].representative].scene));
+                    if (rep == i)
+                    {
+                        scenes.Offset(views[i].GetSceneKey(), root_sums[i] / (double)root_counts[i]);
+                    }
+
                 }
                 else
                 {
@@ -299,23 +284,13 @@ namespace FloatingOffset.Runtime
                     // the flip-side: if you a player was just interacting with a bunch of other players and then they warp-speed out
                     // they might have a frame hitch as they warp out. keep this in mind as the gamedev, or use the Teleport(view,real_position);
                     // function on the OffsetManager.
-                    if (RequestScene(source, unions[i].summed_offsets / (double)unions[i].count, out int found))
+                    if (RequestScene(source, root_sums[rep] / (double)root_counts[i], out int found))
                     {
-                        valid_scene[i] = true;
                         // transfer the view to the scene
-                        TransferWithRepositioning(views[i], scenes.GetScene(views[i].GetSceneKey()), scenes.GetSceneAt(found));
+                        TransferWithRepositioning(views[i], current_scene, scenes.GetSceneAt(found).key);
                     }
 
                 }
-            }
-
-            // set new scene offsets. if we are overwriting the value, no big deal.
-            // all views where valid_scene[i]==true are in the correct scene already,
-            // so views[i].GetSceneKey() will return the actual scenes the views are in.
-            for (int i = 0; i < view_count; i++)
-            {
-                if (unions[i].representative == i && valid_scene[i])
-                    scenes.Offset(views[i].GetSceneKey(), unions[i].summed_offsets / (double)unions[i].count);
             }
 
             // rebase all scenes whose actual offset does not match their expected offset
@@ -326,12 +301,13 @@ namespace FloatingOffset.Runtime
             }
         }
 
+
         /// <summary>
         /// Transfers the given offsettable to the given scene.
         /// </summary>
         /// <param name="offsettable"></param>
         /// <param name="handler"></param>
-        private void TransferWithRepositioning(IOffsetObject<TSceneKey> offsettable, OffsetScene<TSceneKey> from, OffsetScene<TSceneKey> to)
+        private void TransferWithRepositioning(IOffsetObject<TSceneKey> offsettable, TSceneKey from, TSceneKey to)
         {
             if (from.Equals(to))
                 return;
@@ -341,9 +317,9 @@ namespace FloatingOffset.Runtime
 
             // Update the logical scene registry after the transfer is complete.
             scenes.RemoveView(offsettable.GetSceneKey());
-            scenes.AddView(to.key);
+            scenes.AddView(to);
 
-            Debug.Log($"TRANSFER: {offsettable.GetHashCode()} moved to {to.GetHashCode()} now has {to.view_count} views");
+            Debug.Log($"TRANSFER: {offsettable.GetHashCode()} moved to {to.GetHashCode()} now has {scenes.GetViewCount(to)} views");
         }
 
         /// <summary>
@@ -388,20 +364,5 @@ namespace FloatingOffset.Runtime
         {
             return scenes.HasScene(scene);
         }
-    }
-    internal struct Member
-    {
-        /// <summary>
-        /// The index of the representative member of this union.
-        /// </summary>
-        public int representative;
-        /// <summary>
-        /// The sum of offsets of this union
-        /// </summary>
-        public Vector3d summed_offsets;
-        /// <summary>
-        /// The number of members in this member's union
-        /// </summary>
-        public int count;
     }
 }

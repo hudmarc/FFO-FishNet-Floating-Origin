@@ -10,11 +10,6 @@ namespace FloatingOffset.Runtime
         private int _sceneKey;
         public MockOffsetHandler(int sceneKey) => _sceneKey = sceneKey;
 
-        public void Clone(int scene, Action<(int scene, float delta)> onSceneReady)
-        {
-            throw new NotImplementedException();
-        }
-
         public void Clone(int scene, Action<int> onSceneReady)
         {
             throw new NotImplementedException();
@@ -25,12 +20,7 @@ namespace FloatingOffset.Runtime
             throw new NotImplementedException();
         }
 
-        public void TransferAllTo(OffsetScene<int> from, OffsetScene<int> to)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void TransferTo(IOffsetObject<int> offsettable, OffsetScene<int> from, OffsetScene<int> to, bool reposition = false)
+        public void TransferTo(IOffsetObject<int> offsettable, int from, int to, bool reposition = false)
         {
             throw new NotImplementedException();
         }
@@ -52,16 +42,6 @@ namespace FloatingOffset.Runtime
             throw new NotImplementedException();
         }
 
-        public float GetEnginePositionSquareMagnitude()
-        {
-            throw new NotImplementedException();
-        }
-
-        public Vector3d GetRealPosition()
-        {
-            throw new NotImplementedException();
-        }
-
         public int GetSceneKey() => _sceneKey;
 
         public bool IsValid()
@@ -70,16 +50,6 @@ namespace FloatingOffset.Runtime
         }
 
         public bool IsView()
-        {
-            throw new NotImplementedException();
-        }
-
-        public void MoveTo(int scene)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void SetEnginePosition(Vector3d vector3d)
         {
             throw new NotImplementedException();
         }

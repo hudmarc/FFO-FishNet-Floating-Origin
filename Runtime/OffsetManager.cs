@@ -15,7 +15,7 @@ namespace FloatingOffset.Runtime
         private readonly LoadSceneParameters parameters = new LoadSceneParameters(LoadSceneMode.Additive, LocalPhysicsMode.Physics3D);
         [SerializeField]
         private Offsetter offsetter;
-        private Dictionary<Scene, Vector3d> offsets = new Dictionary<Scene, Vector3d>();
+        private Dictionary<Scene, Vector3d> current_offsets = new Dictionary<Scene, Vector3d>();
         private Dictionary<Scene, Vector3d> velocities = new Dictionary<Scene, Vector3d>();
         private Dictionary<Scene, List<IOffsettable<Scene>>> offsettables = new Dictionary<Scene, List<IOffsettable<Scene>>>();
 
@@ -105,9 +105,9 @@ namespace FloatingOffset.Runtime
         /// </summary>
         /// <param name="offsetTransform"></param>
         /// <param name="scene"></param>
-        public void TransferTo(IOffsetObject<Scene> offsetTransform, OffsetScene<Scene> from, OffsetScene<Scene> to, bool reposition = false)
+        public void TransferTo(IOffsetObject<Scene> offsetTransform, Scene from, Scene to, bool reposition = false)
         {
-            if (!offsetTransform.IsView() && (to.offset - (from.offset + offsetTransform.GetEnginePosition())).sqrMagnitude > universe.RebaseCriteria * universe.RebaseCriteria)
+            if (!offsetTransform.IsView() && (current_offsets[to] - (current_offsets[from] + offsetTransform.GetEnginePosition())).sqrMagnitude > universe.RebaseCriteria * universe.RebaseCriteria)
             {
                 MonoBehaviour off = (MonoBehaviour)offsetTransform;
                 Debug.Log($"Destroyed out of range Offset Transform {off.name}");
@@ -117,21 +117,21 @@ namespace FloatingOffset.Runtime
 
             Transform trf = ((OffsetBehaviour)offsetTransform).transform;
 
-            Vector3d absoluteRealPos = from.offset + offsetTransform.GetEnginePosition();
+            Vector3d absoluteRealPos = current_offsets[from] + offsetTransform.GetEnginePosition();
 
-            SceneManager.MoveGameObjectToScene(trf.gameObject, to.key);
+            SceneManager.MoveGameObjectToScene(trf.gameObject, to);
 
             // Calculate the exact local Unity position required for the new scene
             // Because Real = Unity + Offset, therefore Unity = Real - Offset
             if (reposition)
             {
-                Vector3d newUnityPos = absoluteRealPos - to.offset;
+                Vector3d newUnityPos = absoluteRealPos - current_offsets[to];
 
                 trf.position = Mathd.toVector3(newUnityPos);
             }
 
 
-            Debug.Log($"Transferred {((MonoBehaviour)offsetTransform).name} from {from.key.handle.ToHex()} to {to.key.handle.ToHex()}");
+            Debug.Log($"Transferred {((MonoBehaviour)offsetTransform).name} from {from.handle.ToHex()} to {to.handle.ToHex()}");
         }
         /// <summary>
         /// Updates the offset for the given scene.
@@ -139,24 +139,24 @@ namespace FloatingOffset.Runtime
         /// <param name="scene"></param>
         public void UpdateOffset(OffsetScene<Scene> scene)
         {
-            if (scene.offset == offsets[scene.key])
+            if (scene.offset == current_offsets[scene.key])
                 return;
 
             var key = scene.key;
-            if (!offsets.ContainsKey(key))
+            if (!current_offsets.ContainsKey(key))
             {
-                offsets.Add(key, Vector3d.zero);
+                current_offsets.Add(key, Vector3d.zero);
             }
-            Debug.Log($"Offset from {offsets[key]} to {scene.offset}");
-            Vector3d old_offset = offsets[key];
-            offsets[key] = scene.offset;
+            Debug.Log($"Offset from {current_offsets[key]} to {scene.offset}");
+            Vector3d old_offset = current_offsets[key];
+            current_offsets[key] = scene.offset;
             if (offsettables.TryGetValue(scene.key, out List<IOffsettable<Scene>> list))
             {
-                offsetter.Offset(old_offset, offsets[key], scene.key, list.ToArray());
+                offsetter.Offset(old_offset, current_offsets[key], scene.key, list.ToArray());
             }
             else
             {
-                offsetter.Offset(old_offset, offsets[key], scene.key);
+                offsetter.Offset(old_offset, current_offsets[key], scene.key);
             }
         }
 

@@ -105,7 +105,7 @@ namespace FloatingOffset.Runtime
             /// <param name="from"></param>
             /// <param name="to"></param>
             /// <param name="reposition"></param>
-            void TransferTo(IOffsetObject<TSceneKey> offsettable, OffsetScene<TSceneKey> from, OffsetScene<TSceneKey> to, bool reposition = false);
+            void TransferTo(IOffsetObject<TSceneKey> offsettable, TSceneKey from, TSceneKey to, bool reposition = false);
             /// <summary>
             /// Clone the given scene. Calls the callback when done.
             /// </summary>
