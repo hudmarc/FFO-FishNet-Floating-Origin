@@ -179,7 +179,11 @@ namespace FloatingOffset.Editor.Tests
 
             // 1. Massive separation
             viewA.SetEnginePosition(new Vector3d(100000, 0, 0));
-            server.Process();
+            // simulated scene loading
+            for (int i = 0; i < 5; i++)
+            {
+                server.Process();
+            }
 
             Assert.AreNotEqual(viewA.GetSceneKey(), viewB.GetSceneKey(), "Views failed to separate into different scenes when moved far apart.");
 
@@ -218,7 +222,12 @@ namespace FloatingOffset.Editor.Tests
             Vector3d moveDelta = new Vector3d(50000, 0, 0);
             v0.SetEnginePosition(v0.GetEnginePosition() + moveDelta);
             v1.SetEnginePosition(v1.GetEnginePosition() + moveDelta);
-            server.Process();
+            
+            //simulated delay
+            for (int i = 0; i < 5; i++)
+            {
+                server.Process();
+            }
 
             // v0 and v1 must be in the same scene
             Assert.AreEqual(v0.GetSceneKey(), v1.GetSceneKey(), "V0 and V1 should be grouped together.");

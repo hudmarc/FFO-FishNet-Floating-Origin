@@ -232,32 +232,79 @@ namespace FloatingOffset.Runtime
             }
 
 
+            // 1. Swap the tuple order so it sorts by Union FIRST, then Scene
+            (int union_rep, int scene)[] members = new (int union_rep, int scene)[view_count];
 
-            sceneCounts.Clear();
-            bestScenes.Clear();
-
-            // Assign scenes to unions
             for (int i = 0; i < view_count; i++)
             {
-                TSceneKey scene = views[i].GetSceneKey();
-                int rep = Find(i);
-
-                var key = (rep, scene);
-
-                // Increment the count for this specific scene within this specific union
-                sceneCounts.TryGetValue(key, out int currentCount);
-                currentCount++;
-                sceneCounts[key] = currentCount;
-
-                // Check if this newly incremented scene is now the winner for this union
-                if (!bestScenes.TryGetValue(rep, out var currentBest) || currentCount > currentBest.count)
-                {
-                    // Update the winner for this representative
-                    bestScenes[rep] = (scene, currentCount);
-                }
+                members[i] = (union_reps[i], scenes.IndexOf(views[i].GetSceneKey()));
             }
 
-            
+            // This groups all views by union. Inside each union, identical scenes are placed next to each other.
+            Array.Sort(members);
+
+            Dictionary<int, int> scene_unions = new Dictionary<int, int>();
+
+            if (view_count > 0)
+            {
+                // Tracking variables for the loop
+                int current_union = members[0].union_rep;
+                int current_scene = members[0].scene;
+                int current_run = 1;
+
+                int best_scene = current_scene;
+                int max_run = 1;
+
+                // 2. Iterate through the sorted array exactly once
+                for (int i = 1; i < view_count; i++)
+                {
+                    if (members[i].union_rep != current_union)
+                    {
+                        // We crossed the boundary into a new Union. 
+                        // Save the winner of the previous union to the dictionary!
+                        scene_unions[current_union] = best_scene;
+
+                        // Reset the trackers for the new Union
+                        current_union = members[i].union_rep;
+                        current_scene = members[i].scene;
+                        current_run = 1;
+                        best_scene = current_scene;
+                        max_run = 1;
+                    }
+                    else
+                    {
+                        // We are still inside the same Union.
+                        if (members[i].scene == current_scene)
+                        {
+                            // The scene is the same as the last one, increment the run
+                            current_run++;
+                        }
+                        else
+                        {
+                            // The scene changed, reset the run counter
+                            current_scene = members[i].scene;
+                            current_run = 1;
+                        }
+
+                        // Check if this run is the new record holder for this union
+                        if (current_run > max_run)
+                        {
+                            max_run = current_run;
+                            best_scene = current_scene;
+                        }
+                    }
+                }
+
+                // Don't forget to save the final union when the loop ends!
+                scene_unions[current_union] = best_scene;
+            }
+
+
+            for (int i = 0; i < members.Length; i++)
+            {
+                Debug.LogError($"{members[i].scene}:{members[i].union_rep}");
+            }
+
 
             TSceneKey source = scenes.GetSceneAt(0).key;
 
@@ -267,12 +314,12 @@ namespace FloatingOffset.Runtime
                 int rep = Find(i);
                 TSceneKey current_scene = views[i].GetSceneKey();
 
-                if (bestScenes.TryGetValue(rep, out var best))
+                if (scene_unions.ContainsKey(rep))
                 {
-                    if (!current_scene.Equals(best.scene))
+                    if (!current_scene.Equals(scene_unions[rep]))
                     {
                         // transfer the view to the scene
-                        TransferWithRepositioning(views[i], current_scene, best.scene);
+                        TransferWithRepositioning(views[i], current_scene, scenes.GetSceneAt(scene_unions[rep]).key);
                     }
                     if (rep == i)
                     {
@@ -288,7 +335,7 @@ namespace FloatingOffset.Runtime
                     // the flip-side: if you a player was just interacting with a bunch of other players and then they warp-speed out
                     // they might have a frame hitch as they warp out. keep this in mind as the gamedev, or use the Teleport(view,real_position);
                     // function on the OffsetManager.
-                    if (RequestScene(source, root_sums[rep] / (double)root_counts[i], out int found))
+                    if (RequestScene(source, root_sums[rep] / (double)root_counts[rep], out int found))
                     {
                         // transfer the view to the scene
                         TransferWithRepositioning(views[i], current_scene, scenes.GetSceneAt(found).key);
