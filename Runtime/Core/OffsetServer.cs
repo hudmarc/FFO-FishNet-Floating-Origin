@@ -231,6 +231,8 @@ namespace FloatingOffset.Runtime
                 root_sums[root] += view_positions[i];
             }
 
+
+
             sceneCounts.Clear();
             bestScenes.Clear();
 
@@ -254,6 +256,8 @@ namespace FloatingOffset.Runtime
                     bestScenes[rep] = (scene, currentCount);
                 }
             }
+
+            
 
             TSceneKey source = scenes.GetSceneAt(0).key;
 

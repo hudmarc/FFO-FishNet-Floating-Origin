@@ -103,23 +103,22 @@ namespace FloatingOffset.Runtime
         /// Transfer the given offsettable to the given offset scene. Removes it from the offset scene this was called on.<br>
         /// Offsets the transform so that it matches the offset of the target scene.
         /// </summary>
-        /// <param name="offsetTransform"></param>
+        /// <param name="offsetObject"></param>
         /// <param name="scene"></param>
-        public void TransferTo(IOffsetObject<Scene> offsetTransform, Scene from, Scene to, bool reposition = false)
+        public void TransferTo(IOffsetObject<Scene> offsetObject, Scene from, Scene to, bool reposition = false)
         {
-            if (!offsetTransform.IsView() && (current_offsets[to] - (current_offsets[from] + offsetTransform.GetEnginePosition())).sqrMagnitude > universe.RebaseCriteria * universe.RebaseCriteria)
+            if (!offsetObject.IsView() && (current_offsets[to] - (current_offsets[from] + offsetObject.GetEnginePosition())).sqrMagnitude > universe.RebaseCriteria * universe.RebaseCriteria)
             {
-                MonoBehaviour off = (MonoBehaviour)offsetTransform;
-                Debug.Log($"Destroyed out of range Offset Transform {off.name}");
-                Destroy(off.gameObject);
+                Debug.Log($"Destroyed out of range Offset Transform {((MonoBehaviour)offsetObject).name}");
+                offsetObject.Destroy();
                 return;
             }
 
-            Transform trf = ((OffsetBehaviour)offsetTransform).transform;
 
-            Vector3d absoluteRealPos = current_offsets[from] + offsetTransform.GetEnginePosition();
 
-            SceneManager.MoveGameObjectToScene(trf.gameObject, to);
+            Vector3d absoluteRealPos = current_offsets[from] + offsetObject.GetEnginePosition();
+
+            offsetObject.SetSceneKey(to);
 
             // Calculate the exact local Unity position required for the new scene
             // Because Real = Unity + Offset, therefore Unity = Real - Offset
@@ -127,11 +126,11 @@ namespace FloatingOffset.Runtime
             {
                 Vector3d newUnityPos = absoluteRealPos - current_offsets[to];
 
-                trf.position = Mathd.toVector3(newUnityPos);
+                offsetObject.SetEnginePosition(newUnityPos);
             }
 
 
-            Debug.Log($"Transferred {((MonoBehaviour)offsetTransform).name} from {from.handle.ToHex()} to {to.handle.ToHex()}");
+            Debug.Log($"Transferred {((MonoBehaviour)offsetObject).name} from {from.handle.ToHex()} to {to.handle.ToHex()}");
         }
         /// <summary>
         /// Updates the offset for the given scene.
@@ -139,14 +138,13 @@ namespace FloatingOffset.Runtime
         /// <param name="scene"></param>
         public void UpdateOffset(OffsetScene<Scene> scene)
         {
-            if (scene.offset == current_offsets[scene.key])
-                return;
-
             var key = scene.key;
             if (!current_offsets.ContainsKey(key))
-            {
                 current_offsets.Add(key, Vector3d.zero);
-            }
+            else if (scene.offset == current_offsets[scene.key])
+                return;
+
+
             Debug.Log($"Offset from {current_offsets[key]} to {scene.offset}");
             Vector3d old_offset = current_offsets[key];
             current_offsets[key] = scene.offset;

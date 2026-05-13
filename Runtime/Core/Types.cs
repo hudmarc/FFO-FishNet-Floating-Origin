@@ -62,10 +62,20 @@ namespace FloatingOffset.Runtime
             /// <returns></returns>
             Vector3d GetEnginePosition();
             /// <summary>
+            /// Sets local scene position (converted from Vector3d into Vector3) of this offset object.
+            /// </summary>
+            /// <returns></returns>
+            void SetEnginePosition(Vector3d position);
+            /// <summary>
             /// The key of the scene this offset object resides in.
             /// </summary>
             /// <returns></returns>
             TSceneKey GetSceneKey();
+            /// <summary>
+            /// Sets this object's scene.
+            /// </summary>
+            /// <param name="key"></param>
+            void SetSceneKey(TSceneKey key);
             /// <summary>
             /// Whether this OffsetTransform is a view
             /// </summary>
@@ -76,6 +86,7 @@ namespace FloatingOffset.Runtime
             /// </summary>
             /// <returns></returns>
             bool IsValid();
+            void Destroy();
         }
         public interface IOffsettable<TSceneKey>
         {
@@ -118,13 +129,6 @@ namespace FloatingOffset.Runtime
             /// <param name="offsettable"></param>
             /// <param name="scene"></param>
             void RegisterOffsettable(IOffsettable<TSceneKey> offsettable, TSceneKey scene);
-        }
-        public enum OffsetActions
-        {
-            RemoveView,
-            PendingTransfer,
-            AwaitingScene,
-            None
         }
     }
 }

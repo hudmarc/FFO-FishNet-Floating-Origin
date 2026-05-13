@@ -43,5 +43,11 @@ namespace FloatingOffset.Runtime
         bool IOffsetObject<Scene>.IsView() => isView;
         bool IOffsetObject<Scene>.IsValid() => isValid;
 
+        public void SetEnginePosition(Vector3d position) => transform.position = Mathd.toVector3(position);
+
+
+        public void SetSceneKey(Scene key) => SceneManager.MoveGameObjectToScene(gameObject, key);
+
+        public void Destroy() => Destroy(gameObject);
     }
 }

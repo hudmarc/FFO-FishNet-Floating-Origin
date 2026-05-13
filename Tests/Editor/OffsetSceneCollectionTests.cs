@@ -1,59 +1,124 @@
+using FloatingOffset.Runtime;
 using FloatingOffset.Runtime.Types;
 using NUnit.Framework;
 using System;
+using System.Collections.Generic;
+using UnityEngine;
 
-namespace FloatingOffset.Runtime
+namespace FloatingOffset.Editor.Tests
 {
     // A simple mock handler to satisfy the IOffsetHandler interface during testing
     public class MockOffsetHandler : IOffsetHandler<int>
     {
-        private int _sceneKey;
-        public MockOffsetHandler(int sceneKey) => _sceneKey = sceneKey;
+        // Generates new scene IDs when Clone() is called
+        private int _sceneKeyCounter;
+
+        // Keeps track of the mathematical origin of each scene
+        public Dictionary<int, Vector3d> SceneOffsets { get; } = new Dictionary<int, Vector3d>();
+
+        // For the unit tests to work, the handler needs to know about the views 
+        // so it can shift them when a rebase occurs.
+        public List<IOffsetObject<int>> TrackedObjects { get; } = new List<IOffsetObject<int>>();
+
+        public MockOffsetHandler(int initialSceneKey)
+        {
+            _sceneKeyCounter = initialSceneKey;
+            SceneOffsets[initialSceneKey] = Vector3d.zero;
+        }
+
+        public Vector3d RealPosition(Vector3d engine_position, int scene_index) => SceneOffsets[scene_index] + engine_position;
+        public Vector3d RealPosition(IOffsetObject<int> offsetObject) => SceneOffsets[offsetObject.GetSceneKey()] + offsetObject.GetEnginePosition();
+
 
         public void Clone(int scene, Action<int> onSceneReady)
         {
-            throw new NotImplementedException();
+            // Simulate an async scene load by generating a new ID and firing the callback
+            _sceneKeyCounter++;
+            int newScene = _sceneKeyCounter;
+
+            // Initialize the new scene at the origin
+            SceneOffsets[newScene] = Vector3d.zero;
+
+            onSceneReady?.Invoke(newScene);
         }
 
         public void RegisterOffsettable(IOffsettable<int> offsettable, int scene)
         {
-            throw new NotImplementedException();
+            // In a real Unity implementation, this would track components that need 
+            // special handling during a rebase (like TrailRenderers or ParticleSystems).
+            // It is largely unused in the pure math unit tests.
         }
 
         public void TransferTo(IOffsetObject<int> offsettable, int from, int to, bool reposition = false)
         {
-            throw new NotImplementedException();
+            if (reposition)
+            {
+                // Calculate the true global position: (Origin of Old Scene) + (Local Position)
+                Vector3d oldOrigin = SceneOffsets.ContainsKey(from) ? SceneOffsets[from] : Vector3d.zero;
+                Vector3d trueGlobalPos = oldOrigin + offsettable.GetEnginePosition();
+
+                // Calculate new local position: (True Global Position) - (Origin of New Scene)
+                Vector3d newOrigin = SceneOffsets.ContainsKey(to) ? SceneOffsets[to] : Vector3d.zero;
+                offsettable.SetEnginePosition(trueGlobalPos - newOrigin);
+            }
+
+            offsettable.SetSceneKey(to);
         }
 
         public void UpdateOffset(OffsetScene<int> scene)
         {
-            throw new NotImplementedException();
+            Vector3d oldOrigin = SceneOffsets.ContainsKey(scene.key) ? SceneOffsets[scene.key] : Vector3d.zero;
+            Vector3d newOrigin = scene.offset;
+
+            // How much the mathematical center of the world moved
+            Vector3d delta = newOrigin - oldOrigin;
+
+            // Update our internal tracking
+            SceneOffsets[scene.key] = newOrigin;
+
+            // Apply the reverse delta to all physical objects in the scene.
+            // If the origin shifts +2000 on the X axis, the objects must be teleported -2000 
+            // on the X axis so they appear to stay completely still to the player.
+            foreach (var obj in TrackedObjects)
+            {
+                if (obj.GetSceneKey() == scene.key)
+                {
+                    obj.SetEnginePosition(obj.GetEnginePosition() - delta);
+                }
+            }
         }
     }
 
-    // A simple mock object to satisfy the IOffsetObject interface
     public class MockOffsetObject : IOffsetObject<int>
     {
         private int _sceneKey;
-        public MockOffsetObject(int sceneKey) => _sceneKey = sceneKey;
+        private Vector3 _enginePosition;
 
-        public Vector3d GetEnginePosition()
+        public bool IsViewFlag { get; set; } = true;
+        public bool IsValidFlag { get; set; } = true;
+
+        public MockOffsetObject(int sceneKey)
         {
-            throw new NotImplementedException();
+            _sceneKey = sceneKey;
+            _enginePosition = Vector3.zero;
         }
+
+        public Vector3d GetEnginePosition() => Mathd.toVector3d(_enginePosition);
+        public void SetEnginePosition(Vector3d position) => _enginePosition = Mathd.toVector3(position);
 
         public int GetSceneKey() => _sceneKey;
+        public void SetSceneKey(int key) => _sceneKey = key;
 
-        public bool IsValid()
-        {
-            throw new NotImplementedException();
-        }
+        public bool IsView() => IsViewFlag;
+        public bool IsValid() => IsValidFlag;
 
-        public bool IsView()
+        public void Destroy()
         {
             throw new NotImplementedException();
         }
     }
+
+
 
     [TestFixture]
     public class OffsetSceneCollectionTests
