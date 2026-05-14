@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 using FloatingOffset.Runtime.Types;
-using UnityEditor.PackageManager;
 
 namespace FloatingOffset.Runtime
 {
@@ -19,11 +18,15 @@ namespace FloatingOffset.Runtime
         private Dictionary<Scene, Vector3d> current_offsets = new Dictionary<Scene, Vector3d>();
         private Dictionary<Scene, List<IOffsettable<Scene>>> offsettables = new Dictionary<Scene, List<IOffsettable<Scene>>>();
         private IOffsetObject<Scene> mainView = null;
+        [SerializeField]
+        protected bool unityPhysics = true;
 
-        private void Awake()
+        protected void Awake()
         {
             if (enabled)
                 universe.server = new OffsetServer<Scene>(this, universe.RebaseCriteria, universe.MaxScenes);
+
+            Physics.simulationMode = SimulationMode.Script;
         }
 #if UNITY_EDITOR
         protected override void Reset()
@@ -51,6 +54,21 @@ namespace FloatingOffset.Runtime
         void LateUpdate()
         {
             universe.server.Process();
+        }
+        void FixedUpdate()
+        {
+            if (unityPhysics)
+            {
+                PhysicsProcess(Time.fixedDeltaTime);
+            }
+        }
+        protected void PhysicsProcess(float delta)
+        {
+            gameObject.scene.GetPhysicsScene().Simulate(delta);
+            foreach (var scene in current_offsets.Keys)
+            {
+                scene.GetPhysicsScene().Simulate(delta);
+            }
         }
         /// <summary>
         /// Clone the given scene. Calls the callback when done.
@@ -159,6 +177,7 @@ namespace FloatingOffset.Runtime
             Debug.Log($"Offset from {current_offsets[key]} to {scene.offset}");
             Vector3d old_offset = current_offsets[key];
             current_offsets[key] = scene.offset;
+
             if (offsettables.TryGetValue(scene.key, out List<IOffsettable<Scene>> list))
             {
                 offsetter.Offset(old_offset, current_offsets[key], scene.key, list.ToArray());

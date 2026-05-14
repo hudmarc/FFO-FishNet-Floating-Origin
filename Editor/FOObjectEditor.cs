@@ -1,131 +1,203 @@
 using UnityEngine;
 using UnityEditor;
 using FloatingOffset.Runtime;
+using System;
+using System.Globalization;
 
 namespace FloatingOffset.Editor
 {
-    [CustomEditor(typeof(OffsetBehaviour), true)]
+    [CustomEditor(typeof(Transform), true)]
     [CanEditMultipleObjects]
-    public class OffsetBehaviourEditor : UnityEditor.Editor
+    public class TransformUniverseExtension : UnityEditor.Editor
     {
-        OffsetBehaviour offsetTransform;
+        private UnityEditor.Editor defaultTransformEditor;
+        private Vector3 targetPosition;
+        private int lastTargetId = -1;
 
-        // Storing as a standard Vector3 allows us to use Unity's native Vector3Field, 
-        // which supports right-click Copy/Paste.
-        Vector3 target_position = Vector3.zero;
-        bool isTargetInitialized = false;
+        private static OffsetUniverse cachedUniverse;
+        private Vector3d sceneOffset = Vector3d.zero;
+
+        // The key used to save the open/closed state in the registry
+        private const string FoldoutPrefKey = "FloatingOffset_TransformFoldout";
 
         void OnEnable()
         {
-            offsetTransform = target as OffsetBehaviour;
-            isTargetInitialized = false; // Reset initialization on selection
+            Type transformInspectorType = typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.TransformInspector");
+            if (transformInspectorType != null)
+            {
+                defaultTransformEditor = UnityEditor.Editor.CreateEditor(targets, transformInspectorType);
+            }
+        }
+
+        void OnDisable()
+        {
+            if (defaultTransformEditor != null)
+            {
+                DestroyImmediate(defaultTransformEditor);
+            }
+        }
+
+        private static OffsetUniverse GetUniverse()
+        {
+            if (cachedUniverse != null) return cachedUniverse;
+
+            string[] guids = AssetDatabase.FindAssets("t:OffsetUniverse");
+            if (guids.Length > 0)
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guids[0]);
+                cachedUniverse = AssetDatabase.LoadAssetAtPath<OffsetUniverse>(path);
+            }
+            return cachedUniverse;
         }
 
         public override void OnInspectorGUI()
         {
-            DrawDefaultInspector();
-
-            if (Application.isPlaying)
+            // 1. Draw native fields
+            if (defaultTransformEditor != null)
             {
-                if (offsetTransform.universe)
-                {
-                    if (offsetTransform.universe.server.HasScene(offsetTransform.gameObject.scene))
-                    {
-                        Vector3d position = offsetTransform.universe.server.GetSceneOffset(offsetTransform.gameObject.scene) + Mathd.toVector3d(offsetTransform.transform.position);
-
-                        EditorGUILayout.BeginVertical("box");
-
-                        // Display the real position as a read-only label
-                        EditorGUILayout.LabelField($"Real Position <{position.x:F3}, {position.y:F3}, {position.z:F3}>");
-
-                        // Initialize the target position to the current position once when viewed
-                        if (!isTargetInitialized)
-                        {
-                            target_position = new Vector3((float)position.x, (float)position.y, (float)position.z);
-                            isTargetInitialized = true;
-                        }
-
-                        // This native field retains its own state and supports right-click copy/paste
-                        target_position = EditorGUILayout.Vector3Field("Teleport Target", target_position);
-
-                        if (GUILayout.Button("Teleport"))
-                        {
-                            // Convert the float Vector3 back to your double precision Vector3d
-                            Vector3d targetPositionDouble = new Vector3d(target_position.x, target_position.y, target_position.z);
-                            offsetTransform.universe.TeleportTo((OffsetTransform)offsetTransform, targetPositionDouble);
-                        }
-
-                        EditorGUILayout.EndVertical();
-                    }
-                    else
-                    {
-                        EditorGUILayout.LabelField("View is not in valid Scene!");
-                    }
-                }
+                defaultTransformEditor.OnInspectorGUI();
             }
-        }
-    }
+            else
+            {
+                DrawDefaultInspector();
+            }
 
-
-    // [InitializeOnLoad] ensures the static constructor runs when the editor opens or compiles
-    [InitializeOnLoad]
-    public static class RootTransformLabelInjector
-    {
-        // Static state variables to prevent live-overwriting of user input
-        private static Vector3 targetPosition;
-        private static int lastTargetId = -1;
-
-        static RootTransformLabelInjector()
-        {
-            // Subscribe to the global component header drawing event
-            UnityEditor.Editor.finishedDefaultHeaderGUI += OnPostHeaderGUI;
-        }
-
-        private static void OnPostHeaderGUI(UnityEditor.Editor editor)
-        {
-            // 1. Restrict this injection strictly to Transform components
-            Transform t = editor.target as Transform;
+            Transform t = target as Transform;
+            t.TryGetComponent(out OffsetTransform offset_transform);
             if (t == null) return;
 
-            // 2. Restrict to root transforms only
-            if (t.parent != null) return;
+            OffsetUniverse universe = GetUniverse();
+            if (universe == null) return; // Fail silently if no universe asset exists
 
-            if (!Application.isPlaying) return;
+            EditorGUILayout.Space();
 
-            // 3. Ensure the object is part of your system
-            OffsetBehaviour offsetTransform = t.GetComponent<OffsetBehaviour>();
-            if (offsetTransform == null || offsetTransform.universe == null) return;
 
-            if (offsetTransform.universe.server.HasScene(offsetTransform.gameObject.scene))
+
+            // Load the saved foldout state
+            bool isExpanded = EditorPrefs.GetBool(FoldoutPrefKey, false);
+
+            string display = $"Floating Offset <{FormatCoordinate(sceneOffset.x)},{FormatCoordinate(sceneOffset.y)},{FormatCoordinate(sceneOffset.z)}>";
+
+            // Draw the foldout header (true parameter allows clicking the text to toggle)
+            bool newExpandedState = EditorGUILayout.Foldout(isExpanded, Application.isPlaying && universe != null ? display : "Floating Offset", true, EditorStyles.foldoutHeader);
+
+            // Save the state if the user clicked it
+            if (newExpandedState != isExpanded)
             {
-                // Calculate the real position
-                Vector3d position = offsetTransform.universe.server.GetSceneOffset(offsetTransform.gameObject.scene) + Mathd.toVector3d(t.position);
+                EditorPrefs.SetBool(FoldoutPrefKey, newExpandedState);
+            }
 
-                // Re-initialize the input field ONLY if the user selected a new transform
+            // 2. Draw the contents only if expanded
+            if (newExpandedState)
+            {
+                // Indent the UI so it visually belongs to the foldout
+                EditorGUI.indentLevel++;
+                EditorGUILayout.BeginVertical("helpbox");
+
+                if (!Application.isPlaying)
+                {
+                    EditorGUILayout.LabelField("[Requires Play Mode]");
+                    EditorGUILayout.EndVertical();
+                    EditorGUI.indentLevel--;
+                    return;
+                }
+
+                if (universe.server == null || !universe.server.HasScene(t.gameObject.scene))
+                {
+                    EditorGUILayout.LabelField("[Scene not registered]");
+                    EditorGUILayout.EndVertical();
+                    EditorGUI.indentLevel--;
+                    return;
+                }
+
+                sceneOffset = universe.server.GetSceneOffset(t.gameObject.scene);
+                Vector3d position = sceneOffset + Mathd.toVector3d(t.position);
+
                 if (lastTargetId != t.GetInstanceID())
                 {
                     targetPosition = new Vector3((float)position.x, (float)position.y, (float)position.z);
                     lastTargetId = t.GetInstanceID();
                 }
+                EditorGUILayout.LabelField($"Offset: ");
 
-                // Draw the custom GUI right below the Transform header
-                EditorGUILayout.BeginVertical("helpbox");
-
-                EditorGUILayout.LabelField($"Real Universe Pos: <{position.x:F3}, {position.y:F3}, {position.z:F3}>", EditorStyles.miniBoldLabel);
-
-                // Keep the copy/paste functionality
                 targetPosition = EditorGUILayout.Vector3Field("Teleport Target", targetPosition);
+
+                // Add a small layout bump so the button doesn't stretch awkwardly across the indent
+                GUILayout.BeginHorizontal();
+                GUILayout.Space(EditorGUI.indentLevel * 15f);
+
+                if (GUILayout.Button("Copy"))
+                {
+                    // Format explicitly using invariant culture so decimal periods don't break internationally
+                    string copyString = $"{position.x.ToString(CultureInfo.InvariantCulture)}, " +
+                                        $"{position.y.ToString(CultureInfo.InvariantCulture)}, " +
+                                        $"{position.z.ToString(CultureInfo.InvariantCulture)}";
+                    EditorGUIUtility.systemCopyBuffer = copyString;
+                }
+
+                if (offset_transform != null)
+                    if (GUILayout.Button("Paste"))
+                    {
+                        string clipboard = EditorGUIUtility.systemCopyBuffer;
+                        if (!string.IsNullOrEmpty(clipboard))
+                        {
+                            // Clean up common Vector3 formatting characters
+                            clipboard = clipboard.Replace("(", "").Replace(")", "").Replace("<", "").Replace(">", "").Replace(" ", "");
+                            string[] parts = clipboard.Split(',');
+
+                            if (parts.Length == 3 &&
+                                float.TryParse(parts[0], NumberStyles.Any, CultureInfo.InvariantCulture, out float x) &&
+                                float.TryParse(parts[1], NumberStyles.Any, CultureInfo.InvariantCulture, out float y) &&
+                                float.TryParse(parts[2], NumberStyles.Any, CultureInfo.InvariantCulture, out float z))
+                            {
+                                targetPosition = new Vector3(x, y, z);
+
+                                // Clear GUI focus so the Vector3Field visually updates if the user was currently typing in it
+                                GUI.FocusControl(null);
+                            }
+                            else
+                            {
+                                Debug.LogWarning("Clipboard does not contain valid Vector3 data.");
+                            }
+                        }
+                    }
 
                 if (GUILayout.Button("Teleport"))
                 {
                     Vector3d targetPositionDouble = new Vector3d(targetPosition.x, targetPosition.y, targetPosition.z);
-                    offsetTransform.universe.TeleportTo((OffsetTransform)offsetTransform, targetPositionDouble);
+
+                    if (offset_transform != null)
+                    {
+                        universe.TeleportTo(offset_transform, targetPositionDouble);
+                    }
+                    else
+                    {
+                        Vector3d newWorldPos = targetPositionDouble - sceneOffset;
+                        t.position = new Vector3((float)newWorldPos.x, (float)newWorldPos.y, (float)newWorldPos.z);
+                    }
                 }
 
+
+                GUILayout.EndHorizontal();
+
+
                 EditorGUILayout.EndVertical();
-                EditorGUILayout.Space(); // Add a small buffer before the standard Transform fields begin
+                EditorGUI.indentLevel--;
+            }
+            string FormatCoordinate(double value)
+            {
+                // Use Math.Abs to catch large negative numbers as well (e.g., -50000)
+                if (Math.Abs(value) >= 10000)
+                {
+                    // "0.##E0" forces scientific notation (e.g., 1.52E4)
+                    return value.ToString("0.##E0");
+                }
+                else
+                {
+                    // "0.##" keeps your standard formatting (e.g., 150.25)
+                    return value.ToString("0.##");
+                }
             }
         }
-
     }
 }

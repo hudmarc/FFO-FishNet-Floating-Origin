@@ -342,7 +342,7 @@ namespace FloatingOffset.Runtime
                     if (winner.winner_index == i)
                     {
                         Vector3d average = union_sums[rep] / (double)union_counts[rep];
-                        if ((average - scenes.GetOffsetAt(winner.scene_index)).sqrMagnitude > MinimumJoinDistance)
+                        if ((average - scenes.GetOffsetAt(winner.scene_index)).sqrMagnitude > MinimumJoinDistanceSquared)
                             scenes.Offset(scene, average);
                     }
                 }
@@ -461,7 +461,7 @@ namespace FloatingOffset.Runtime
         {
             TSceneKey origin = offsetObject.GetSceneKey();
             Vector3d offset = scenes.GetOffset(origin);
-            if ((offset + offsetObject.GetEnginePosition() - real_position).sqrMagnitude < MinimumJoinDistance)
+            if ((offset + offsetObject.GetEnginePosition() - real_position).sqrMagnitude < MinimumJoinDistanceSquared)
             {
                 offsetObject.SetEnginePosition(real_position - offset);
                 return;

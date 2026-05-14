@@ -13,18 +13,41 @@ namespace FloatingOffset.Runtime
         [field: SerializeField]
         public Vector3d realPosition { get; private set; }
         private Scene scene = default;
+        private bool initialized = false;
+        void Awake()
+        {
+            if (universe.server == null)
+            {
+                return;
+            }
+            initialized = true;
+            scene = gameObject.scene;
+            universe.server.handler.RegisterOffsettable(this, scene);
+
+        }
         void Start()
         {
-            universe.server.handler.RegisterOffsettable(this, gameObject.scene);
+            if (initialized)
+            {
+                return;
+            }
             scene = gameObject.scene;
+            universe.server.handler.RegisterOffsettable(this, scene);
+
+            Vector3d current_scene_offset = universe.server.GetSceneOffset(scene);
+            transform.position = Mathd.toVector3(realPosition - current_scene_offset);
+
         }
         public void OnOffset(Vector3d old_offset, Vector3d new_offset)
         {
-            transform.position = Mathd.RealToUnity(realPosition, new_offset);
+            Debug.Log($"Moved {gameObject.name} from {old_offset} to {new_offset} at position {realPosition}");
+
+            transform.position = Mathd.toVector3(realPosition - new_offset);
         }
-        public void SetRealPosition(Vector3d offset)
+        public void SetRealPosition(Vector3d new_position)
         {
-            OnOffset(universe.server.GetSceneOffset(scene), offset);
+            transform.position = Mathd.toVector3(new_position - realPosition);
+            realPosition = new_position;
         }
 
         public Scene GetSceneKey()

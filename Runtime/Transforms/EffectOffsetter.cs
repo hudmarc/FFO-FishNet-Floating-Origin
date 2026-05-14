@@ -7,7 +7,7 @@ namespace FloatingOffset.Runtime
 {
     // Loosely based on the Unity Wiki FloatingOrigin script by Peter Stirling
     // URL: http://wiki.unity3d.com/index.php/Floating_Origin
-    public class EffectOffsetter : OffsetBehaviour, IOffsettable<Scene>
+    public class EffectOffsetter : Offsetter
     {
         private ParticleSystem[] worldSpaceParticles;
         private LineRenderer[] worldSpaceLines;
@@ -25,16 +25,14 @@ namespace FloatingOffset.Runtime
             CacheTrails();
             scene = gameObject.scene;
         }
-        void Start()
+        protected override void OnOffset(Vector3d old_offset, Vector3d new_offset, Scene scene, IOffsettable<Scene>[] offsettables)
         {
-            universe.server.handler.RegisterOffsettable(this, gameObject.scene);
-        }
-        public void Offset(Vector3 offset)
-        {
+            base.OnOffset(old_offset, new_offset, scene, offsettables);
+            Vector3 delta = Mathd.toVector3(new_offset - old_offset);
             // 2. Move world-space visual components
-            if (worldSpaceParticles.Length > 0) ShiftWorldParticles(offset);
-            if (worldSpaceLines.Length > 0) ShiftLines(offset);
-            if (trails.Length > 0) ShiftTrails(offset);
+            if (worldSpaceParticles.Length > 0) ShiftWorldParticles(delta);
+            if (worldSpaceLines.Length > 0) ShiftLines(delta);
+            if (trails.Length > 0) ShiftTrails(delta);
         }
 
         private void CacheWorldSpaceParticles()
@@ -143,16 +141,6 @@ namespace FloatingOffset.Runtime
                 }
                 vertexBuffer = new Vector3[newSize];
             }
-        }
-
-        public void OnOffset(Vector3d old_offset, Vector3d new_offset)
-        {
-            Offset(Mathd.toVector3(old_offset - new_offset));
-        }
-
-        public Scene GetSceneKey()
-        {
-            return scene;
         }
     }
 }
