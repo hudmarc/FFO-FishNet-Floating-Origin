@@ -2,6 +2,7 @@ using System;
 using System.Runtime.CompilerServices;
 namespace FloatingOffset.Runtime
 {
+    // Experimental fast hash grid. Implementation details may change.
     public class HashGrid
     {
         private const uint PrimeX = 73856093;

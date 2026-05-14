@@ -115,6 +115,11 @@ namespace FloatingOffset.Runtime
             /// </summary>
             /// <param name="scene"></param>
             void Unload(TSceneKey scene);
+            /// <summary>
+            /// Sets the main view for this OffsetHandler. This controls which scenes are hidden or shown on the server.
+            /// </summary>
+            /// <param name="view"></param>
+            void SetMainView(IOffsetObject<TSceneKey> view);
         }
     }
 }

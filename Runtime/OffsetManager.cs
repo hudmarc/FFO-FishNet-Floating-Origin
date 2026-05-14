@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 using FloatingOffset.Runtime.Types;
+using UnityEditor.PackageManager;
 
 namespace FloatingOffset.Runtime
 {
@@ -16,8 +17,8 @@ namespace FloatingOffset.Runtime
         [SerializeField]
         private Offsetter offsetter;
         private Dictionary<Scene, Vector3d> current_offsets = new Dictionary<Scene, Vector3d>();
-        private Dictionary<Scene, Vector3d> velocities = new Dictionary<Scene, Vector3d>();
         private Dictionary<Scene, List<IOffsettable<Scene>>> offsettables = new Dictionary<Scene, List<IOffsettable<Scene>>>();
+        private IOffsetObject<Scene> mainView = null;
 
         private void Awake()
         {
@@ -78,6 +79,8 @@ namespace FloatingOffset.Runtime
 
             Scene scene = SceneManager.GetSceneAt(SceneManager.sceneCount - 1);
 
+            SetSceneVisibility(scene, false);
+
             CullFOObjects(scene);
 
             // important order of operations: do NOT invoke this before you cull the scene!
@@ -108,6 +111,7 @@ namespace FloatingOffset.Runtime
         /// <param name="scene"></param>
         public void TransferTo(IOffsetObject<Scene> offsetObject, Scene from, Scene to, bool reposition = false)
         {
+            bool isMainView = offsetObject == mainView;
             if (!offsetObject.IsView() && (current_offsets[to] - (current_offsets[from] + offsetObject.GetEnginePosition())).sqrMagnitude > universe.RebaseCriteria * universe.RebaseCriteria)
             {
                 Debug.Log($"Destroyed out of range Offset Transform {((MonoBehaviour)offsetObject).name}");
@@ -128,6 +132,12 @@ namespace FloatingOffset.Runtime
                 Vector3d newUnityPos = absoluteRealPos - current_offsets[to];
 
                 offsetObject.SetEnginePosition(newUnityPos);
+            }
+
+            if (isMainView)
+            {
+                SetSceneVisibility(from, false);
+                SetSceneVisibility(to, true);
             }
 
 
@@ -167,9 +177,35 @@ namespace FloatingOffset.Runtime
                 offsettables[scene].Add(offsettable);
         }
 
+        private void SetSceneVisibility(Scene scene, bool visible)
+        {
+            Debug.Log($"Changed visibility on {scene} to {visible}");
+
+            var rootobjectsInScene = scene.GetRootGameObjects();
+            for (int i = 0; i < rootobjectsInScene.Length; i++)
+            {
+                Renderer[] renderers = rootobjectsInScene[i].GetComponentsInChildren<Renderer>();
+
+                for (int j = 0; j < renderers.Length; j++)
+                {
+                    renderers[j].forceRenderingOff = !visible;
+                }
+            }
+        }
+
+
         public void Unload(Scene scene)
         {
             SceneManager.UnloadSceneAsync(scene);
+        }
+
+        public void SetMainView(IOffsetObject<Scene> view)
+        {
+            if (!view.IsView())
+            {
+                Debug.LogError("Attempted to set OffsetTransform as main view that is not a view");
+            }
+            mainView = view;
         }
     }
 }

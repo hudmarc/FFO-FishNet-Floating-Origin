@@ -75,6 +75,7 @@ namespace FloatingOffset.Runtime
         {
             if (scenes.Count < 1)
             {
+                handler.SetMainView(view);
                 scenes.Register(view.GetSceneKey());
                 source = scenes.GetSceneAt(0).key;
             }
