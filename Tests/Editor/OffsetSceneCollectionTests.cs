@@ -87,6 +87,11 @@ namespace FloatingOffset.Editor.Tests
                 }
             }
         }
+
+        public void Unload(int scene)
+        {
+            SceneOffsets.Remove(scene);
+        }
     }
 
     public class MockOffsetObject : IOffsetObject<int>

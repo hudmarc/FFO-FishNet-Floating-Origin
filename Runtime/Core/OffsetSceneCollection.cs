@@ -192,13 +192,20 @@ namespace FloatingOffset.Runtime
             aliveCount++;
         }
         /// <summary>
-        /// Unregister a scene from this offset scene collection (please do this if you manually unload scenes!)
+        /// Unregister a scene from this offset scene collection
         /// </summary>
         /// <param name="scene"></param>
         public void Unregister(TSceneKey scene)
         {
             if (!scene_indexes.TryGetValue(scene, out int index)) return;
-
+            UnregisterAt(index);
+        }
+        /// <summary>
+        /// Unregister a scene from this offset scene collection
+        /// </summary>
+        /// <param name="index"></param>
+        public void UnregisterAt(int index)
+        {
             // 1. If it is in the Active zone, downgrade it to the Empty zone
             if (index < activeCount)
             {
@@ -213,7 +220,7 @@ namespace FloatingOffset.Runtime
 
             // 3. Clear the data and erase from dictionary
             scenes[aliveCount].valid = false;
-            scene_indexes.Remove(scene);
+            scene_indexes.Remove(scenes[index].key);
         }
         /// <summary>
         /// Does this scene collection have a scene matching this key?
@@ -324,17 +331,6 @@ namespace FloatingOffset.Runtime
         /// <param name="j">Scene 2</param>
         /// <returns></returns>
         public bool SameLayer(int i, int j) => scenes[i].layer == scenes[j].layer;
-
-        public void SetMergeTarget(TSceneKey scene, TSceneKey target)
-        {
-            int from_scene = scene_indexes[scene];
-            int to_scene = scene_indexes[target];
-            SetMergeTarget(scene, target);
-        }
-        public void SetMergeTargetAt(int scene, int target)
-        {
-            scenes[scene].merge_target = target;
-        }
 
         public int IndexOf(TSceneKey sceneKey)
         {

@@ -4,21 +4,6 @@ namespace FloatingOffset.Runtime
 {
     namespace Types
     {
-
-        /// <summary>
-        /// Interface used for communicating with an Offsetter. An Offsetter is responsible for correctly offsetting all scene objects when the origin is shifted. If you wish to write your own implementation, make sure it uses this interface.
-        /// </summary>
-        public interface IOffsetter<TSceneKey>
-        {
-            /// <summary>
-            /// Offsets the given scene from the given old offset to the given new offset.
-            /// </summary>
-            /// <param name="old_offset"></param>
-            /// <param name="new_offset"></param>
-            /// <param name="scene"></param>
-            /// <param name="offsettables"></param>
-            void Offset(Vector3d old_offset, Vector3d new_offset, TSceneKey scene, IOffsettable<TSceneKey>[] offsettables = null);
-        }
         /// <summary>
         /// Handles the scene and offset.
         /// </summary>
@@ -45,10 +30,6 @@ namespace FloatingOffset.Runtime
             /// If two scenes have different layers then they will not merge
             /// </summary>
             public int layer;
-            /// <summary>
-            /// If not self, the scene this scene will be merged to.
-            /// </summary>
-            internal int merge_target;
         }
         /// <summary>
         /// IOffsetObject is the generic form of the OffsetTransform used in the core.
@@ -129,6 +110,11 @@ namespace FloatingOffset.Runtime
             /// <param name="offsettable"></param>
             /// <param name="scene"></param>
             void RegisterOffsettable(IOffsettable<TSceneKey> offsettable, TSceneKey scene);
+            /// <summary>
+            /// Unload the given scene.
+            /// </summary>
+            /// <param name="scene"></param>
+            void Unload(TSceneKey scene);
         }
     }
 }

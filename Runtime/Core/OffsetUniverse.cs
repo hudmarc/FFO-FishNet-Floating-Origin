@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -14,12 +13,28 @@ namespace FloatingOffset.Runtime
         /// <summary>
         /// Reference to this game instance's OffsetServer
         /// </summary>
-        public OffsetServer<Scene> server { internal set; get; }
+        internal OffsetServer<Scene> server;
         [field: SerializeField]
         public int RebaseCriteria { get; private set; } = 2048;
         [field: SerializeField]
         public int MaxScenes { get; private set; } = 200;
 
         internal Queue<Scene> queued_scenes;
+
+        // TODO: Add more user-facing functions here
+
+        /// <summary>
+        /// Teleport the given OffsetTransform view to the given position in space.
+        /// </summary>
+        /// <param name="offsetTransform">The offset transform to teleport.</param>
+        /// <param name="position">The destination where this offset transform will be teleported.</param>
+        public void TeleportTo(OffsetTransform offsetTransform, Vector3d position)
+        {
+            if (!offsetTransform.isView)
+            {
+                Debug.LogError("Cannot teleport transforms if they are not views. Set isView to 'true'.");
+            }
+            server.TeleportTo(offsetTransform, position);
+        }
     }
 }

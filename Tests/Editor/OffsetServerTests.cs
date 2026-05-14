@@ -1,7 +1,7 @@
 using System;
 using FloatingOffset.Runtime;
-using FloatingOffset.Runtime.Types;
 using NUnit.Framework;
+using UnityEngine;
 
 namespace FloatingOffset.Editor.Tests
 {
@@ -9,7 +9,7 @@ namespace FloatingOffset.Editor.Tests
     {
         private const int INITIAL_SCENE_KEY = 100;
         private const int REBASE_CRITERIA = 2048;
-        private const int MAX_SCENES = 40;
+        private const int MAX_SCENES = 100;
 
         [Test]
         public void OffsetServerInitialization()
@@ -122,8 +122,9 @@ namespace FloatingOffset.Editor.Tests
         public void MultipleViewsSameClient()
         {
             var mock_handler = new MockOffsetHandler(INITIAL_SCENE_KEY);
-            var server = new OffsetServer<int>(mock_handler, REBASE_CRITERIA, MAX_SCENES);
             const int VIEWS = 50;
+            var server = new OffsetServer<int>(mock_handler, REBASE_CRITERIA, VIEWS);
+
 
             MockOffsetObject[] views = new MockOffsetObject[VIEWS];
             Vector3d[] targetPositions = new Vector3d[VIEWS];
@@ -161,6 +162,91 @@ namespace FloatingOffset.Editor.Tests
                 }
             }
         }
+
+        [Test]
+        public void MultipleViewsSameClientStressTestWorstCase()
+        {
+            int count = 10;
+
+            System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
+
+            for (int i = 0; i < 40; i++)
+            {
+                count += 20;
+                sw.Restart();
+                StressTest(count);
+                sw.Stop();
+                Debug.Log($"{count}, {sw.ElapsedMilliseconds}");
+            }
+
+        }
+
+        [Test]
+        public void MultipleViewsSameClientStressTestSpreadOut()
+        {
+            int count = 10;
+
+            System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
+
+            for (int i = 0; i < 40; i++)
+            {
+                count += 20;
+                sw.Restart();
+                StressTest(count, 20000);
+                sw.Stop();
+                Debug.Log($"{count}, {sw.ElapsedMilliseconds}");
+            }
+
+        }
+
+        void StressTest(int VIEWS, int SPREAD = 1)
+        {
+            var mock_handler = new MockOffsetHandler(INITIAL_SCENE_KEY);
+            var server = new OffsetServer<int>(mock_handler, REBASE_CRITERIA, VIEWS);
+
+
+            MockOffsetObject[] views = new MockOffsetObject[VIEWS];
+            Vector3d[] targetPositions = new Vector3d[VIEWS];
+
+            for (int i = 0; i < VIEWS; i++)
+            {
+                views[i] = new MockOffsetObject(INITIAL_SCENE_KEY);
+                targetPositions[i] = Vector3d.zero;
+                server.RegisterView(views[i]);
+                mock_handler.TrackedObjects.Add(views[i]);
+            }
+
+            double moveAmount = 5.0;
+
+            for (int loop = 0; loop < 50; loop++)
+            {
+                moveAmount *= 1.2;
+
+                for (int i = 0; i < VIEWS; i++)
+                {
+                    // Move them in different directions to ensure distinct spaces
+                    Vector3d dir = new Vector3d(i % 2 == 0 ? SPREAD : -SPREAD, (i / 2) % 2 == 0 ? SPREAD : -SPREAD, i > 3 ? SPREAD : -SPREAD) * (1 + (i * (SPREAD - 1)));
+                    Vector3d delta = dir * moveAmount;
+
+                    views[i].SetEnginePosition(views[i].GetEnginePosition() + delta);
+                    targetPositions[i] += delta;
+                }
+
+                server.Process();
+
+                for (int i = 0; i < VIEWS; i++)
+                {
+                    if (SPREAD == 1)
+                    {
+                        double error = Vector3d.Distance(mock_handler.RealPosition(views[i]), targetPositions[i]);
+                        Assert.Less(error, 2.0, $"View {i} deviated from intended position. Error: {error}");
+                    }
+
+                }
+            }
+            // Debug.Log($" Scene count {SceneManager.sceneCount}");
+        }
+
 
         [Test]
         public void OffsetTransformGroupChange()
@@ -222,7 +308,7 @@ namespace FloatingOffset.Editor.Tests
             Vector3d moveDelta = new Vector3d(50000, 0, 0);
             v0.SetEnginePosition(v0.GetEnginePosition() + moveDelta);
             v1.SetEnginePosition(v1.GetEnginePosition() + moveDelta);
-            
+
             //simulated delay
             for (int i = 0; i < 5; i++)
             {

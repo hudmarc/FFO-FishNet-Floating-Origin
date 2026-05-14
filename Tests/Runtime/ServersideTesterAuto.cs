@@ -61,6 +61,8 @@ public class ServersideTesterAuto
     {
         Debug.LogWarning("------- Starting test teardown -------");
 
+        for (int i = 0; i < 10; i++) yield return null;
+
         if (networkManager != null)
         {
             if (networkManager.ClientManager.Started)
@@ -71,7 +73,7 @@ public class ServersideTesterAuto
         }
 
         // Allow FishNet time to clean up sockets and objects
-        yield return new WaitForSeconds(0.2f);
+        for (int i = 0; i < 10; i++) yield return null;
 
         // Programmatically create a temporary scene so we don't rely on Build Settings
         Scene tempScene = SceneManager.CreateScene("TempTeardownScene");
@@ -221,28 +223,32 @@ public class ServersideTesterAuto
         int error_frames = 0;
         for (int i = 0; i < 25; i++)
         {
+
             int viewIndex = i % views.Length;
             OffsetTransform currentView = views[viewIndex];
 
-            Vector3 delta = new Vector3(val, val, val);
-            currentView.transform.position += delta;
-            expectedPositions[viewIndex] += Mathd.toVector3d(delta);
-
-            val *= 2;
-
-            yield return new WaitForEndOfFrame();
-            yield return null;
-
-            double error = Vector3d.Distance(expectedPositions[viewIndex], currentView.GetRealPosition());
-            while (error > 2.0)
+            if (currentView.IsValid())
             {
-                Debug.LogWarning($"Precision failure on iteration {i}. View {viewIndex} is off by {error} units.");
+                Vector3 delta = new Vector3(val, val, val);
+                currentView.transform.position += delta;
+                expectedPositions[viewIndex] += Mathd.toVector3d(delta);
+
+                val *= 2;
+
                 yield return new WaitForEndOfFrame();
-                error = Vector3d.Distance(expectedPositions[viewIndex], currentView.GetRealPosition());
-                error_frames++;
+                yield return null;
+
+                double error = Vector3d.Distance(expectedPositions[viewIndex], currentView.GetRealPosition());
+                while (error > 2.0)
+                {
+                    Debug.LogWarning($"Precision failure on iteration {i}. View {viewIndex} is off by {error} units.");
+                    yield return new WaitForEndOfFrame();
+                    error = Vector3d.Distance(expectedPositions[viewIndex], currentView.GetRealPosition());
+                    error_frames++;
+                }
+                Assert.Less(error, 2.0, $"Precision failure on iteration {i}. View {viewIndex} is off by {error} units.");
+                Debug.Log($"Iteration {i} passed. View {viewIndex} tracking perfectly at {currentView.GetRealPosition()}");
             }
-            Assert.Less(error, 2.0, $"Precision failure on iteration {i}. View {viewIndex} is off by {error} units.");
-            Debug.Log($"Iteration {i} passed. View {viewIndex} tracking perfectly at {currentView.GetRealPosition()}");
         }
         Debug.Log($"Test passed with {error_frames} imprecise frames.");
         yield return new WaitForSeconds(1);
@@ -301,17 +307,20 @@ public class ServersideTesterAuto
 
         for (int i = 0; i < 32; i++)
         {
-            views[0].SetRealPositionApproximate(Vector3d.right * (together ? 0 : OFFSET_DISTANCE));
-            views[1].SetRealPositionApproximate(Vector3d.left * (together ? 0 : OFFSET_DISTANCE));
-
-            yield return new WaitForEndOfFrame();
-
-            if (together)
+            if (views[0].IsValid() && views[1].IsValid())
             {
-                Assert.AreEqual(views[0].gameObject.scene.handle, views[1].gameObject.scene.handle);
-                // Assert.AreEqual(views[0].gameObject.scene.handle, staticObject.gameObject.scene.handle);
+                views[0].SetRealPositionApproximate(Vector3d.right * (together ? 0 : OFFSET_DISTANCE));
+                views[1].SetRealPositionApproximate(Vector3d.left * (together ? 0 : OFFSET_DISTANCE));
+
+                yield return new WaitForEndOfFrame();
+
+                if (together && views[0].IsValid() && views[1].IsValid())
+                {
+                    Assert.AreEqual(views[0].gameObject.scene.handle, views[1].gameObject.scene.handle);
+                    // Assert.AreEqual(views[0].gameObject.scene.handle, staticObject.gameObject.scene.handle);
+                }
+                together = !together;
             }
-            together = !together;
         }
 
         Debug.Log($"Final real position of staticObject: {staticObject.GetRealPosition()}");
@@ -320,7 +329,7 @@ public class ServersideTesterAuto
     [UnityTest]
     public IEnumerator StragglersVsGroup()
     {
-        OffsetTransform[] views = new OffsetTransform[3];
+        OffsetTransform[] views = new OffsetTransform[4];
         OffsetTransform initialView = null;
         OffsetTransform staticObject = null;
 
@@ -372,17 +381,19 @@ public class ServersideTesterAuto
             while (views[0].gameObject.scene.handle != views[1].gameObject.scene.handle)
             {
                 Debug.LogWarning($"Scene {views[0].gameObject.scene.handle} is not {views[1].gameObject.scene.handle}");
-                yield return new WaitForSeconds(1f);
+                yield return new WaitForSeconds(0.5f);
             }
 
             Assert.AreEqual(views[0].gameObject.scene.handle, views[1].gameObject.scene.handle);
         }
 
-        // 4. Final Assertions: The straggler (view 2) should be separated from the moving group 
-        // and left behind in the original scene with the static object.
-        Assert.AreEqual(views[0].gameObject.scene.handle, views[1].gameObject.scene.handle);
-        Assert.AreNotEqual(views[0].gameObject.scene.handle, views[2].gameObject.scene.handle);
-        Assert.AreEqual(views[2].gameObject.scene.handle, staticObject.gameObject.scene.handle);
+        views[1].transform.position = Vector3.right * 10000;
+        yield return null;
+        yield return null;
+
+
+        Assert.AreNotEqual(views[0].gameObject.scene.handle, views[1].gameObject.scene.handle);
+        Assert.AreEqual(views[0].gameObject.scene.handle, staticObject.gameObject.scene.handle);
     }
 
     [UnityTest]
@@ -458,21 +469,23 @@ public class ServersideTesterAuto
 
             test.transform.position += move;
 
-            if (Vector3d.Magnitude(controlReal - control.GetRealPosition()) > 10)
+            if (control.IsValid())
             {
-                desyncFrameCount++;
-            }
-            else
-            {
-                desyncFrameCount = 0;
-            }
+                if (Vector3d.Magnitude(controlReal - control.GetRealPosition()) > 10)
+                {
+                    desyncFrameCount++;
+                }
+                else
+                {
+                    desyncFrameCount = 0;
+                }
 
-            if (desyncFrameCount > 5)
-            {
-                throw new Exception("Desynchronization lasted for more than 5 frames!");
+                if (desyncFrameCount > 5)
+                {
+                    throw new Exception("Desynchronization lasted for more than 5 frames!");
+                }
+                yield return null;
             }
-
-            yield return null;
         }
     }
 

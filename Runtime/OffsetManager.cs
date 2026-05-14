@@ -165,5 +165,10 @@ namespace FloatingOffset.Runtime
             else
                 offsettables[scene].Add(offsettable);
         }
+
+        public void Unload(Scene scene)
+        {
+            SceneManager.UnloadSceneAsync(scene);
+        }
     }
 }

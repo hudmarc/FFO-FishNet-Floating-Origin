@@ -408,5 +408,29 @@ namespace FloatingOffset.Runtime
         /// </param>
         /// <returns>The longest scalar component of the vector.</returns>
         public static double MaxLengthScalar(Vector3d vector) => Mathd.Max(Mathd.Abs(vector.x), Mathd.Abs(vector.y), Mathd.Abs(vector.z));
+
+        /// <summary>
+        /// Next power of 2 using bit twiddling
+        /// </summary>
+        /// <param name="n"></param>
+        /// <returns></returns>
+        public static int GetNextPowerOfTwo(int n)
+        {
+            // Handle edge cases (0 or negative numbers)
+            if (n <= 0) return 1;
+
+            // Step 1: Subtract 1
+            n--;
+
+            // Step 2: "Smear" the highest set bit downwards
+            n |= n >> 1;
+            n |= n >> 2;
+            n |= n >> 4;
+            n |= n >> 8;
+            n |= n >> 16;
+
+            // Step 3: Add 1 to get the actual power of two
+            return n + 1;
+        }
     }
 }
