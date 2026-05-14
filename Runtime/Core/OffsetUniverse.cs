@@ -13,7 +13,7 @@ namespace FloatingOffset.Runtime
         /// <summary>
         /// Reference to this game instance's OffsetServer
         /// </summary>
-        internal OffsetServer<Scene> server;
+        public OffsetServer<Scene> server { get; internal set; }
         [field: SerializeField]
         public int RebaseCriteria { get; private set; } = 2048;
         [field: SerializeField]
@@ -35,6 +35,7 @@ namespace FloatingOffset.Runtime
                 Debug.LogError("Cannot teleport transforms if they are not views. Set isView to 'true'.");
             }
             server.TeleportTo(offsetTransform, position);
+            Debug.Log($"Teleported {offsetTransform.name} to {position}");
         }
     }
 }

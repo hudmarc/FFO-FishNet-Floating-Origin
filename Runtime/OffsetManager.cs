@@ -78,9 +78,10 @@ namespace FloatingOffset.Runtime
 
             Scene scene = SceneManager.GetSceneAt(SceneManager.sceneCount - 1);
 
-            onSceneReady?.Invoke(scene);
-
             CullFOObjects(scene);
+
+            // important order of operations: do NOT invoke this before you cull the scene!
+            onSceneReady?.Invoke(scene);
         }
         // culls scened FOObjects from any scenes that are duplicates of an existing scene.
         private void CullFOObjects(Scene scene)

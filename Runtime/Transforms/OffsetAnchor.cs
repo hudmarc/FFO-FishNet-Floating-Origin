@@ -10,8 +10,8 @@ namespace FloatingOffset.Runtime
     /// </summary>
     public class OffsetAnchor : OffsetBehaviour, IOffsettable<Scene>
     {
-        [SerializeField]
-        private Vector3d realPosition;
+        [field: SerializeField]
+        public Vector3d realPosition { get; private set; }
         private Scene scene = default;
         void Start()
         {
@@ -21,6 +21,10 @@ namespace FloatingOffset.Runtime
         public void OnOffset(Vector3d old_offset, Vector3d new_offset)
         {
             transform.position = Mathd.RealToUnity(realPosition, new_offset);
+        }
+        public void SetRealPosition(Vector3d offset)
+        {
+            OnOffset(universe.server.GetSceneOffset(scene), offset);
         }
 
         public Scene GetSceneKey()

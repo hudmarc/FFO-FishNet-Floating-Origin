@@ -29,7 +29,7 @@ namespace FloatingOffset.Runtime
         }
         void OnDestroy()
         {
-            if (isView && registered)
+            if (isView && registered && universe.server != null)
                 universe.server.UnregisterView(this);
             isValid = false;
         }

@@ -162,12 +162,12 @@ namespace FloatingOffset.Runtime
 
             int view_count = views.Count;
 
-            // prune unused scenes
-            // if (scenes.Count > view_count * 2)
-            // {
-            //     scenes.UnregisterAt(scenes.Capacity - 1);
-            //     handler.Unload(scenes.GetKeyAt(scenes.Capacity - 1));
-            // }
+            // prune unused scenes (broken)
+            if (scenes.Count > view_count * 2 && scenes.TryPopEmpty(out int empty_index))
+            {
+                scenes.UnregisterAt(empty_index);
+                handler.Unload(scenes.GetKeyAt(empty_index));
+            }
 
 
             EnsureCapacity(views.Count);
@@ -275,7 +275,7 @@ namespace FloatingOffset.Runtime
             // 3. Scan and Reduce
             for (int i = 1; i < union_scene_tuples.Length; i++)
             {
-                var item = union_scene_tuples[i];
+                ScenedUnion item = union_scene_tuples[i];
 
                 if (item.scene_index == current_scene && item.union_rep == current_union)
                 {
@@ -329,18 +329,20 @@ namespace FloatingOffset.Runtime
             {
                 int rep = Find(i);
 
-                if (winners.TryGetValue(rep, out var winner))
+                if (winners.TryGetValue(rep, out SceneWinner winner))
                 {
-                    var scene = scenes.GetKeyAt(winner.scene_index);
+                    TSceneKey scene = scenes.GetKeyAt(winner.scene_index);
 
                     if (!view_scene_indexes[i].Equals(winner.scene_index))
                     {
                         // transfer the view to the scene
-                        TransferWithRepositioning(views[i], views[i].GetSceneKey(), scene);
+                        Transfer(views[i], views[i].GetSceneKey(), scene);
                     }
                     if (winner.winner_index == i)
                     {
-                        scenes.Offset(scene, union_sums[rep] / (double)union_counts[rep]);
+                        Vector3d average = union_sums[rep] / (double)union_counts[rep];
+                        if ((average - scenes.GetOffsetAt(winner.scene_index)).sqrMagnitude > MinimumJoinDistance)
+                            scenes.Offset(scene, average);
                     }
                 }
                 else
@@ -354,7 +356,7 @@ namespace FloatingOffset.Runtime
                     if (RequestScene(source, union_sums[rep] / (double)union_counts[rep], out int found))
                     {
                         // transfer the view to the scene
-                        TransferWithRepositioning(views[i], views[i].GetSceneKey(), scenes.GetSceneAt(found).key);
+                        Transfer(views[i], views[i].GetSceneKey(), scenes.GetSceneAt(found).key);
                     }
                 }
             }
@@ -373,16 +375,18 @@ namespace FloatingOffset.Runtime
         /// </summary>
         /// <param name="offsettable"></param>
         /// <param name="handler"></param>
-        private void TransferWithRepositioning(IOffsetObject<TSceneKey> offsettable, TSceneKey from, TSceneKey to)
+        private void Transfer(IOffsetObject<TSceneKey> offsettable, TSceneKey from, TSceneKey to, bool reposition = true)
         {
             if (from.Equals(to))
                 return;
 
-            // Note the 'true'! This repositions the handler when it arrives at the target scene.
-            handler.TransferTo(offsettable, from, to, true);
 
-            // Update the logical scene registry after the transfer is complete.
             scenes.RemoveView(offsettable.GetSceneKey());
+
+            // Note the 'true'! This repositions the handler when it arrives at the target scene.
+            handler.TransferTo(offsettable, from, to, reposition);
+
+
             scenes.AddView(to);
         }
 
@@ -410,6 +414,13 @@ namespace FloatingOffset.Runtime
                     handler.Clone(source, scene =>
                     {
                         scenes.Register(scene);
+
+                        int index = scenes.IndexOf(scene);
+
+                        OffsetScene<TSceneKey> empty_scene = scenes.OffsetAt(index, offset);
+                        handler.UpdateOffset(empty_scene);
+
+                        onSceneReady?.Invoke(scene);
                     });
                 }
                 else if (scenes.Count > Mathd.GetNextPowerOfTwo(scenes.Capacity))
@@ -445,13 +456,26 @@ namespace FloatingOffset.Runtime
                 return cmp;
             }
         }
-        public void TeleportTo(IOffsetObject<TSceneKey> offsetObject, Vector3d position)
+        public void TeleportTo(IOffsetObject<TSceneKey> offsetObject, Vector3d real_position)
         {
             TSceneKey origin = offsetObject.GetSceneKey();
-            RequestScene(source, position, out int found, target =>
+            Vector3d offset = scenes.GetOffset(origin);
+            if ((offset + offsetObject.GetEnginePosition() - real_position).sqrMagnitude < MinimumJoinDistance)
             {
-                TransferWithRepositioning(offsetObject, origin, target);
+                offsetObject.SetEnginePosition(real_position - offset);
+                return;
+            }
+            bool request = RequestScene(source, real_position, out int found, target =>
+            {
+                Transfer(offsetObject, origin, target, false);
+                handler.UpdateOffset(scenes.GetScene(target));
             });
+            if (request)
+            {
+                Transfer(offsetObject, origin, scenes.GetKeyAt(found), false);
+                handler.UpdateOffset(scenes.GetSceneAt(found));
+            }
+
         }
     }
 

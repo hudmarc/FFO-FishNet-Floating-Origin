@@ -9,6 +9,7 @@ namespace FloatingOffset.Editor
     public class OffsetBehaviourEditor : UnityEditor.Editor
     {
         OffsetBehaviour offsetTransform;
+        Vector3d target_position = Vector3d.zero;
         void OnEnable()
         {
             offsetTransform = target as OffsetBehaviour;
@@ -22,21 +23,26 @@ namespace FloatingOffset.Editor
                 {
                     if (offsetTransform.universe.server.HasScene(offsetTransform.gameObject.scene))
                     {
-                        Vector3d offset = offsetTransform.universe.server.GetSceneOffset(offsetTransform.gameObject.scene);
-                        var position = offset + Mathd.toVector3d(offsetTransform.gameObject.transform.position);
+                        Vector3d position = offsetTransform.universe.server.GetSceneOffset(offsetTransform.gameObject.scene) + Mathd.toVector3d(offsetTransform.transform.position);
+
                         EditorGUILayout.BeginHorizontal("box");
-                        EditorGUILayout.LabelField("Real Position: ");
+                        EditorGUILayout.LabelField($"Real Position <{position.x},{position.y},{position.z}> ");
                         double x = EditorGUILayout.DoubleField(position.x);
                         double y = EditorGUILayout.DoubleField(position.y);
                         double z = EditorGUILayout.DoubleField(position.z);
                         if (x != position.x || y != position.y || z != position.z)
                         {
-                            offsetTransform.transform.position = Mathd.RealToUnity(new Vector3d(x, y, z), offset);
+                            target_position = new Vector3d(x, y, z);
+
                         }
 
                         EditorGUILayout.EndHorizontal();
                         EditorGUILayout.BeginHorizontal("box");
                         EditorGUILayout.EndHorizontal();
+                        if (GUILayout.Button("Teleport"))
+                        {
+                            offsetTransform.universe.TeleportTo((OffsetTransform) offsetTransform, target_position);
+                        }
                     }
                     else
                     {
