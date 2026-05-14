@@ -18,7 +18,8 @@ namespace FloatingOffset.Runtime
             var objects = scene.GetRootGameObjects();
             foreach (GameObject g in objects)
             {
-                g.transform.position += offset;
+                if (g.GetComponent<IgnoreOffset>() == null)
+                    g.transform.position += offset;
             }
         }
 

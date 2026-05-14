@@ -13,6 +13,8 @@ namespace FloatingOffset.Editor.Tests
         // Generates new scene IDs when Clone() is called
         private int _sceneKeyCounter;
 
+        private IOffsetObject<int> main;
+
         // Keeps track of the mathematical origin of each scene
         public Dictionary<int, Vector3d> SceneOffsets { get; } = new Dictionary<int, Vector3d>();
 
@@ -95,7 +97,7 @@ namespace FloatingOffset.Editor.Tests
 
         public void SetMainView(IOffsetObject<int> view)
         {
-            throw new NotImplementedException();
+            main = view;
         }
     }
 
