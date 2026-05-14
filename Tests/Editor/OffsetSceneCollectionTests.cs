@@ -92,6 +92,11 @@ namespace FloatingOffset.Editor.Tests
         {
             SceneOffsets.Remove(scene);
         }
+
+        public void SetMainView(IOffsetObject<int> view)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public class MockOffsetObject : IOffsetObject<int>
