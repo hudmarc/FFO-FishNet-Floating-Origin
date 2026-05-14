@@ -133,7 +133,7 @@ Editor:
 
 ✅ Test stragglers vs group (tests a group of two clients heading in the opposite direction to a straggler client, which should be kicked out of the group the two clients are in) (see `StragglersVsGroup`)
 
-🔲 Test FOAnchor component
+✅ Test FOAnchor component
 
 #### Editor
 ✅ Test HashGrid implementation
@@ -142,15 +142,13 @@ Editor:
 
 #### Networking
 
-I have observed all of the below working correctly when running other networked tests, but have not written automated tests specifically for these network faliure cases. They are low priority since no bugs have been observered.
-
-🔲 Test client FOViews only, no server FOView
+✅ Test client FOViews only, no server FOView
 
 🔲 Test client joining then leaving then rejoining
 
 🔲 Test hot reloading/ starting a new game without restarting the server
 
-🔲 Stress test FO Observer Network Condition
+🔲 ~Stress test FO Observer Network Condition~
 
 > See the demo project's description for information on running the unit tests on your own machine.
 
