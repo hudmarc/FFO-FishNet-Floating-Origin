@@ -1,3 +1,4 @@
+#if UNITY_EDITOR
 using System.Collections;
 using FloatingOffset.Runtime;
 using FishNet;
@@ -167,3 +168,4 @@ public class ServersideTester
         Assert.NotNull(clientView, $"Timed out after {WAIT_FOR_CLIENT_TIMEOUT} seconds waiting for a manual client to connect.");
     }
 }
+#endif
