@@ -14,7 +14,6 @@ namespace FloatingOffset.Runtime
         }
         protected virtual void MoveRootTransforms(Vector3 offset, Scene scene)
         {
-            // Debug.Log($"Moving by {offset}");
             var objects = scene.GetRootGameObjects();
             foreach (GameObject g in objects)
             {
