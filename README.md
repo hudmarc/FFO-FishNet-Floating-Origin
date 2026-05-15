@@ -8,6 +8,8 @@ By default, Unity can handle ~20km by 20km game worlds without running into floa
 
 This package extends the possible world size to ~`2.114e+35` light years. The known universe is only `4.651e+10` light years (as of writing this README)
 
+It does this using scene stacking (to support multiplayer games) and floating origin (i.e. the world moves around the players, not the other way around)
+
 That's pretty much it.
 
 ### Is this package fast enough for my game? I want to host around 400 players on one world on my server.
