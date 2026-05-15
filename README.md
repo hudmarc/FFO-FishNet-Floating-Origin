@@ -1,157 +1,147 @@
-> [on hold until further notice due to time constraints] ~This project is currently being refactored to decouple the various modules (currently tightly bound through partial classes) that make up the package, to make it possible to support more networking libraries (and potentially more engines) and to work in singleplayer, so open issues will not be addressed yet until the refactor is complete. This repository will stay available as a legacy source, but the new package should be a drop-in replacement for all currently known use cases.~
-
-<img width="1076" alt="image" src="https://github.com/hudmarc/FFO-FishNet-Floating-Origin/assets/44267994/547675bd-5f47-422e-8555-6a736e8e9082">
-
-> Screenshot from demo project
-
-# Installation
-> FishNet is a dependency for this package. Make sure you have the latest version installed first.
-
-Click "Add package from git URL..." in the Unity Package Manager (UPM) and paste in [https://github.com/hudmarc/FFO-FishNet-Floating-Origin.git](https://github.com/hudmarc/FFO-FishNet-Floating-Origin.git)
-
+# Quickstart
+- [Install FishNet](https://assetstore.unity.com/packages/tools/network/fishnet-networking-evolved-207815)
+- Click "Add package from git URL..." in the Unity Package Manager (UPM) and paste in [https://github.com/hudmarc/FFO-FishNet-Floating-Origin.git](https://github.com/hudmarc/FFO-FishNet-Floating-Origin.git)
 <img width="451" alt="image" src="https://user-images.githubusercontent.com/44267994/228247674-b075e104-a93a-4a9f-bdbe-5d0b2c8a49ba.png">
 
-# Quick Setup
+## To create a basic scene
+- Create an Offline Scene, this should have your FishNet `NetworkManager`, add the `OffsetManagerNetworking` component and untick Unity Physics if you want to use TimeManager physics.
+- Add an OffsetTransform to your player, and tick 'isView'
+- If you have static structures that can be duplicated, anchor them in real space using the `OffsetAnchor`
+- If your game uses line renderers or particle effects and you want them to be offset correctly add the `ffectOffsetter` to your manager object and assign it to the `OffsetManager`
+- To configure the Floating Offset backend, set your preferences to the `OffsetUniverse`. It should be automatically created at the root of your project. If not, you can create your own under  `Assets/Create/Floating Offset/OffsetUniverse`
+- To teleport views to specific real positions, use `universe.TeleportTo(OffsetTransform offsetTransform, Vector3d position)`
 
-### `Network Manager`
+<img width="747" height="771" alt="image" src="https://github.com/user-attachments/assets/e1c23c88-0a73-4a33-9ce6-fd838c6d8fc3" />
 
-<img width="503" alt="image" src="https://github.com/hudmarc/FFO-FishNet-Floating-Origin/assets/44267994/4d8e927e-a204-48c7-aa11-1f3cc8479bd5">
+<img width="309" height="223" alt="Screenshot 2026-05-10 at 21 00 31" src="https://github.com/user-attachments/assets/00ba01c7-183e-4c16-b5af-229625b91048" />
 
-> Add the `Floating Origin Condition` to the default observers of the `ObserverManager` in order to hide views in different offset groups from eachother. Note the Condition has not been fully tested as of writing this Readme.
+---
 
-> The current "best practice" is to separate your "game world" from your "manager world". You can use FishNet's `DefaultScene` component in order to automatically load the game world when needed. The idea behind this is to avoid unnecessarily cloning the `NetworkManager` and attached `FOManager`. Both modules should be able to tolerate cloning in any case.
+## OffsetScene (class)
 
-### `FOView`
+Manages the offset of a particular scene and all OffsetViews and OffsetTransforms within the scene. If an OffsetView escapes the bounds of the scene, it will trigger a rebase. If, after the rebase, any tracked OTs or OVs are out of bounds, they will be queued to move to a queued offsetScene. Each time an OffsetView is queued, it is considered no longer inside the scene, and the rebase of the scene is recalculated based on all remaining OVs in the scene, EXLCLUDING the queued OV's.
 
-<img width="503" alt="image" src="https://github.com/hudmarc/FFO-FishNet-Floating-Origin/assets/44267994/b0d23fa3-3246-4ad7-b8c8-64cfea18cc45">
+If two OS's are within each other's merge area they will merge. merge area = 1/2 rebase area. Merging is handled by the OM.
 
-> Remember to *disable* Teleport on your NetworkTransform, unless you absolutely need to teleport the NT somewhere! Then it's ok to enable it temporarily. Otherwise it will cause rubberbanding!
+All OS's have a real velocity and a real position. The real velocity of an OffsetScene is always zero, unless ALL OV's in the scene have a velocity significantly greater than zero (this margin should be settable, but should be set to the maximum velocity at which collisions can still be accurately detected)
 
-> Client Authoritative network transforms are untested and not supported. This package is designed for use with server-authoritative movement with (or without) client side prediction.
+If an OffsetScene has a non-zero root velocity, all root objects in the scene without an OffsetView component (including OT's) will be removed and the dev will have to handle accurate collision detection in that case. Perhaps sweep test helper methods can be provided to this end.
 
-### `FOObject`
-Attach the `FOObject` component to any object you want only a single instance of (Anything with a `NetworkObject` component that can't move far enough to cause a rebase)
+Should not depend on OffsetManager.
+Update mode is settable (default Unity, but can also be updated from Offset Manager the OffsetManager)
 
-> For example unique settlements or trader posts or AI that always stays within a close radius from its spawn.
+## OffsetManager
 
-> FOObjects are just FOView's which don't get updated every time they move.
+Implements Unity functions on behalf of the OffsetServer.
 
-> It ~~should be~~ is possible (and fully tested) to have scened NetworkObjects as FOObjects.
+Bootstraps the OffsetServer.
 
-~~If you want the object anchored to a point in 3D space, set the Anchored Position to something other than 0,0,0~~
-> NEW: See FOAnchor
+Default update mode is Unity, can also be Custom. There is also a derived class OffsetManagerFishNet that overrides the setup and updates subscribed to the FishNet OnTick and also handles network synchronisation for clients (default is first View spawned by the client is considered the player, but methods are provided to change the View registered for any given player)
 
-### `FOAnchor`
+See also `OffsetManagerNetworking`
 
-Use the FOAnchor component to anchor any Transform in your world to a specific real coordinate. It will automatically be anchored to the real coordinate you set whenever a rebase happens on its OffsetGroup.
+## OffsetServer
 
-# FAQ
+When an OffsetScene detects an OffsetView that must be moved to a different OffsetScene, it will add the OffsetView to its transfer queue. The OffsetServer will monitor queues of OffsetScenes. While an OffsetView is marked as "queued" it will  be ignored by the OffsetScene it is currently in, and will be moved to the first pooled OffsetScene as soon as it is ready.
 
-### Why are my physics interactions not working properly?
+OffsetScenes which contain no OffsetViews will report this to the OffsetManager, which will pool them for later use (this means moving all their OffsetTransforms to a null-scene and keying them on a hash grid or similar data structure for fast retrieval later)
 
-Because this package uses multi-scene stacking, you MUST remember to convert all calls to the `Physics` library to instead use the local physics scene. For example `Physics.Raycast` would be `gameObject.scene.GetPhysicsScene().Raycast` or the shortcut provided by this package `gameObject.Physics().Raycast`. Otherwise your physics will not work correctly!
+The Offset Server essentially manages the pooling of Offset Scenes and the transfer of Offset Views and Offset Transforms between all active Offset Scenes and the null scene. The null scene can simply be the scene the Offset Manager is in. The Offset Server is not actually a Monobehaviour so it is instantiated within the OffsetManager as a plain C# object.
 
-### Why are FOViews on game clients desynchronizing on offset?
-You should enable Teleport on your FOView's `NetworkTransform` if this is a problem you are encountering with your game.
+This architectural decsision was taken to facilitate compatibility with other engines in the future.
 
-### When should I use an `FOView` or an `FOObject`?
 
-For giant, immovable stuff like planets, don't use `FOObject` or `FOView`. This way they will exist in all stacked scenes, so that all players can view them and interact with them. Consider anchoring them in space with an `FOAnchor` to ensure they don't lose precision.
 
-The general rule is to use an `FOObject` for any NetworkObjects which:
+## OffsetTransform
 
-- Don't have a `NetworkTransform` component OR can't move far enough to cause a rebase
-- Must be synchronized accross the network
+should always be within the merge area of the nearest scene. If it is not in the merge area of any scene it will be moved to the null-scene where it will be disabled until needed.
 
-The `FOObject` will ensure only one instance of the `NetworkObject` exists at a time.
+Has a real position. When an OT is moved to the null scene, its real position will be cached. If the OT's real position is in range of any merge area, it will be taken from Offset Manager the nullscene and moved to the local position relative to its real position.
 
-FOViews are best used for FOObjects with NetworkTransforms which can move far distances, (i.e. players or AI, )
+### isView
 
-> Multiple FOViews on one client is supported. Currently, the scene which will be shown to that client is whatever scene the first spawned FOView that the client owns.
+When leaving the rebase area the OffsetScene will be rebased to the centroid of all OV's in the scene.
 
-## Todo:
-### Quality of Life
-✅ Add screenshots for manager and NetworkObject setup
+Tracks the real position (relative to real zero) and the real velocity (in absolute space, relative to real zero velocity) of itself.
 
-✅ Re-add FOAnchor component.
+### OffsetAnchor
 
-🔲 Add automatic culling of faraway objects with FOAnchors.
+Offset Anchors ensure that the object they are attached to are always at the exact position specified in the OA's target position.
 
-🔲 Add a function to set the "main view" for a connection. Might be necessary if you spawned in your AI's before your player.
+## IgnoreOffset
 
-✅ Create a demo scene
+Marks an object as ignored by the Offset system, when a scene is rebased this object will not be moved.
 
-🔲 Create a demo video
+## OffsetSceneNetworking
 
-🔲 Integrate CI testing on GitHub repo for automatic testing (currently the tests are run manually)
+See OffsetManagerFishNet
 
-### Code Quality of Life
+## OffsetScenesLoggingConfig
 
-✅ Added `transform.GetRealPosition()` extension method
+Sets the desired logging configuration for the package. Like FishNet, if no logging config is present it will create a default logging configuration in the project folder.
 
-✅ Add extension method `gameObject.Physics()` as alias for `gameObject.scene.GetPhysicsScene()`
+> Is it possible to subclass classes from Offset Manager UPM packages? That way devs could integrate this solution into their own networking packages/games. It would also be possible to give frequently modified components to devs in the form of a UnityPackage.
 
-🔲 Add method to update grid position of `FOObject` component (will not be implemented, instead if you *must* move an FOObject, unregister it, move it, then re-register it)
+### 2.0.0-dev TODO list
 
-### Refactoring
-✅ Core rewrite
+### Networking
 
-✅ Extraction of helper functions to testable context
+🔲 Test offset syncing to clients
 
-### Performance
-✅ Optimize Hashgrid search to use lookup table for adjacent squares
+🔲 ~Implement and test OffsetCondition for hiding objects not in your offset scene~ Default FN SceneCondition seems to work.
 
-## Unit Testing
+### Preferences
 
-Runtime:
+✅ OffsetUniverse for centralized preferences and state
 
-<img width="284" alt="image" src="https://github.com/hudmarc/FFO-FishNet-Floating-Origin/assets/44267994/8d7f8b31-61cf-4378-af6e-3fd05639329b">
+### Management
 
+✅ ~~Thin OffsetSceneHandler that is decoupled from the internal data representation of OffsetScenes~~ It was so thin that functionality was moved into OffsetManager, `OffsetSceneBootstrapper` only handles registration of scenes now.
 
-Editor:
+✅ Thin OffsetManager (only bootstraps OffsetServer and adds reference to OffsetUniverse)
 
-<img width="503" alt="image" src="https://github.com/hudmarc/FFO-FishNet-Floating-Origin/assets/44267994/0252f9fe-9bcb-47cc-b130-c7de6abe9b77">
+### Helpers
 
+🔲 Helper methods/extension
 
+### Transforms
 
-#### Runtime
-✅ Test ensure errors do not accumulate thanks to offsets (see `ErrorAccumulator`)
+✅ OffsetTransform (Formally FOObject, now also performs tasks of FOObserver)
 
-✅ Test offsetting and offsetting far from origin (see `OffsetTest`)
+🔲 ~~TODO: how to 're-discover' offset transforms after they have been moved out of bounds? hash grid? (or: keep a cap on the # of disabled offset transforms and just do an O(n) search on the few left over? could also be sped up with sweep and prune)~~ Changed: Offset Transforms are now destroyed if out of range. If you are being pursued by NPC's they will be offset with you, but if they are out of range they will be despawned. If you need to support Offset Transform persistence the best solution would probably be building your own spawning/persistence system with OffsetAnchors.
 
-✅ Test Merging (case: server FOView merges with client FOView) (see `MergeUntilFailServer`)
+✅ Deprecate FOObserver in favor of boolean on OffsetTransform
 
-✅ Test Merging (case: client FOView merges with server FOView) (see `MergeUntilFailClient`)
+✅ OffsetAnchor (Formally FOAnchor)
 
-✅ Test more than one FOView per connection (see `MultipleViewsSameClient`)
+🔲 IgnoreOffset
 
-✅ Test multiple FOViews merging then separating (see `MultipleViewsSameClient`)
+### Example
 
-✅ Test FOObjects being moved around between groups (An FOObject is placed somewhere in the scene, then the two FOViews take turns moving into range of the object. Should assert the FOObject does not have a change in real position and the FOObject is always present in the same scene as the nearest FOView) (see `FOObjectGroupChange`)
+🔲 TestingSetup.unitypackage (test harness, example setup)
 
-✅ Test wandering agents (tests two clients wandering around, starting at an FOObject, and then meeting again at the FOObject, asserts the FOObject and both clients end up in the same group) (see `FOObjectGroupChange`)
+✅ FishNetDemo.unitypackage (example FishNet demo)
 
-✅ Test stragglers vs group (tests a group of two clients heading in the opposite direction to a straggler client, which should be kicked out of the group the two clients are in) (see `StragglersVsGroup`)
+🔲 OffsetDemo.unitypackage (small singleplayer demo)
 
-🔲 Test FOAnchor component
+### Abstractions
 
-#### Editor
-✅ Test HashGrid implementation
+✅ Platform independent lightweight OffsetServer core
 
-✅ Test Core Space Conversion functions
+### Testing
 
-#### Networking
+✅ Rewrite tests to work with new API
 
-I have observed all of the below working correctly when running other networked tests, but have not written automated tests specifically for these network faliure cases. They are low priority since no bugs have been observered.
+🔲 Maximize test coverage
 
-🔲 Test client FOViews only, no server FOView
+🔲 Review tests and make sure they are actually testing what they say they are
 
-🔲 Test client joining then leaving then rejoining
+### Code Quality
 
-🔲 Test hot reloading/ starting a new game without restarting the server
+✅ Make sure access modifiers are as restrictive as possible
 
-🔲 Stress test FO Observer Network Condition
+✅ Remove var keyword where unnecessary
 
-> See the demo project's description for information on running the unit tests on your own machine.
+✅ Documentation
 
-
+✅ Lint everything
