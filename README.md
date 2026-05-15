@@ -3,6 +3,32 @@
 - Click "Add package from git URL..." in the Unity Package Manager (UPM) and paste in [https://github.com/hudmarc/FFO-FishNet-Floating-Origin.git](https://github.com/hudmarc/FFO-FishNet-Floating-Origin.git)
 <img width="451" alt="image" src="https://user-images.githubusercontent.com/44267994/228247674-b075e104-a93a-4a9f-bdbe-5d0b2c8a49ba.png">
 
+## Is this package fast enough for my game? I want to host 400 players on my server in my basement.
+
+Assuming a 4ms frame budget and a midrange server (in other words, the same cost as the default Unity Physics loop) yes.
+
+### Benchmarks:
+
+> If players are in one spot (clustered, worst case)
+```
+MultipleViewsSameClientStressTestSpreadOut (2.424s)
+---
+Stopped at 500 players with simulated frametime 4ms.
+Average: 1.598ms
+Worst: 4.45ms @ 500 players
+Best: 0.1ms @ 60 players
+```
+
+> If players are spread out evenly (not clustered, average case)
+```
+MultipleViewsSameClientStressTestWorstCase (2.279s)
+---
+Stopped at 380 players with simulated frametime 4ms.
+Average: 1.99035087719298ms
+Worst: 4.2ms @ 380 players
+Best: 0.45ms @ 60 players
+```
+
 ## To create a basic scene
 - Create an Offline Scene, this should have your FishNet `NetworkManager`, add the `OffsetManagerNetworking` component and untick Unity Physics if you want to use TimeManager physics.
 - Add an OffsetTransform to your player, and tick 'isView'
