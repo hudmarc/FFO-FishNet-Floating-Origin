@@ -3,7 +3,14 @@
 - Click "Add package from git URL..." in the Unity Package Manager (UPM) and paste in [https://github.com/hudmarc/FFO-FishNet-Floating-Origin.git](https://github.com/hudmarc/FFO-FishNet-Floating-Origin.git)
 <img width="451" alt="image" src="https://user-images.githubusercontent.com/44267994/228247674-b075e104-a93a-4a9f-bdbe-5d0b2c8a49ba.png">
 
-## Is this package fast enough for my game? I want to host 400 players on my server in my basement.
+## What is this?
+By default, Unity can handle ~20km by 20km game worlds without running into floating point precision limitations.
+
+This package extends the possible world size to ~`2.114e+35` light years. The known universe is only `4.651e+10` light years (as of writing this README)
+
+That's pretty much it.
+
+### Is this package fast enough for my game? I want to host around 400 players on one world on my server.
 
 Assuming a 4ms frame budget and a midrange server (in other words, the same cost as the default Unity Physics loop) yes.
 
@@ -28,6 +35,7 @@ Average: 1.99035087719298ms
 Worst: 4.2ms @ 380 players
 Best: 0.45ms @ 60 players
 ```
+> Note: These benchmarks were using mock classes, not Unity libraries, so YMMV. If you manage to reach 400 players on an actual Unity game with this package, please let me know!
 
 ## To create a basic scene
 - Create an Offline Scene, this should have your FishNet `NetworkManager`, add the `OffsetManagerNetworking` component and untick Unity Physics if you want to use TimeManager physics.
