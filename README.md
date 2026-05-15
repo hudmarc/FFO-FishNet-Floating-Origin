@@ -124,7 +124,7 @@ Sets the desired logging configuration for the package. Like FishNet, if no logg
 
 🔲 Test offset syncing to clients
 
-🔲 ~Implement and test OffsetCondition for hiding objects not in your offset scene~ Default FN SceneCondition seems to work.
+🔲 ~~Implement and test OffsetCondition for hiding objects not in your offset scene~~ Default FN SceneCondition seems to work.
 
 ### Preferences
 
@@ -150,7 +150,7 @@ Sets the desired logging configuration for the package. Like FishNet, if no logg
 
 ✅ OffsetAnchor (Formally FOAnchor)
 
-🔲 IgnoreOffset
+✅ IgnoreOffset
 
 ### Example
 
@@ -168,9 +168,9 @@ Sets the desired logging configuration for the package. Like FishNet, if no logg
 
 ✅ Rewrite tests to work with new API
 
-🔲 Maximize test coverage
+✅ Maximize test coverage
 
-🔲 Review tests and make sure they are actually testing what they say they are
+✅ Review tests and make sure they are actually testing what they say they are
 
 ### Code Quality
 
