@@ -157,8 +157,17 @@ namespace FloatingOffset.Runtime
             }
             Scene main_scene = universe.mainView.GetSceneKey();
 
-            SetSceneVisibility(from, from == main_scene);
-            SetSceneVisibility(to, to == main_scene);
+            if (offsetObject == universe.mainView)
+            {
+                SetSceneVisibility(from, false);
+                SetSceneVisibility(to, true);
+            }
+            else
+            {
+                SetSceneVisibility(from, from == main_scene);
+                SetSceneVisibility(to, to == main_scene);
+            }
+
 
 
 
@@ -211,7 +220,12 @@ namespace FloatingOffset.Runtime
 
                 for (int j = 0; j < renderers.Length; j++)
                 {
-                    renderers[j].forceRenderingOff = !visible;
+                    renderers[j].enabled = visible;
+                }
+
+                if (rootobjectsInScene[i].TryGetComponent(out Terrain terrain))
+                {
+                    terrain.enabled = visible;
                 }
             }
         }
