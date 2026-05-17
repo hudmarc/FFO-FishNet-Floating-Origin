@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.CompilerServices;
+using UnityEngine;
 namespace FloatingOffset.Runtime
 {
     // Experimental fast hash grid. Implementation details may change.
@@ -65,6 +66,14 @@ namespace FloatingOffset.Runtime
         {
             uint h = (uint)(gridX * PrimeX ^ gridY * PrimeY ^ gridZ * PrimeZ);
             return (int)(h & bucketMask);
+        }
+
+        public Vector3Int ToGrid(Vector3d vector)
+        {
+            int gridX = FastFloor(vector.x * invCellSize);
+            int gridY = FastFloor(vector.y * invCellSize);
+            int gridZ = FastFloor(vector.z * invCellSize);
+            return new Vector3Int(gridX, gridY, gridZ);
         }
 
         public void Add(Vector3d position, int viewIndex)
@@ -142,6 +151,7 @@ namespace FloatingOffset.Runtime
                 int viewIndex = entries_value[entryIndex];
 
                 int neighborRoot = viewIndex;
+                // traverse up union-find
                 while (union_reps != null && neighborRoot != union_reps[neighborRoot])
                 {
                     neighborRoot = union_reps[neighborRoot];
@@ -176,6 +186,47 @@ namespace FloatingOffset.Runtime
 
                 entryIndex = entries_next[entryIndex];
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal int FindAnyInGrid(Vector3d position, Vector3d[] view_positions)
+        {
+            // Scale the position
+            double scaledX = position.x * invCellSize;
+            double scaledY = position.y * invCellSize;
+            double scaledZ = position.z * invCellSize;
+
+            // Get the Home Cell (Grid Coordinates) using FastFloor
+            int gridX = FastFloor(scaledX);
+            int gridY = FastFloor(scaledY);
+            int gridZ = FastFloor(scaledZ);
+
+            // Get the hash for the home cell
+            int bucketHash = HashGridPosition(gridX, gridY, gridZ);
+
+            int entryIndex = buckets[bucketHash];
+
+            while (entryIndex != -1)
+            {
+                int viewIndex = entries_value[entryIndex];
+                Vector3d targetPos = view_positions[viewIndex];
+
+                double diffX = position.x - targetPos.x;
+                double diffY = position.y - targetPos.y;
+                double diffZ = position.z - targetPos.z;
+                double distSq = (diffX * diffX) + (diffY * diffY) + (diffZ * diffZ);
+
+                if (distSq <= searchRadiusSq)
+                {
+                    // Return the first found result
+                    return viewIndex;
+                }
+
+                entryIndex = entries_next[entryIndex];
+            }
+
+            // Return -1 if no valid item is found in this grid cell
+            return -1;
         }
     }
 }

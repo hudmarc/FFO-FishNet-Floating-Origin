@@ -8,9 +8,17 @@ namespace FloatingOffset.Runtime
     // URL: http://wiki.unity3d.com/index.php/Floating_Origin
     public class Offsetter : MonoBehaviour
     {
-        internal void Offset(Vector3d old_offset, Vector3d new_offset, Scene scene, IOffsettable<Scene>[] offsettables = null)
+        /// <summary>
+        /// Offsets objects in the scene without changing the OffsetScene.
+        /// If you call this without updating the OffsetScene it will seem as though you teleported all objects in your scene in a direction.
+        /// </summary>
+        /// <param name="old_offset"></param>
+        /// <param name="new_offset"></param>
+        /// <param name="scene"></param>
+        /// <param name="offsettables"></param>
+        public void Offset(Vector3d old_offset, Vector3d new_offset, Scene scene, IOffsettable<Scene>[] offsettables = null)
         {
-            OnOffset(old_offset, new_offset, scene, offsettables);
+            OnOffset(old_offset, new_offset, scene, offsettables); //Calls MoveRootTransforms internally
         }
         protected virtual void MoveRootTransforms(Vector3 offset, Scene scene)
         {
@@ -22,11 +30,11 @@ namespace FloatingOffset.Runtime
             }
         }
 
-        protected virtual void MoveOffsettables(IOffsettable<Scene>[] offsettables, Vector3d old_offset, Vector3d new_offset)
+        protected virtual void MoveOffsettables(IOffsettable<Scene>[] offsettables, Vector3d old_offset, Vector3d new_offset, Scene scene)
         {
             for (int i = 0; i < offsettables.Length; i++)
             {
-                offsettables[i].OnOffset(old_offset, new_offset);
+                offsettables[i].OnOffset(old_offset, new_offset, scene);
             }
         }
         protected virtual void OnOffset(Vector3d old_offset, Vector3d new_offset, Scene scene, IOffsettable<Scene>[] offsettables)
@@ -42,7 +50,7 @@ namespace FloatingOffset.Runtime
                 MoveRootTransforms(remainder, scene);
 
             if (offsettables != null)
-                MoveOffsettables(offsettables, old_offset, new_offset);
+                MoveOffsettables(offsettables, old_offset, new_offset, scene);
         }
     }
 }

@@ -21,7 +21,7 @@ namespace FloatingOffset.Runtime
         {
             if (enabled && isView)
             {
-                universe.server.RegisterView(this);
+                universe.RegisterView(this);
                 registered = true;
             }
             isValid = true;
@@ -29,8 +29,8 @@ namespace FloatingOffset.Runtime
         }
         void OnDestroy()
         {
-            if (isView && registered && universe.server != null)
-                universe.server.UnregisterView(this);
+            if (isView && registered && universe.Active)
+                universe.UnregisterView(this);
             isValid = false;
         }
         [Obsolete("Use TeleportTo on the OffsetUniverse")]
@@ -40,7 +40,7 @@ namespace FloatingOffset.Runtime
         /// </summary>
         /// <returns>The real position.</returns>
         public Vector3d GetRealPosition() => Mathd.UnityToReal(transform.position, GetSceneOffset());
-        private Vector3d GetSceneOffset() => universe.server.GetSceneOffset(gameObject.scene);
+        private Vector3d GetSceneOffset() => universe.GetSceneOffset(gameObject.scene);
         public bool IsValid() => isValid;
 
         Vector3d IOffsetObject<Scene>.GetEnginePosition() => Mathd.toVector3d(transform.position);

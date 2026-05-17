@@ -166,37 +166,71 @@ namespace FloatingOffset.Editor.Tests
         [Test]
         public void MultipleViewsSameClientStressTestWorstCase()
         {
-            int count = 10;
+            int count = 1;
 
             System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
 
-            for (int i = 0; i < 40; i++)
-            {
-                count += 20;
-                sw.Restart();
-                StressTest(count);
-                sw.Stop();
-                Debug.Log($"{count}, {sw.ElapsedMilliseconds}");
-            }
+            double worst = 0;
+            int worst_count = 0;
+            int best_count = 0;
+            double best = int.MaxValue;
+            double sum = 0;
 
+            while (sw.ElapsedMilliseconds < 240 && count < 2000) //300 = 60 * 4. Assume 4ms budget per simulated frame.
+            {
+                count++;
+                sw.Restart();
+                StressTest(count * 20);
+                sw.Stop();
+                double processing_time = sw.ElapsedMilliseconds;
+                if (processing_time < best)
+                {
+                    best = processing_time;
+                    best_count = count;
+                }
+                if (processing_time > worst)
+                {
+                    worst = processing_time;
+                    worst_count = count;
+                }
+                sum += processing_time;
+            }
+            Debug.Log($"Stopped at {count * 20} players with simulated frametime {sw.ElapsedMilliseconds / 60}ms.\nAverage: {(sum / count) / 60f}ms\nWorst: {worst / 60f}ms @ {worst_count * 20} players\nBest: {best / 60f}ms @ {best_count * 20} players");
         }
 
         [Test]
         public void MultipleViewsSameClientStressTestSpreadOut()
         {
-            int count = 10;
+            int count = 1;
 
             System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
 
-            for (int i = 0; i < 40; i++)
-            {
-                count += 20;
-                sw.Restart();
-                StressTest(count, 20000);
-                sw.Stop();
-                Debug.Log($"{count}, {sw.ElapsedMilliseconds}");
-            }
+            double worst = 0;
+            int worst_count = 0;
+            int best_count = 0;
+            double best = int.MaxValue;
+            double sum = 0;
 
+            while (sw.ElapsedMilliseconds < 240 && count < 2000) //300 = 60 * 4. Assume 4ms budget per simulated frame.
+            {
+                count++;
+                sw.Restart();
+                StressTest(count * 20, 20000);
+                sw.Stop();
+                double processing_time = sw.ElapsedMilliseconds;
+                if (processing_time < best)
+                {
+                    best = processing_time;
+                    best_count = count;
+                }
+                if (processing_time > worst)
+                {
+                    worst = processing_time;
+                    worst_count = count;
+                }
+                sum += processing_time;
+            }
+            Debug.Log($"Stopped at {count * 20} players with simulated frametime {sw.ElapsedMilliseconds / 60}ms.\nAverage: {(sum / count) / 60f}ms\nWorst: {worst / 60f}ms @ {worst_count * 20} players\nBest: {best / 60f}ms @ {best_count * 20} players");
         }
 
         void StressTest(int VIEWS, int SPREAD = 1)
@@ -218,7 +252,7 @@ namespace FloatingOffset.Editor.Tests
 
             double moveAmount = 5.0;
 
-            for (int loop = 0; loop < 50; loop++)
+            for (int loop = 0; loop < 60; loop++)
             {
                 moveAmount *= 1.2;
 

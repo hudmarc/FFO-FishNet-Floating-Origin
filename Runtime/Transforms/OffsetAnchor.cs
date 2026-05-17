@@ -16,13 +16,12 @@ namespace FloatingOffset.Runtime
         private bool initialized = false;
         void Awake()
         {
-            if (universe.server == null)
-            {
+            if (!universe.Active)
                 return;
-            }
+
             initialized = true;
             scene = gameObject.scene;
-            universe.server.handler.RegisterOffsettable(this, scene);
+            universe.RegisterOffsettable(this, scene);
 
         }
         void Start()
@@ -32,13 +31,13 @@ namespace FloatingOffset.Runtime
                 return;
             }
             scene = gameObject.scene;
-            universe.server.handler.RegisterOffsettable(this, scene);
+            universe.RegisterOffsettable(this, scene);
 
-            Vector3d current_scene_offset = universe.server.GetSceneOffset(scene);
+            Vector3d current_scene_offset = universe.GetSceneOffset(scene);
             transform.position = Mathd.toVector3(realPosition - current_scene_offset);
 
         }
-        public void OnOffset(Vector3d old_offset, Vector3d new_offset)
+        public void OnOffset(Vector3d old_offset, Vector3d new_offset, Scene scene)
         {
             Debug.Log($"Moved {gameObject.name} from {old_offset} to {new_offset} at position {realPosition}");
 

@@ -102,7 +102,7 @@ namespace FloatingOffset.Editor
                     return;
                 }
 
-                if (universe.server == null || !universe.server.HasScene(t.gameObject.scene))
+                if (!universe.Active || !universe.HasScene(t.gameObject.scene))
                 {
                     EditorGUILayout.LabelField("[Scene not registered]");
                     EditorGUILayout.EndVertical();
@@ -110,7 +110,7 @@ namespace FloatingOffset.Editor
                     return;
                 }
 
-                sceneOffset = universe.server.GetSceneOffset(t.gameObject.scene);
+                sceneOffset = universe.GetSceneOffset(t.gameObject.scene);
                 Vector3d position = sceneOffset + Mathd.toVector3d(t.position);
 
                 if (lastTargetId != t.GetInstanceID())

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using FloatingOffset.Runtime.Types;
+using UnityEngine;
 using static FloatingOffset.Runtime.FastUnionFind;
 
 namespace FloatingOffset.Runtime
@@ -76,7 +77,6 @@ namespace FloatingOffset.Runtime
         {
             if (scenes.Count < 1)
             {
-                handler.SetMainView(view);
                 scenes.Register(view.GetSceneKey());
                 source = scenes.GetSceneAt(0).key;
             }
@@ -96,9 +96,9 @@ namespace FloatingOffset.Runtime
 
         private Vector3d[] view_positions = new Vector3d[8];
         private int[] view_scene_indexes = new int[8];
-        private int[] union_representatives = new int[8]; // For Union-Find
         private int[] union_counts = new int[8];
         private Vector3d[] union_sums = new Vector3d[8];
+        private ScenedUnion[] union_scene_tuples = new ScenedUnion[8];
         private FastUnionFind union = new FastUnionFind(8);
 
         int[] neighborsBuffer = new int[8];
@@ -113,13 +113,14 @@ namespace FloatingOffset.Runtime
                 int newSize = Mathd.GetNextPowerOfTwo(count);
                 Array.Resize(ref view_positions, newSize);
                 Array.Resize(ref view_scene_indexes, newSize);
-                Array.Resize(ref union_representatives, newSize);
                 Array.Resize(ref union_counts, newSize);
                 Array.Resize(ref union_sums, newSize);
+                Array.Resize(ref union_scene_tuples, newSize);
             }
         }
         public void Process()
         {
+            union.Clear();
             // prune views scheduled for removal
             for (int i = 0; i < views.Count; i++)
             {
@@ -165,27 +166,22 @@ namespace FloatingOffset.Runtime
                 // Populate hashgrid
                 view_grid.Add(position, i);
 
-                // Initialize union-find
-                union_representatives[i] = i;
-                union.InitializeNode(i, view_scene_indexes[i]);
-
                 // Reset caches
                 union_counts[i] = 0;
                 union_sums[i] = Vector3d.zero;
             }
 
-
-
             // Populate union-find, compute offsets for unions
             for (int i = 0; i < view_count; i++)
             {
+
                 // Get the root using path compression
                 int myRoot = union.Find(i);
-                int myLayer = view_scene_indexes[i];
-                Vector3d myPos = view_positions[i];
+                int my_scene_index = view_scene_indexes[i];
+                Vector3d my_pos = view_positions[i];
 
                 // The grid ignores anyone already in myRoot.
-                view_grid.FindNeighbors(view_positions[i], view_positions, ref neighborsBuffer, out int neighbourCount, myRoot, union_representatives);
+                view_grid.FindNeighbors(view_positions[i], view_positions, ref neighborsBuffer, out int neighbourCount, myRoot, union.unions);
 
                 for (int j = 0; j < neighbourCount; j++)
                 {
@@ -200,23 +196,26 @@ namespace FloatingOffset.Runtime
                         if (myRoot != neighborRoot)
                         {
                             // Layer Check
-                            if (scenes.SameLayer(myLayer, view_scene_indexes[neighborIndex]))
+                            if (scenes.SameLayer(my_scene_index, view_scene_indexes[neighborIndex]))
                             {
                                 // Real position distance check
-                                double distance_from_neighbor = (myPos - view_positions[neighborIndex]).sqrMagnitude;
-
-                                double our_separation = (myPos - scenes.GetOffsetAt(view_scene_indexes[i])).sqrMagnitude;
-                                double their_separation = (view_positions[neighborIndex] - scenes.GetOffsetAt(view_scene_indexes[neighborIndex])).sqrMagnitude;
+                                double distance_from_neighbor = (my_pos - view_positions[neighborIndex]).sqrMagnitude;
 
                                 // If we don't merge with them this iteration, they will merge with us next iteration.
-                                if (distance_from_neighbor < MaximumJoinDistanceSquared && our_separation <= their_separation)
+                                if (distance_from_neighbor < MaximumJoinDistanceSquared)
                                 {
-                                    // Merge them.
-                                    union.Union(i, neighborIndex);
+                                    double our_separation = (my_pos - scenes.GetOffsetAt(my_scene_index)).sqrMagnitude;
+                                    double their_separation = (view_positions[neighborIndex] - scenes.GetOffsetAt(view_scene_indexes[neighborIndex])).sqrMagnitude;
 
-                                    // Because we just absorbed someone, our root might have changed.
-                                    // Update myRoot so the next iteration of the grid uses the new, larger group.
-                                    myRoot = union.Find(i);
+                                    if (our_separation <= their_separation)
+                                    {
+                                        // Merge them.
+                                        union.Union(i, neighborIndex);
+
+                                        // Because we just absorbed someone, our root might have changed.
+                                        // Update myRoot so the next iteration of the grid uses the new, larger group.
+                                        myRoot = union.Find(i);
+                                    }
                                 }
                             }
                         }
@@ -235,27 +234,24 @@ namespace FloatingOffset.Runtime
 
             winners.Clear();
 
-            if (view_count == 0) return;
+            Array.Clear(union_scene_tuples, 0, union_scene_tuples.Length);
 
             for (int i = 0; i < view_count; i++)
             {
-                union.InitializeNode(i, view_scene_indexes[i]);
+                union_scene_tuples[i] = new ScenedUnion { scene_index = view_scene_indexes[i], representative = union.Find(i) };
             }
 
-            // Sorts by Scene, then by Union
-            ScenedUnion[] sorted = union.Sorted();
-
-            int current_scene = sorted[0].scene_index;
-            int current_union = sorted[0].representative;
+            int current_scene = union_scene_tuples[0].scene_index;
+            int current_union = union_scene_tuples[0].representative;
             int current_run_count = 1;
 
             int scene_champion_union = current_union;
             int scene_champion_count = 1;
 
             // Scan and Reduce
-            for (int i = 1; i < sorted.Length; i++)
+            for (int i = 1; i < union_scene_tuples.Length; i++)
             {
-                ScenedUnion item = sorted[i];
+                ScenedUnion item = union_scene_tuples[i];
 
                 if (item.scene_index == current_scene && item.representative == current_union)
                 {
@@ -326,7 +322,7 @@ namespace FloatingOffset.Runtime
                     }
                 }
                 // transfer with hysteresis
-                else // if ((view_positions[i] - scenes.GetOffsetAt(view_scene_indexes[i])).sqrMagnitude > SceneRadiusSquared)
+                else if ((view_positions[i] - scenes.GetOffsetAt(view_scene_indexes[i])).sqrMagnitude > SceneRadiusSquared)
                 {
                     // request new scenes for stragglers who are not part of a union or unions without assigned scenes
                     // if we find an empty scene, great! we return it.
@@ -441,6 +437,23 @@ namespace FloatingOffset.Runtime
                 handler.UpdateOffset(scenes.GetSceneAt(found));
             }
 
+        }
+
+        private struct ScenedUnion : IComparable<ScenedUnion>
+        {
+            public int scene_index;
+            public int representative;
+
+            public int CompareTo(ScenedUnion other)
+            {
+                // Default generic comparers are safe and optimized here
+                int cmp = System.Collections.Generic.Comparer<int>.Default.Compare(scene_index, other.scene_index);
+                if (cmp == 0)
+                {
+                    cmp = representative.CompareTo(other.representative);
+                }
+                return cmp;
+            }
         }
     }
 

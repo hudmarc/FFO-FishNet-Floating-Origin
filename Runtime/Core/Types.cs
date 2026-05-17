@@ -1,4 +1,5 @@
 using System;
+using UnityEditor.SearchService;
 
 namespace FloatingOffset.Runtime
 {
@@ -76,7 +77,8 @@ namespace FloatingOffset.Runtime
             /// </summary>
             /// <param name="old_offset"></param>
             /// <param name="new_offset"></param>
-            void OnOffset(Vector3d old_offset, Vector3d new_offset);
+            /// <param name="scene"></param>
+            void OnOffset(Vector3d old_offset, Vector3d new_offset, TSceneKey scene);
             /// <summary>
             /// The key of the scene this offsettable object resides in.
             /// </summary>
@@ -115,11 +117,6 @@ namespace FloatingOffset.Runtime
             /// </summary>
             /// <param name="scene"></param>
             void Unload(TSceneKey scene);
-            /// <summary>
-            /// Sets the main view for this OffsetHandler. This controls which scenes are hidden or shown on the server.
-            /// </summary>
-            /// <param name="view"></param>
-            void SetMainView(IOffsetObject<TSceneKey> view);
         }
     }
 }

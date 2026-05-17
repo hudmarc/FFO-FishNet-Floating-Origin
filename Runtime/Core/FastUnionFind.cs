@@ -5,47 +5,56 @@ namespace FloatingOffset.Runtime
 {
     public sealed class FastUnionFind
     {
-        public ScenedUnion[] unions;
+        public int[] unions;
 
-        public ref ScenedUnion this[int index]
+        public ref int this[int index]
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => ref unions[index];
         }
         public FastUnionFind(int initialCapacity)
         {
-            unions = new ScenedUnion[initialCapacity];
+            unions = new int[0];
+            EnsureCapacity(initialCapacity);
         }
 
         public void EnsureCapacity(int count)
         {
             if (unions.Length < count)
             {
-                int newSize = count * 2; // Or NextPowerOfTwo
+                int oldLength = unions.Length;
+                int newSize = count * 2;
                 Array.Resize(ref unions, newSize);
+
+                for (int i = oldLength; i < newSize; i++)
+                {
+                    unions[i] = i;
+                }
             }
         }
 
         // Force the compiler to paste this inside your loop
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void InitializeNode(int member_index, int scene_index)
+        public void Set(int member_index)
         {
-            unions[member_index] = new ScenedUnion { scene_index = scene_index, representative = Find(member_index) };
+            unions[member_index] = Find(member_index);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Find(int i)
         {
             int root = i;
-            while (root != unions[root].representative)
-                root = unions[root].representative;
+            // Find the root
+            while (root != unions[root])
+                root = unions[root];
 
-            int curr = i;
-            while (curr != root)
+            // Path compression: make all nodes on the path point directly to root
+            int current = i;
+            while (current != root)
             {
-                int nxt = unions[curr].representative;
-                unions[curr].representative = root;
-                curr = nxt;
+                int next = unions[current];
+                unions[current] = root;
+                current = next;
             }
             return root;
         }
@@ -60,47 +69,16 @@ namespace FloatingOffset.Runtime
         {
             int rootI = Find(i);
             int rootJ = Find(j);
-
             if (rootI != rootJ)
             {
-                unions[rootJ].representative = rootI;
+                unions[rootJ] = rootI; // Attach J's tree to I
             }
         }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void AggregateData(int member_index, int scene_index)
+        public void Clear()
         {
-            int root = Find(member_index);
-            unions[member_index].scene_index = scene_index;
-        }
-
-        internal ScenedUnion[] Sorted()
-        {
-            ScenedUnion[] sorted = new ScenedUnion[unions.Length];
-            unions.CopyTo(sorted,0);
-            Array.Sort(sorted);
-            return sorted;
-        }
-
-        public int Count
-        {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => unions.Length;
-        }
-        public struct ScenedUnion : IComparable<ScenedUnion>
-        {
-            public int scene_index;
-            public int representative;
-
-            public int CompareTo(ScenedUnion other)
+            for (int i = 0; i < unions.Length; i++)
             {
-                // Default generic comparers are safe and optimized here
-                int cmp = System.Collections.Generic.Comparer<int>.Default.Compare(scene_index, other.scene_index);
-                if (cmp == 0)
-                {
-                    cmp = representative.CompareTo(other.representative);
-                }
-                return cmp;
+                unions[i] = i;
             }
         }
     }

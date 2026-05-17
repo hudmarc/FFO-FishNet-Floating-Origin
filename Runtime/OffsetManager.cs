@@ -14,19 +14,23 @@ namespace FloatingOffset.Runtime
     {
         private readonly LoadSceneParameters parameters = new LoadSceneParameters(LoadSceneMode.Additive, LocalPhysicsMode.Physics3D);
         [SerializeField]
-        private Offsetter offsetter;
-        private Dictionary<Scene, Vector3d> current_offsets = new Dictionary<Scene, Vector3d>();
+        protected Offsetter offsetter;
+        protected Dictionary<Scene, Vector3d> current_offsets = new Dictionary<Scene, Vector3d>();
         private Dictionary<Scene, List<IOffsettable<Scene>>> offsettables = new Dictionary<Scene, List<IOffsettable<Scene>>>();
-        private IOffsetObject<Scene> mainView = null;
-        [SerializeField]
-        protected bool useExternalUpdate = false;
+        /// <summary>
+        /// Set false to disable physics processing on stacked scenes.
+        /// </summary>
+        public bool updateScenePhysicsInternally = true;
+
+        private void Start()
+        {
+            Physics.simulationMode = SimulationMode.Script;
+        }
 
         protected void Awake()
         {
             if (enabled)
-                universe.server = new OffsetServer<Scene>(this, universe.RebaseCriteria, universe.MaxScenes);
-
-            Physics.simulationMode = SimulationMode.Script;
+                universe.InitializeServer(this);
         }
 #if UNITY_EDITOR
         protected override void Reset()
@@ -53,63 +57,60 @@ namespace FloatingOffset.Runtime
         }
         void LateUpdate()
         {
-            if (useExternalUpdate)
-                return;
-
-            universe.server.Process();
+            if (universe.Active)
+                universe.Process();
         }
-        void FixedUpdate()
+        protected void FixedUpdate()
         {
-            if (useExternalUpdate)
+            if (!updateScenePhysicsInternally)
                 return;
 
             PhysicsProcess(Time.fixedDeltaTime);
-
         }
-        protected void PhysicsProcess(float delta)
+        public void PhysicsProcess(float delta)
         {
-            gameObject.scene.GetPhysicsScene().Simulate(delta);
             foreach (var scene in current_offsets.Keys)
             {
                 scene.GetPhysicsScene().Simulate(delta);
             }
         }
+        private Scene last_scene = default;
         /// <summary>
-        /// Clone the given scene. Calls the callback when done.
+        /// Clone the given scene and clears it of OffsetTransforms. Calls the callback when done.
         /// </summary>
         /// <param name="scene"></param>
         /// <param name="onSceneReady"></param>
         public void Clone(Scene scene, Action<Scene> onSceneReady)
         {
             float start_time = Time.time;
-            bool completed = false;
+            if (last_scene == scene)
+            {
+                Debug.LogWarning($"Prevented double execution of completed callback by SceneManager LoadSceneAsync on scene {scene.handle.ToHex()}");
+                return;
+            }
+            last_scene = scene;
             // this is called twice if the editor is unfocused. seems to be a Unity bug.
-            SceneManager.LoadSceneAsync(scene.buildIndex, parameters).completed += (arg) => SetupScene(onSceneReady, start_time, ref completed);
+            SceneManager.LoadSceneAsync(scene.buildIndex, parameters).completed += (arg) => SetupScene(onSceneReady, start_time);
         }
         // Runs some setup code on the scene and calls the callback.
-        private void SetupScene(Action<Scene> onSceneReady, float start_time, ref bool completed)
+        private void SetupScene(Action<Scene> onSceneReady, float start_time)
         {
             //fixes a bizarre Unity bug where the "completed" callback from LoadSceneAsync gets called twice under certain circumstances.
             // offsetGroups.ContainsKey(SceneManager.GetSceneAt(SceneManager.sceneCount - 1)) is causing scenes to NEVER be registered!
-            if (completed)
-            {
-                Debug.LogWarning("Prevented double execution of completed callback by SceneManager LoadSceneAsync");
-                return;
-            }
-            completed = true;
+
             Debug.Log($"setting up scene {SceneManager.GetSceneAt(SceneManager.sceneCount - 1).handle.ToHex()}");
 
             Scene scene = SceneManager.GetSceneAt(SceneManager.sceneCount - 1);
 
             SetSceneVisibility(scene, false);
 
-            CullFOObjects(scene);
+            CullOffsetTransforms(scene);
 
             // important order of operations: do NOT invoke this before you cull the scene!
             onSceneReady?.Invoke(scene);
         }
-        // culls scened FOObjects from any scenes that are duplicates of an existing scene.
-        private void CullFOObjects(Scene scene)
+        // culls scened OffsetTransforms from any scenes that are duplicates of an existing scene.
+        private void CullOffsetTransforms(Scene scene)
         {
             Debug.Log($"Culling objects from scene {scene.handle.ToHex()}");
             var objects = scene.GetRootGameObjects();
@@ -131,10 +132,9 @@ namespace FloatingOffset.Runtime
         /// </summary>
         /// <param name="offsetObject"></param>
         /// <param name="scene"></param>
-        public void TransferTo(IOffsetObject<Scene> offsetObject, Scene from, Scene to, bool reposition = false)
+        public virtual void TransferTo(IOffsetObject<Scene> offsetObject, Scene from, Scene to, bool reposition = false)
         {
-            bool isMainView = offsetObject == mainView;
-            if (!offsetObject.IsView() && (current_offsets[to] - (current_offsets[from] + offsetObject.GetEnginePosition())).sqrMagnitude > universe.RebaseCriteria * universe.RebaseCriteria)
+            if (!offsetObject.IsView() && (current_offsets[to] - (current_offsets[from] + offsetObject.GetEnginePosition())).sqrMagnitude > universe.MinimumJoinDistance * universe.MinimumJoinDistance)
             {
                 Debug.Log($"Destroyed out of range Offset Transform {((MonoBehaviour)offsetObject).name}");
                 offsetObject.Destroy();
@@ -155,12 +155,11 @@ namespace FloatingOffset.Runtime
 
                 offsetObject.SetEnginePosition(newUnityPos);
             }
+            Scene main_scene = universe.mainView.GetSceneKey();
 
-            if (isMainView)
-            {
-                SetSceneVisibility(from, false);
-                SetSceneVisibility(to, true);
-            }
+            SetSceneVisibility(from, from == main_scene);
+            SetSceneVisibility(to, to == main_scene);
+
 
 
             Debug.Log($"Transferred {((MonoBehaviour)offsetObject).name} from {from.handle.ToHex()} to {to.handle.ToHex()}");
@@ -169,16 +168,17 @@ namespace FloatingOffset.Runtime
         /// Updates the offset for the given scene.
         /// </summary>
         /// <param name="scene"></param>
-        public void UpdateOffset(OffsetScene<Scene> scene)
+        public virtual void UpdateOffset(OffsetScene<Scene> scene)
         {
             var key = scene.key;
             if (!current_offsets.ContainsKey(key))
+            {
                 current_offsets.Add(key, Vector3d.zero);
+            }
             else if (scene.offset == current_offsets[scene.key])
                 return;
 
-
-            Debug.Log($"Offset from {current_offsets[key]} to {scene.offset}");
+            Debug.Log($"OFFSET: [{scene.key.handle.ToHex()}]\n{current_offsets[key]:#.#}->{scene.offset:#.#} ");
             Vector3d old_offset = current_offsets[key];
             current_offsets[key] = scene.offset;
 
@@ -202,7 +202,7 @@ namespace FloatingOffset.Runtime
 
         private void SetSceneVisibility(Scene scene, bool visible)
         {
-            Debug.Log($"Changed visibility on {scene} to {visible}");
+            Debug.Log($"Changed visibility on {scene.handle.ToHex()} to {visible}");
 
             var rootobjectsInScene = scene.GetRootGameObjects();
             for (int i = 0; i < rootobjectsInScene.Length; i++)
@@ -215,20 +215,9 @@ namespace FloatingOffset.Runtime
                 }
             }
         }
-
-
         public void Unload(Scene scene)
         {
             SceneManager.UnloadSceneAsync(scene);
-        }
-
-        public void SetMainView(IOffsetObject<Scene> view)
-        {
-            if (!view.IsView())
-            {
-                Debug.LogError("Attempted to set OffsetTransform as main view that is not a view");
-            }
-            mainView = view;
         }
     }
 }
