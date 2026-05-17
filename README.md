@@ -41,7 +41,7 @@ Best: 0.45ms @ 60 players
 ```
 > Note: These benchmarks were using mock classes, not Unity libraries, so YMMV. If you manage to reach 400 players on an actual Unity game with this package, please let me know!
 
-## To create a basic scene
+## Multiplayer Setup
 - Create an Offline Scene, this should have your FishNet `NetworkManager`, add the `OffsetManagerNetworking` component and untick Unity Physics if you want to use TimeManager physics.
 - Add an OffsetTransform to your player, and tick 'isView'
 - If you have static structures that can be duplicated, anchor them in real space using the `OffsetAnchor`
@@ -53,20 +53,23 @@ Best: 0.45ms @ 60 players
 
 <img width="309" height="223" alt="Screenshot 2026-05-10 at 21 00 31" src="https://github.com/user-attachments/assets/00ba01c7-183e-4c16-b5af-229625b91048" />
 
+## Singleplayer Setup
+
+Same as above, but instead of adding an `OffsetManagerNetworking` to the NetworkManager object you just need to set up an empty GameObject marked Do Not Destroy on Load and add the plain `OffsetManager` to it. In my opinion using this package for singleplayer is a bit overkill but it does work just fine! Maybe if you have a lot of AI's in you world that need to be constantly rendered even if they are far away from the player? Either way it works well as a plain floating origin package also.
+
+## Performance considerations
+
+- This package scales generally linearly with evenly distributed players but if all your players cluster in one place performance can dip. See the benchmarks for more details.
+- The OffsetManager class is still being optimized. If you can reduce the number of root GameObjects in your scenes that should improve peformance.
+
+
 ---
 
-## OffsetScene (class)
+## OffsetScene (struct)
 
-Manages the offset of a particular scene and all OffsetViews and OffsetTransforms within the scene. If an OffsetView escapes the bounds of the scene, it will trigger a rebase. If, after the rebase, any tracked OTs or OVs are out of bounds, they will be queued to move to a queued offsetScene. Each time an OffsetView is queued, it is considered no longer inside the scene, and the rebase of the scene is recalculated based on all remaining OVs in the scene, EXLCLUDING the queued OV's.
+You can think of an offset scene as a normal Unity scene with a particular offset from 0,0,0 represented in 64-bit doubles. The point of this package is to keep all players as close to the centers of their scenes as possible, and it does this using a variety of algorithms and datastructures.
 
-If two OS's are within each other's merge area they will merge. merge area = 1/2 rebase area. Merging is handled by the OM.
-
-All OS's have a real velocity and a real position. The real velocity of an OffsetScene is always zero, unless ALL OV's in the scene have a velocity significantly greater than zero (this margin should be settable, but should be set to the maximum velocity at which collisions can still be accurately detected)
-
-If an OffsetScene has a non-zero root velocity, all root objects in the scene without an OffsetView component (including OT's) will be removed and the dev will have to handle accurate collision detection in that case. Perhaps sweep test helper methods can be provided to this end.
-
-Should not depend on OffsetManager.
-Update mode is settable (default Unity, but can also be updated from Offset Manager the OffsetManager)
+At a low level this is a lightweight data struct holding the offset of a particular scene and a count of the OffsetTransforms within the scene. It is a core datatype for the offset system, used by the OffsetServer.
 
 ## OffsetManager
 
@@ -78,25 +81,22 @@ Default update mode is Unity, can also be Custom. There is also a derived class 
 
 See also `OffsetManagerNetworking`
 
-## OffsetServer
+## OffsetSceneNetworking
 
-When an OffsetScene detects an OffsetView that must be moved to a different OffsetScene, it will add the OffsetView to its transfer queue. The OffsetServer will monitor queues of OffsetScenes. While an OffsetView is marked as "queued" it will  be ignored by the OffsetScene it is currently in, and will be moved to the first pooled OffsetScene as soon as it is ready.
+Same as the OffsetManager but it uses the update loop from FishNet instead of the internal Unity update loops.
 
-OffsetScenes which contain no OffsetViews will report this to the OffsetManager, which will pool them for later use (this means moving all their OffsetTransforms to a null-scene and keying them on a hash grid or similar data structure for fast retrieval later)
+## OffsetServer (C# class)
 
-The Offset Server essentially manages the pooling of Offset Scenes and the transfer of Offset Views and Offset Transforms between all active Offset Scenes and the null scene. The null scene can simply be the scene the Offset Manager is in. The Offset Server is not actually a Monobehaviour so it is instantiated within the OffsetManager as a plain C# object.
+Implements the low level logic of this package. The core logic of this package could in the future be ported to Godot or another C# engine, and in the meantime this class is very testable.
 
-This architectural decsision was taken to facilitate compatibility with other engines in the future.
-
+The Offset Server essentially manages the pooling of Offset Scenes and the transfer of Offset Transforms between all active Offset Scenes and the null scene as well as keeping the scenes properly rebased. The Offset Server is not actually a Monobehaviour so it is instantiated by the OffsetManager as a plain C# object and its instance lives on the OffsetUniverse.
 
 
 ## OffsetTransform
 
-should always be within the merge area of the nearest scene. If it is not in the merge area of any scene it will be moved to the null-scene where it will be disabled until needed.
+Should always be near the origin of the scene it is in.
 
-Has a real position. When an OT is moved to the null scene, its real position will be cached. If the OT's real position is in range of any merge area, it will be taken from Offset Manager the nullscene and moved to the local position relative to its real position.
-
-### isView
+### OffsetTransform.isView = true
 
 When leaving the rebase area the OffsetScene will be rebased to the centroid of all OV's in the scene.
 
@@ -104,23 +104,15 @@ Tracks the real position (relative to real zero) and the real velocity (in absol
 
 ### OffsetAnchor
 
-Offset Anchors ensure that the object they are attached to are always at the exact position specified in the OA's target position.
+Offset Anchors ensure that the object they are attached to are always at the exact position specified in the OffsetAnchor's target position. Great for things like POI's.
 
 ## IgnoreOffset
 
-Marks an object as ignored by the Offset system, when a scene is rebased this object will not be moved.
+Marks an object as ignored by the Offset system, when a scene is rebased this object will not be moved. Great for terrains that need to stay near the origin but use some custom system to render themselves.
 
-## OffsetSceneNetworking
+---
 
-See OffsetManagerFishNet
-
-## OffsetScenesLoggingConfig
-
-Sets the desired logging configuration for the package. Like FishNet, if no logging config is present it will create a default logging configuration in the project folder.
-
-> Is it possible to subclass classes from Offset Manager UPM packages? That way devs could integrate this solution into their own networking packages/games. It would also be possible to give frequently modified components to devs in the form of a UnityPackage.
-
-### 2.0.0-dev TODO list
+### 2.0.0-beta TODO list
 
 ### Networking
 
