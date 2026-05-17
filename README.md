@@ -124,9 +124,9 @@ Sets the desired logging configuration for the package. Like FishNet, if no logg
 
 ### Networking
 
-🔲 Test offset syncing to clients
+✅ Test offset syncing to clients
 
-🔲 ~~Implement and test OffsetCondition for hiding objects not in your offset scene~~ Default FN SceneCondition seems to work.
+✅ Implement and test OffsetCondition for hiding objects not in your offset scene.
 
 ### Preferences
 
@@ -140,7 +140,7 @@ Sets the desired logging configuration for the package. Like FishNet, if no logg
 
 ### Helpers
 
-🔲 Helper methods/extension
+✅ Helper methods/extension (See `OffsetUniverse`)
 
 ### Transforms
 
@@ -156,11 +156,11 @@ Sets the desired logging configuration for the package. Like FishNet, if no logg
 
 ### Example
 
-🔲 TestingSetup.unitypackage (test harness, example setup)
+✅ TestingSetup.unitypackage (test harness, example setup, included in the UPM package)
 
 ✅ FishNetDemo.unitypackage (example FishNet demo)
 
-🔲 OffsetDemo.unitypackage (small singleplayer demo)
+✅ [OffsetDemo](https://github.com/hudmarc/FishNet-FloatingOffset---Car-Controller-Prediction-Test/tree/master) (small singleplayer demo)
 
 ### Abstractions
 
