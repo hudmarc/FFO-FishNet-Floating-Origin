@@ -128,7 +128,7 @@ Marks an object as ignored by the Offset system, when a scene is rebased this ob
 
 ### Management
 
-✅ ~~Thin OffsetSceneHandler that is decoupled from the internal data representation of OffsetScenes~~ It was so thin that functionality was moved into OffsetManager, `OffsetSceneBootstrapper` only handles registration of scenes now.
+✅ ~~Thin OffsetSceneHandler that is decoupled from the internal data representation of OffsetScenes~~ It was so thin that functionality was moved into OffsetManager, ~~`OffsetSceneBootstrapper` only handles registration of scenes now.~~ You don't need to add anything to your game scenes. The package automatically detects which scene to run offset on based on the first view that registers itself.
 
 ✅ Thin OffsetManager (only bootstraps OffsetServer and adds reference to OffsetUniverse)
 
