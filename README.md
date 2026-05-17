@@ -98,6 +98,8 @@ Should always be near the origin of the scene it is in.
 
 ### OffsetTransform.isView = true
 
+Attach an OffsetTransform set to isView to your player. The first player spawned on the server will be considered the local player. The first player spawned on clients that is owned by that client is considered the local player on clients and is used for determining when to send rebase commands to clients from the server.
+
 When leaving the rebase area the OffsetScene will be rebased to the centroid of all OV's in the scene.
 
 Tracks the real position (relative to real zero) and the real velocity (in absolute space, relative to real zero velocity) of itself.
