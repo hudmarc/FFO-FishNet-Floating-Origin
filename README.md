@@ -112,7 +112,7 @@ Marks an object as ignored by the Offset system, when a scene is rebased this ob
 
 ---
 
-### 2.0.0-beta TODO list
+### 0.2.0 TODO
 
 ### Networking
 
