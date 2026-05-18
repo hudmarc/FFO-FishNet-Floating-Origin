@@ -127,7 +127,8 @@ namespace FloatingOffset.Runtime.Example
             // Executes client-side
 
             var new_offset = new Vector3d(msg.OffsetX, msg.OffsetY, msg.OffsetZ);
-            Debug.Log($"OFFSET CLIENT: [Local Scene]\n{old_offset}->{new_offset} ]");
+            if (universe.logging)
+                Debug.Log($"OFFSET CLIENT: [Local Scene]\n{old_offset}->{new_offset} ]");
             offsetter.Offset(old_offset, new_offset, localView.gameObject.scene);
             old_offset = new_offset;
         }
@@ -166,8 +167,8 @@ namespace FloatingOffset.Runtime.Example
                         OffsetY = scene.offset.y,
                         OffsetZ = scene.offset.z
                     };
-
-                    Debug.Log("Sent broadcast to client");
+                    if (universe.logging)
+                        Debug.Log("Sent broadcast to client");
 
                     nob.Owner.Broadcast(responseMsg);
                 }

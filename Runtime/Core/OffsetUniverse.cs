@@ -24,6 +24,8 @@ namespace FloatingOffset.Runtime
         public int Hysteresis { get; private set; } = 1000;
         [field: SerializeField]
         public int MaxScenes { get; private set; } = 200;
+        [field: SerializeField]
+        public bool logging { get; private set; } = false;
 
         public bool ServerActive => server != null;
         [NonSerialized]
@@ -49,14 +51,16 @@ namespace FloatingOffset.Runtime
         {
             if (!offsetTransform.isView)
             {
-                Debug.LogError("Cannot teleport transforms if they are not views. Set isView to 'true'.");
+                if (logging)
+                    Debug.LogError("Cannot teleport transforms if they are not views. Set isView to 'true'.");
             }
             if (ServerActive)
             {
                 server.TeleportTo(offsetTransform, position);
-                Debug.Log($"Teleported {offsetTransform.name} to {position}");
+                if (logging)
+                    Debug.Log($"Teleported {offsetTransform.name} to {position}");
             }
-            
+
         }
 
         internal void Process()

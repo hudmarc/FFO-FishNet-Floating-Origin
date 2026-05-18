@@ -88,7 +88,8 @@ namespace FloatingOffset.Runtime
             float start_time = Time.time;
             if (last_scene == scene)
             {
-                Debug.LogWarning($"Prevented double execution of completed callback by SceneManager LoadSceneAsync on scene {scene.handle.ToHex()}");
+                if (universe.logging)
+                    Debug.LogWarning($"Prevented double execution of completed callback by SceneManager LoadSceneAsync on scene {scene.handle.ToHex()}");
                 return;
             }
             last_scene = scene;
@@ -100,8 +101,8 @@ namespace FloatingOffset.Runtime
         {
             //fixes a bizarre Unity bug where the "completed" callback from LoadSceneAsync gets called twice under certain circumstances.
             // offsetGroups.ContainsKey(SceneManager.GetSceneAt(SceneManager.sceneCount - 1)) is causing scenes to NEVER be registered!
-
-            Debug.Log($"setting up scene {SceneManager.GetSceneAt(SceneManager.sceneCount - 1).handle.ToHex()}");
+            if (universe.logging)
+                Debug.Log($"setting up scene {SceneManager.GetSceneAt(SceneManager.sceneCount - 1).handle.ToHex()}");
 
             Scene scene = SceneManager.GetSceneAt(SceneManager.sceneCount - 1);
 
@@ -115,7 +116,8 @@ namespace FloatingOffset.Runtime
         // culls scened OffsetTransforms from any scenes that are duplicates of an existing scene.
         private void CullOffsetTransforms(Scene scene)
         {
-            Debug.Log($"Culling objects from scene {scene.handle.ToHex()}");
+            if (universe.logging)
+                Debug.Log($"Culling objects from scene {scene.handle.ToHex()}");
             var objects = scene.GetRootGameObjects();
 
             foreach (GameObject g in objects)
@@ -137,13 +139,6 @@ namespace FloatingOffset.Runtime
         /// <param name="scene"></param>
         public virtual void TransferTo(IOffsetObject<Scene> offsetObject, Scene from, Scene to, bool reposition = false)
         {
-            // if (!offsetObject.IsView() && (current_offsets[to] - (current_offsets[from] + offsetObject.GetEnginePosition())).sqrMagnitude > universe.MinimumJoinDistance * universe.MinimumJoinDistance)
-            // {
-            //     Debug.Log($"Destroyed out of range Offset Transform {((MonoBehaviour)offsetObject).name}");
-            //     offsetObject.Destroy();
-            //     return;
-            // }
-
             Vector3d absoluteRealPos = current_offsets[from] + offsetObject.GetEnginePosition();
 
             offsetObject.SetSceneKey(to);
@@ -171,8 +166,8 @@ namespace FloatingOffset.Runtime
 
 
 
-
-            Debug.Log($"Transferred {((MonoBehaviour)offsetObject).name} from {from.handle.ToHex()} to {to.handle.ToHex()}");
+            if (universe.logging)
+                Debug.Log($"Transferred {((MonoBehaviour)offsetObject).name} from {from.handle.ToHex()} to {to.handle.ToHex()}");
         }
         /// <summary>
         /// Updates the offset for the given scene.
@@ -187,8 +182,8 @@ namespace FloatingOffset.Runtime
             }
             else if (scene.offset == current_offsets[scene.key])
                 return;
-
-            Debug.Log($"OFFSET: [{scene.key.handle.ToHex()}]\n{current_offsets[key]:#.#}->{scene.offset:#.#} ");
+            if (universe.logging)
+                Debug.Log($"OFFSET: [{scene.key.handle.ToHex()}]\n{current_offsets[key]:#.#}->{scene.offset:#.#} ");
             Vector3d old_offset = current_offsets[key];
             current_offsets[key] = scene.offset;
 
@@ -212,7 +207,8 @@ namespace FloatingOffset.Runtime
 
         private void SetSceneVisibility(Scene scene, bool visible)
         {
-            Debug.Log($"Changed visibility on {scene.handle.ToHex()} to {visible}");
+            if (universe.logging)
+                Debug.Log($"Changed visibility on {scene.handle.ToHex()} to {visible}");
 
             var rootobjectsInScene = scene.GetRootGameObjects();
             for (int i = 0; i < rootobjectsInScene.Length; i++)
