@@ -102,7 +102,7 @@ namespace FloatingOffset.Editor
                     return;
                 }
 
-                if (!universe.Active || !universe.HasScene(t.gameObject.scene))
+                if (!universe.ServerActive || !universe.HasScene(t.gameObject.scene))
                 {
                     EditorGUILayout.LabelField("[Scene not registered]");
                     EditorGUILayout.EndVertical();

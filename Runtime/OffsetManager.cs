@@ -29,8 +29,11 @@ namespace FloatingOffset.Runtime
 
         protected void Awake()
         {
-            if (enabled)
-                universe.InitializeServer(this);
+            if (!enabled)
+                return;
+
+            universe.InitializeHandler(this);
+            universe.InitializeServer();
         }
 #if UNITY_EDITOR
         protected override void Reset()
@@ -57,7 +60,7 @@ namespace FloatingOffset.Runtime
         }
         void LateUpdate()
         {
-            if (universe.Active)
+            if (universe.ServerActive)
                 universe.Process();
         }
         protected void FixedUpdate()
@@ -134,14 +137,12 @@ namespace FloatingOffset.Runtime
         /// <param name="scene"></param>
         public virtual void TransferTo(IOffsetObject<Scene> offsetObject, Scene from, Scene to, bool reposition = false)
         {
-            if (!offsetObject.IsView() && (current_offsets[to] - (current_offsets[from] + offsetObject.GetEnginePosition())).sqrMagnitude > universe.MinimumJoinDistance * universe.MinimumJoinDistance)
-            {
-                Debug.Log($"Destroyed out of range Offset Transform {((MonoBehaviour)offsetObject).name}");
-                offsetObject.Destroy();
-                return;
-            }
-
-
+            // if (!offsetObject.IsView() && (current_offsets[to] - (current_offsets[from] + offsetObject.GetEnginePosition())).sqrMagnitude > universe.MinimumJoinDistance * universe.MinimumJoinDistance)
+            // {
+            //     Debug.Log($"Destroyed out of range Offset Transform {((MonoBehaviour)offsetObject).name}");
+            //     offsetObject.Destroy();
+            //     return;
+            // }
 
             Vector3d absoluteRealPos = current_offsets[from] + offsetObject.GetEnginePosition();
 
@@ -232,6 +233,10 @@ namespace FloatingOffset.Runtime
         public void Unload(Scene scene)
         {
             SceneManager.UnloadSceneAsync(scene);
+        }
+        public virtual Vector3d GetOffset(Scene scene)
+        {
+            return current_offsets[scene];
         }
     }
 }

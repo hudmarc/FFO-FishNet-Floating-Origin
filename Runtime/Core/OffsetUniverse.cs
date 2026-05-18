@@ -12,9 +12,11 @@ namespace FloatingOffset.Runtime
     public class OffsetUniverse : ScriptableObject
     {
         /// <summary>
-        /// Reference to this game instance's OffsetServer
+        /// Reference to this game instance's OffsetServer. If in a multiplayer environment this is only initialized on the server.
+        /// Check if this exists by checking `ServerActive == true`
         /// </summary>
         private OffsetServer<Scene> server;
+        private OffsetManager handler;
 
         [field: SerializeField]
         public int MinimumJoinDistance { get; private set; } = 1000;
@@ -23,7 +25,7 @@ namespace FloatingOffset.Runtime
         [field: SerializeField]
         public int MaxScenes { get; private set; } = 200;
 
-        public bool Active => server != null;
+        public bool ServerActive => server != null;
         [NonSerialized]
         //main view on the server
         internal IOffsetObject<Scene> mainView = null;
@@ -31,12 +33,12 @@ namespace FloatingOffset.Runtime
 
         public Action<OffsetTransform> onTransformRegistered = null;
 
-        public void InitializeServer(IOffsetHandler<Scene> handler)
-        {
-            server = new OffsetServer<Scene>(handler, MinimumJoinDistance, MaxScenes, Hysteresis);
-        }
+        public void InitializeHandler(OffsetManager handler) => this.handler = handler;
 
-        // TODO: Add more user-facing functions here
+        public void InitializeServer() => server = new OffsetServer<Scene>(handler, MinimumJoinDistance, MaxScenes, Hysteresis);
+
+
+        // TODO: The stuff here that can only be called on the main server should not be exposed here.
 
         /// <summary>
         /// Teleport the given OffsetTransform view to the given position in space.
@@ -49,8 +51,12 @@ namespace FloatingOffset.Runtime
             {
                 Debug.LogError("Cannot teleport transforms if they are not views. Set isView to 'true'.");
             }
-            server.TeleportTo(offsetTransform, position);
-            Debug.Log($"Teleported {offsetTransform.name} to {position}");
+            if (ServerActive)
+            {
+                server.TeleportTo(offsetTransform, position);
+                Debug.Log($"Teleported {offsetTransform.name} to {position}");
+            }
+            
         }
 
         internal void Process()
@@ -60,7 +66,7 @@ namespace FloatingOffset.Runtime
 
         internal void RegisterView(OffsetTransform offsetTransform)
         {
-            if (Active)
+            if (ServerActive)
             {
                 server.RegisterView(offsetTransform);
                 if (mainView == null)
@@ -71,15 +77,13 @@ namespace FloatingOffset.Runtime
 
         internal void UnregisterView(OffsetTransform offsetTransform)
         {
-            if (Active)
+            if (ServerActive)
                 server.UnregisterView(offsetTransform);
         }
 
         public Vector3d GetSceneOffset(Scene scene)
         {
-            if (Active)
-                return server.GetSceneOffset(scene);
-            return Vector3d.zero;
+            return handler.GetOffset(scene);
         }
 
         internal void RegisterOffsettable(OffsetAnchor offsetAnchor, Scene scene)

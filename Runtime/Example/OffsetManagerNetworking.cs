@@ -24,6 +24,7 @@ namespace FloatingOffset.Runtime.Example
         // Start is called before the first frame update
         new void Awake()
         {
+            universe.InitializeHandler(this);
             if (TryGetComponent(out networkManager))
             {
                 networkManager.TimeManager.SetPhysicsMode(FishNet.Managing.Timing.PhysicsMode.Disabled);
@@ -36,7 +37,7 @@ namespace FloatingOffset.Runtime.Example
         {
             if (args.ConnectionState == LocalConnectionState.Started)
             {
-                universe.InitializeServer(this);
+                universe.InitializeServer();
             }
         }
 
@@ -50,7 +51,7 @@ namespace FloatingOffset.Runtime.Example
 
                 // Subscribe to the client connection state to replace OnStartClient()
                 universe.onTransformRegistered += OnTransformRegistered;
-                networkManager.TimeManager.OnPostTick += Physics;
+                networkManager.TimeManager.OnTick += Physics;
 
             }
         }
@@ -64,7 +65,7 @@ namespace FloatingOffset.Runtime.Example
                 networkManager.ClientManager.UnregisterBroadcast<ReceiveOffsetBroadcast>(OnClientReceivedOffset);
 
                 universe.onTransformRegistered -= OnTransformRegistered;
-                networkManager.TimeManager.OnPostTick -= Physics;
+                networkManager.TimeManager.OnTick -= Physics;
 
             }
         }
@@ -148,7 +149,7 @@ namespace FloatingOffset.Runtime.Example
                 return;
 
 
-            
+
 
             var objects = scene.key.GetRootGameObjects();
 
@@ -196,6 +197,16 @@ namespace FloatingOffset.Runtime.Example
         new protected void FixedUpdate()
         {
             //Physics is handled by the NetworkManager's PreTick
+        }
+        public override Vector3d GetOffset(Scene scene)
+        {
+            if (universe.ServerActive)
+                if (current_offsets.TryGetValue(scene, out Vector3d offset))
+                {
+                    return offset;
+                }
+                else return Vector3d.zero;
+            return old_offset;
         }
     }
 }

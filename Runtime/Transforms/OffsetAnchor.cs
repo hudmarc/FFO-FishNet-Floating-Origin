@@ -16,7 +16,7 @@ namespace FloatingOffset.Runtime
         private bool initialized = false;
         void Awake()
         {
-            if (!universe.Active)
+            if (!universe.ServerActive)
                 return;
 
             initialized = true;

@@ -17,6 +17,8 @@ namespace FloatingOffset.Runtime
         public bool isView { get; private set; }
         private bool registered = false;
         private bool isValid = false;
+        public Action OnPreOffset;
+        public Action OnOffset;
         void Start()
         {
             if (enabled && isView)
@@ -29,12 +31,12 @@ namespace FloatingOffset.Runtime
         }
         void OnDestroy()
         {
-            if (isView && registered && universe.Active)
+            if (isView && registered && universe.ServerActive)
                 universe.UnregisterView(this);
             isValid = false;
         }
         [Obsolete("Use TeleportTo on the OffsetUniverse")]
-        public void SetRealPositionApproximate(Vector3d position) => transform.position = Mathd.RealToUnity(position, GetSceneOffset());
+        public void SetRealPositionApproximate(Vector3d position) { }
         /// <summary>
         /// The real position of this OffsetTransform in its Offset Universe.
         /// </summary>
@@ -46,11 +48,14 @@ namespace FloatingOffset.Runtime
         Vector3d IOffsetObject<Scene>.GetEnginePosition() => Mathd.toVector3d(transform.position);
         Scene IOffsetObject<Scene>.GetSceneKey() => gameObject.scene;
         bool IOffsetObject<Scene>.IsView() => isView;
-        void IOffsetObject<Scene>.SetSceneKey(Scene key) => SceneManager.MoveGameObjectToScene(gameObject, key);
+        void IOffsetObject<Scene>.SetSceneKey(Scene key)
+        {
+            OnPreOffset?.Invoke();
+            SceneManager.MoveGameObjectToScene(gameObject, key);
+            OnOffset?.Invoke();
+        }
         void IOffsetObject<Scene>.Destroy() => Destroy(gameObject);
         void IOffsetObject<Scene>.SetEnginePosition(Vector3d position) => transform.position = Mathd.toVector3(position);
-
-
 
     }
 }
