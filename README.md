@@ -132,9 +132,13 @@ Marks an object as ignored by the Offset system, when a scene is rebased this ob
 
 ✅ Thin OffsetManager (only bootstraps OffsetServer and adds reference to OffsetUniverse)
 
-### Helpers
+### DevEx
 
-✅ Helper methods/extension (See `OffsetUniverse`)
+✅ ~~Helper methods/extension~~ (See `OffsetUniverse`)
+
+🔲 Clean up helper methods: Methods that require the `OffsetServer` to function (i.e. methods that must be called on the authoritative client in a multiplayer environment) should be moved out of the `OffsetUniverse` and into the `OffsetServer`. Currently there is a mix of 'safe' and 'unsafe' methods in the `OffsetUniverse`, for example `TeleportTo` only works on the authoritative client.
+
+🔲 Clean up access modifiers on `OffsetManager` and `OffsetUniverse`
 
 ### Transforms
 
@@ -170,10 +174,12 @@ Marks an object as ignored by the Offset system, when a scene is rebased this ob
 
 ### Code Quality
 
-✅ Make sure access modifiers are as restrictive as possible
+✅ Make sure access modifiers are as restrictive as possible (done on core classes)
 
 ✅ Remove var keyword where unnecessary
 
 ✅ Documentation
 
 ✅ Lint everything
+
+🔲 Clean up unity interop on `OffsetManager` and clean up `OffsetManagerNetworking`, both classes are currently too bulky.
